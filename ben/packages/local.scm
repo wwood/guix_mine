@@ -16,6 +16,7 @@
   #:use-module (gnu packages boost)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages file)
+  #:use-module (gnu packages gcc)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages maths)
@@ -33,7 +34,7 @@
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages zip)
-  
+
   #:use-module (gnu packages bioinformatics))
 
 (define-public bedtools
@@ -167,3 +168,4 @@ links that join two contigs in a BAM? Do you need to get coverage? Would you
 like to just work out the insert size and orientation of some mapped reads? Then
 BamM is for you!")
    (license license:lgpl3+)))
+

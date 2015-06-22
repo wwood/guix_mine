@@ -207,29 +207,77 @@ required.  By default will look in the sequence of each record but can be told
 to look in the header, comment or quality sections of a record.")
     (license license:gpl3+))))
 
-(define-public hmmer
+(define-public seqtk
+  (let ((commit "a90a6a84f"))
+    (package
+      (name "seqtk")
+      (version "20150618.4feb6e8144") ;;TODO: is this the correct format for bleeding edge releases?
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/lh3/seqtk.git")
+                      (commit commit)))
+                (sha256
+                 (base32
+                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa1yck5xv0arrzg83q6v90430"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:tests? #f
+	 #:phases
+	 (modify-phases %standard-phases
+	   (delete 'configure)
+	   (replace 'build
+		    (lambda* _
+		      (zero? (system* "make"))))
+	   (replace 'install
+		    (lambda* (#:key outputs #:allow-other-keys)
+		      (let ((bin (string-append
+				  (assoc-ref outputs "out")
+				  "/bin")))
+			(mkdir-p bin)
+			(copy-file "seqtk" bin)
+			(copy-file "trimadap" bin)))))))
+    (home-page "https://github.com/lh3/seqtk")
+    (synopsis "Toolkit for processing sequences in FASTA/Q formats")
+    (description
+     "Seqtk is a fast and lightweight tool for processing sequences in
+the FASTA or FASTQ format.  It seamlessly parses both FASTA and FASTQ
+files which can also be optionally compressed by gzip.")
+    (license (license:non-copyleft "file://src/LICENSE"
+				   "See src/LICENSE in the distribution.")))))
+
+(define-public jellyfish
   (package
-    (name "hmmer")
-    (version "3.1b2")
+    (name "jellyfish")
+    (version "2.2.1")
     (source (origin
               (method url-fetch)
-              (uri (string-append
-                    "http://selab.janelia.org/software/hmmer3/3.1b2/hmmer-"
-		    ;;"file:///tmp/ksf73acji56crmvhdzlayyvx9fmhbxx7-hmmer-"
-		    version ".tar.gz"))
-	      (file-name (string-append name "-" version ".tar.gz"))
+              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
+                                  version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "0djmgc0pfli0jilfx8hql1axhwhqxqb8rxg2r5rg07aw73sfs5nx"))))
+                "16aq0w3dmbd0853j32xk9jin4vb6v6fgakfyvrsmsjizzbn3fpfl"))))
     (build-system gnu-build-system)
-    (native-inputs `(("perl", perl)))
-    (home-page "http://hmmer.janelia.org")
-    (synopsis "Biosequence analysis using profile hidden Markov models")
+    (arguments
+     `(#:phases
+       (before 'configure
+	       (lambda* _
+		 (zero? (system* "autoreconf" "-i"))))))
+    (home-page "http://www.genome.umd.edu/jellyfish.html")
+    (synopsis "A fast multi-threaded k-mer counter")
     (description
-     "HMMER is used for searching sequence databases for homologs of protein
-sequences, and for making protein sequence alignments. It implements methods
-using probabilistic models called profile hidden Markov models (profile HMMs).")
-    (license license:gpl3+)))
+     "Jellyfish is a tool for fast, memory-efficient counting of
+k-mers in DNA.  A k-mer is a substring of length k, and counting the
+occurrences of all such substrings is a central step in many analyses
+of DNA sequence.  Jellyfish can count k-mers using an order of
+magnitude less memory and an order of magnitude faster than other
+k-mer counting packages by using an efficient encoding of a hash table
+and by exploiting the 'compare-and-swap' CPU instruction to increase
+parallelism.")
+    (license (license:non-copyleft "file://src/LICENSE"
+                                   "See src/LICENSE in the distribution."))))
+    
 
 
 (define-public kronatools
@@ -290,3 +338,4 @@ charts to be explored locally or served over the Internet, requiring only a
 current version of any major web browser.")
     (license (license:non-copyleft "file://src/LICENSE"
                                    "See src/LICENSE in the distribution."))))
+

@@ -8,6 +8,7 @@
   #:use-module (guix build-system cmake)
   #:use-module (guix build-system perl)
   #:use-module (guix build-system python)
+  #:use-module (guix build-system ruby)
   #:use-module (guix build-system trivial)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
@@ -246,6 +247,37 @@ files which can also be optionally compressed by gzip.")
     (license (license:non-copyleft "file://src/LICENSE"
 				   "See src/LICENSE in the distribution.")))))
 
+(define-public ruby-yaggo
+  (package
+   (name "ruby-yaggo")
+   (version "1.5.4")
+   (source (origin
+	    (method url-fetch)
+	    (uri (string-append
+		  "https://github.com/gmarcais/yaggo/archive/v"
+		  version ".tar.gz"))
+	    (file-name (string-append name "-" version ".tar.gz"))
+	    (sha256
+	     (base32
+	      "1mxfvrim03xg80agws9zdpk00r0kjpqhw3xbli0w8wvsnsa274y3"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f
+      #:phases
+      (modify-phases %standard-phases
+		     (replace 'build
+			      (lambda* _
+				(zero? (system* "rake"
+						"gem")))))))
+   (synopsis "Generate C++ command line parsers using getopt_long")
+       (description "Yaggo is a tool to generate command line parsers for
+C++.  Yaggo stands for 'Yet Another GenGetOpt' and is inspired by GNU
+Gengetopt.  It reads a configuration file describing the switches and argument
+for a C++ program and it generates one header file that parses the command
+line using getopt_long(3).")
+       (home-page "https://github.com/gmarcais/yaggo")
+           (license license:gpl3+)))
+
 (define-public jellyfish
   (package
     (name "jellyfish")
@@ -257,13 +289,15 @@ files which can also be optionally compressed by gzip.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "16aq0w3dmbd0853j32xk9jin4vb6v6fgakfyvrsmsjizzbn3fpfl"))))
+                "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
        (before 'configure
 	       (lambda* _
 		 (zero? (system* "autoreconf" "-i"))))))
+    (native-inputs
+     `(("ruby-yaggo" ,ruby-yaggo)))
     (home-page "http://www.genome.umd.edu/jellyfish.html")
     (synopsis "A fast multi-threaded k-mer counter")
     (description
@@ -277,8 +311,6 @@ and by exploiting the 'compare-and-swap' CPU instruction to increase
 parallelism.")
     (license (license:non-copyleft "file://src/LICENSE"
                                    "See src/LICENSE in the distribution."))))
-    
-
 
 (define-public kronatools
   (package

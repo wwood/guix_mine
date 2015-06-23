@@ -28,10 +28,12 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages ruby)
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
   #:use-module (gnu packages textutils)
+  #:use-module (gnu packages valgrind)
   #:use-module (gnu packages vim)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
@@ -168,7 +170,8 @@ BamM is for you!")
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
-                      (url "https://github.com/ctSkennerton/fxtract.git")
+                      ;;(url "https://github.com/ctSkennerton/fxtract.git")
+		      (url "file:///home/ben/git/fxtract")
                       (commit commit)
                       (recursive? #t)))
                 (sha256
@@ -176,8 +179,7 @@ BamM is for you!")
                   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa1yck5xv0arrzg83q6v90430"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f ;no check target
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (delete 'configure)
          (replace 'install
@@ -293,12 +295,22 @@ line using getopt_long(3).")
                 "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:phases
-       (before 'configure
-	       (lambda* _
-		 (zero? (system* "autoreconf" "-i"))))))
+     `(#:tests? #f
+       #:phases
+       (modify-phases %standard-phases
+	 (add-after
+	  'unpack 'autoreconf
+	  (lambda* _
+	    (zero? (system* "autoreconf" "-i")))))))
     (native-inputs
-     `(("ruby-yaggo" ,ruby-yaggo)))
+     `(("ruby-yaggo" ,ruby-yaggo)
+       ("ruby" ,ruby)
+       ("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("pkg-config" ,pkg-config)
+       ("file" ,file)
+       ))
     (home-page "http://www.genome.umd.edu/jellyfish.html")
     (synopsis "A fast multi-threaded k-mer counter")
     (description
@@ -372,3 +384,39 @@ current version of any major web browser.")
     (license (license:non-copyleft "file://src/LICENSE"
                                    "See src/LICENSE in the distribution."))))
 
+(define-public pplacer
+  (package
+    (name "pplacer")
+    (version "1.1.alpha16")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/matsen/pplacer/archive/"
+				  version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+	 (replace 'install
+		  (lambda* (#:key outputs #:allow-other-keys)
+		    (let ((out (string-append (assoc-ref outputs "out"))))
+		      (mkdir-p out)
+		      (copy-recursively "bin"
+					(string-append out "bin"))))))))
+    (native-inputs ;;other ocaml packages required most likely
+     `(("sqlite" ,sqlite)
+       ("ocaml" ,ocaml)
+       ("gsl" ,gsl)
+       ("zlib" ,zlib)))
+    (home-page "http://matsen.fhcrc.org/pplacer/")
+    (synopsis "Place query sequences on a fixed reference phylogenetic tree")
+    (description
+     "Pplacer places query sequences on a fixed reference phylogenetic
+tree to maximize phylogenetic likelihood or posterior probability
+according to a reference alignment.  Pplacer is designed to be fast, to
+give useful information about uncertainty, and to offer advanced
+visualization and downstream analysis.")
+    (license license:gpl3)))

@@ -243,8 +243,9 @@ to look in the header, comment or quality sections of a record.")
      "Seqtk is a fast and lightweight tool for processing sequences in
 the FASTA or FASTQ format.  It seamlessly parses both FASTA and FASTQ
 files which can also be optionally compressed by gzip.")
-    (license (license:non-copyleft "file://src/LICENSE"
-				   "See src/LICENSE in the distribution.")))))
+    (license (license:non-copyleft
+	      "file://src/LICENSE"
+	      "See src/LICENSE in the distribution.")))))
 
 (define-public jellyfish
   (package
@@ -257,7 +258,7 @@ files which can also be optionally compressed by gzip.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "16aq0w3dmbd0853j32xk9jin4vb6v6fgakfyvrsmsjizzbn3fpfl"))))
+                "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases

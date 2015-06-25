@@ -38,6 +38,7 @@
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages zip)
+  #:use-module (ice-9 regex)
 
   #:use-module (gnu packages bioinformatics))
 
@@ -211,10 +212,10 @@ to look in the header, comment or quality sections of a record.")
     (license license:gpl3+))))
 
 (define-public seqtk
-  (let ((commit "a90a6a84f"))
+  (let ((commit "4feb6e81444ab6bc44139dd3a125068f81ae4ad8"))
     (package
       (name "seqtk")
-      (version "20150618.4feb6e8144") ;;TODO: is this the correct format for bleeding edge releases?
+      (version (string-append "sgdp." commit))
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
@@ -222,7 +223,7 @@ to look in the header, comment or quality sections of a record.")
                       (commit commit)))
                 (sha256
                  (base32
-                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa1yck5xv0arrzg83q6v90430"))))
+                  "0wdkz8chkinfm23cg95nrn797lv12n2wxglwb3s2kvf0iv3rrx01"))))
       (build-system gnu-build-system)
       (arguments
        `(#:tests? #f
@@ -236,19 +237,23 @@ to look in the header, comment or quality sections of a record.")
 		    (lambda* (#:key outputs #:allow-other-keys)
 		      (let ((bin (string-append
 				  (assoc-ref outputs "out")
-				  "/bin")))
+				  "/bin/")))
 			(mkdir-p bin)
-			(copy-file "seqtk" bin)
-			(copy-file "trimadap" bin)))))))
-    (home-page "https://github.com/lh3/seqtk")
-    (synopsis "Toolkit for processing sequences in FASTA/Q formats")
-    (description
-     "Seqtk is a fast and lightweight tool for processing sequences in
+			(copy-file "seqtk" (string-append
+					    bin "seqtk"))
+			(copy-file "trimadap" (string-append
+					    bin "trimadap"))))))))
+      (native-inputs
+       `(("zlib" ,zlib)))
+      (home-page "https://github.com/lh3/seqtk")
+      (synopsis "Toolkit for processing sequences in FASTA/Q formats")
+      (description
+       "Seqtk is a fast and lightweight tool for processing sequences in
 the FASTA or FASTQ format.  It seamlessly parses both FASTA and FASTQ
 files which can also be optionally compressed by gzip.")
-    (license (license:non-copyleft
-	      "file://src/LICENSE"
-	      "See src/LICENSE in the distribution.")))))
+      (license (license:non-copyleft
+		"file://src/LICENSE"
+		"See src/LICENSE in the distribution.")))))
 
 (define-public ruby-yaggo
   (package
@@ -265,8 +270,7 @@ files which can also be optionally compressed by gzip.")
 	      "1mxfvrim03xg80agws9zdpk00r0kjpqhw3xbli0w8wvsnsa274y3"))))
    (build-system ruby-build-system)
    (arguments
-    `(#:tests? #f
-      #:phases
+    `(#:phases
       (modify-phases %standard-phases
 		     (replace 'build
 			      (lambda* _
@@ -281,27 +285,35 @@ line using getopt_long(3).")
        (home-page "https://github.com/gmarcais/yaggo")
            (license license:gpl3+)))
 
-(define-public jellyfish
+(define-public jellyfish ;;currently install works fine but make check fails
   (package
     (name "jellyfish")
     (version "2.2.1")
     (source (origin
               (method url-fetch)
-              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
-                                  version ".tar.gz"))
+	      ;;              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
+	      ;;                                version ".tar.gz"))
+              (uri "file:///home/ben/t/Jellyfish-2.2.1.tar.gz")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
                 "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
 	 (add-after
 	  'unpack 'autoreconf
 	  (lambda* _
-	    (zero? (system* "autoreconf" "-i")))))))
+	    (and (zero? (system*
+			 "autoreconf" "-i"))
+		 ;; Makefile.in currently hard codes /bin/sh
+		 ;; but expects bash
+		 (substitute* "Makefile.in"
+		       (("SH_LOG_COMPILER = /bin/sh")
+			(string-append
+			 "SH_LOG_COMPILER = "
+			 (which "bash"))))))))))
     (native-inputs
      `(("ruby-yaggo" ,ruby-yaggo)
        ("ruby" ,ruby)
@@ -310,6 +322,9 @@ line using getopt_long(3).")
        ("libtool" ,libtool)
        ("pkg-config" ,pkg-config)
        ("file" ,file)
+       ("gzip" ,gzip) ;; deps for make check from here down: gunzip, time, echo, date, bc
+       ("bc" ,bc)
+       ("coreutils" ,coreutils)
        ))
     (home-page "http://www.genome.umd.edu/jellyfish.html")
     (synopsis "A fast multi-threaded k-mer counter")
@@ -384,7 +399,7 @@ current version of any major web browser.")
     (license (license:non-copyleft "file://src/LICENSE"
                                    "See src/LICENSE in the distribution."))))
 
-(define-public pplacer
+(define-public pplacer ;;unlikely to work since there is missing ocaml deps, at least
   (package
     (name "pplacer")
     (version "1.1.alpha16")
@@ -420,3 +435,56 @@ according to a reference alignment.  Pplacer is designed to be fast, to
 give useful information about uncertainty, and to offer advanced
 visualization and downstream analysis.")
     (license license:gpl3)))
+
+(define-public jalview ;;untested, likely doesn't work
+  (package
+    (name "jalview")
+    (version "2.8.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "http://www.jalview.org/source/jalview_"
+		    (regexp-substitute/global
+		     #f "\\." version 'pre "_" 'post)
+                    ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "12z7hqrqq3rccw6rgjc2gl9bnbkq4fnlw37267ax79mgdj15vi49"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("jdk" ,icedtea6 "jdk") ;;TODO: this version of java needed specifically?
+       ("perl" ,perl)))
+    (home-page "http://www.jalview.org")
+    (synopsis "Multiple sequence alignment editing, visualisation and analysis")
+    (description
+     "Use it to view and edit sequence alignments, analyse them with
+phylogenetic trees and principal components analysis (PCA) plots and explore
+molecular structures and annotation.  Jalview has built in DNA, RNA and protein
+sequence and structure visualisation and analysis capabilities.  It uses Jmol to
+view 3D structures, and VARNA to display RNA secondary structure.")
+    (license license:gpl3+))) ;; TODO: check what version of GPL
+
+(define-public python-scikit-bio
+  (package
+    (name "python-scikit-bio")
+    (version "0.2.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/s/scikit-bio/scikit-bio-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+	 "10y6fiz7w6gc34rllixmcg8k1xb6f0yidl2mpg9614r494xwdvjz"))))
+    (build-system python-build-system)
+    (inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "http://scikit-bio.org")
+    (synopsis
+     "Data structures, algorithms and educational resources for bioinformatics.")
+    (description
+     "Data structures, algorithms and educational resources for bioinformatics.")
+    (license license:bsd-3)))

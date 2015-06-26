@@ -481,10 +481,43 @@ view 3D structures, and VARNA to display RNA secondary structure.")
 	 "10y6fiz7w6gc34rllixmcg8k1xb6f0yidl2mpg9614r494xwdvjz"))))
     (build-system python-build-system)
     (inputs
-     `(("python-setuptools" ,python-setuptools)))
+     `(("python-setuptools" ,python-setuptools)
+       ("python-numpy" ,python-numpy)
+       ("python-scipy" ,python-scipy)))
     (home-page "http://scikit-bio.org")
     (synopsis
      "Data structures, algorithms and educational resources for bioinformatics.")
     (description
      "Data structures, algorithms and educational resources for bioinformatics.")
     (license license:bsd-3)))
+
+(define-public prodigal
+  (package
+    (name "prodigal")
+    (version "2.6.2")
+    (source (origin
+              (method url-fetch)
+	      (uri (string-append "https://github.com/hyattpd/Prodigal/archive/v"
+				  version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0m8sb0fg6lmxrlpzna0am6svbnlmd3dckrhgzxxgb3gxr5fyj284"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ;no check target
+       #:phases
+       (modify-phases %standard-phases
+	 (delete 'configure)
+	 (replace 'install
+		  (lambda* (#:key outputs #:allow-other-keys)
+                    (let ((bin (string-append (assoc-ref outputs "out")
+                                              "/bin")))
+                      (mkdir-p bin)
+                      (copy-file "prodigal" (string-append bin "/prodigal"))
+		      #t))))))
+    (home-page "http://prodigal.ornl.gov")
+    (synopsis "Fast, reliable protein-coding gene prediction for prokaryotic genomes")
+    (description
+     "TODO")
+    (license license:gpl3+)))

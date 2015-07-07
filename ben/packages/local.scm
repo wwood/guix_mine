@@ -16,12 +16,14 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages compression)
+  #:use-module (gnu packages databases)
   #:use-module (gnu packages file)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages ncurses)
+  #:use-module (gnu packages ocaml)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
@@ -39,60 +41,11 @@
   #:use-module (gnu packages xml)
   #:use-module (gnu packages zip)
   #:use-module (ice-9 regex)
+  
 
   #:use-module (gnu packages bioinformatics))
 
-(define-public bedtools
-  (package
-    (name "bedtools")
-    (version "2.24.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/arq5x/bedtools2/archive/v"
-                                  version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "16aq0w3dmbd0853j32xk9jin4vb6v6fgakfyvrsmsjizzbn3fpfl"))))
-    (build-system gnu-build-system)
-    (native-inputs `(("python" ,python-2)))
-    (inputs `(("samtools" ,samtools)
-              ("zlib" ,zlib)))
-    (arguments
-     '(#:test-target "test"
-       #:phases
-       (alist-cons-after
-        'unpack 'patch-makefile-SHELL-definition
-        (lambda _
-          ;; patch-makefile-SHELL cannot be used here as it does not
-          ;; yet patch definitions with `:='.  Since changes to
-          ;; patch-makefile-SHELL result in a full rebuild, features
-          ;; of patch-makefile-SHELL are reimplemented here.
-          (substitute* "Makefile"
-            (("^SHELL := .*$") (string-append "SHELL := " (which "bash") " -e \n"))))
-        (alist-delete
-         'configure
-         (alist-replace
-          'install
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
-              (mkdir-p bin)
-              (for-each (lambda (file)
-                          (copy-file file (string-append bin (basename file))))
-                        (find-files "bin" ".*"))))
-          %standard-phases)))))
-    (home-page "https://github.com/arq5x/bedtools2")
-    (synopsis "Tools for genome analysis and arithmetic")
-    (description
-     "Collectively, the bedtools utilities are a swiss-army knife of tools for
-a wide-range of genomics analysis tasks.  The most widely-used tools enable
-genome arithmetic: that is, set theory on the genome.  For example, bedtools
-allows one to intersect, merge, count, complement, and shuffle genomic
-intervals from multiple files in widely-used genomic file formats such as BAM,
-BED, GFF/GTF, VCF.")
-    (license license:gpl2)))
-
-(define-public bamm
+(define-public bamm ;  does not work
   (package
     (name "bamm")
     (version "1.4.2")
@@ -163,7 +116,7 @@ like to just work out the insert size and orientation of some mapped reads? Then
 BamM is for you!")
     (license license:lgpl3+)))
 
-(define-public fxtract
+(define-public fxtract ; dont think this works. Writing a proper configure.ac etc is probably a good idea, it would simplify things here a lot.
   ;(let ((commit ))
     (package
       (name "fxtract")
@@ -212,7 +165,7 @@ required.  By default will look in the sequence of each record but can be told
 to look in the header, comment or quality sections of a record.")
     (license license:gpl3+)))
 
-(define-public seqtk
+(define-public seqtk ; waiting on licensing issues, but seems to work
   (let ((commit "4feb6e81444ab6bc44139dd3a125068f81ae4ad8"))
     (package
       (name "seqtk")
@@ -256,6 +209,37 @@ files which can also be optionally compressed by gzip.")
                 "file://src/LICENSE"
                 "See src/LICENSE in the distribution.")))))
 
+(define-public yaggo ; patch sent to guix-devel mailing list
+  (package
+   (name "yaggo")
+   (version "1.5.4")
+   (source (origin
+             (method url-fetch)
+             (uri (string-append
+                   "https://github.com/gmarcais/yaggo/archive/v"
+                   version ".tar.gz"))
+             (file-name (string-append name "-" version ".tar.gz"))
+             (sha256
+              (base32
+               "1mxfvrim03xg80agws9zdpk00r0kjpqhw3xbli0w8wvsnsa274y3"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(
+      ;; No rake test, and Makefile in test/ appears malformed.
+      ;; See https://github.com/gmarcais/yaggo/issues/3
+      #:tests? #f
+      #:phases
+      (modify-phases %standard-phases
+        (replace 'build (lambda* _ (zero? (system* "rake" "gem")))))))
+   (synopsis "Generate C++ command line parsers using getopt_long")
+   (description "Yaggo is a tool to generate command line parsers for C++.
+Yaggo stands for 'Yet Another GenGetOpt' and is inspired by GNU Gengetopt.  It
+reads a configuration file describing the switches and argument for a C++
+program and it generates one header file that parses the command line using
+getopt_long(3).")
+   (home-page "https://github.com/gmarcais/yaggo")
+   (license license:gpl3+)))
+
 (define-public jellyfish ;;currently install works fine but make check fails
   (package
     (name "jellyfish")
@@ -279,14 +263,15 @@ files which can also be optionally compressed by gzip.")
                          (and (zero? (system*
                                       "autoreconf" "-i"))
                               ;; Makefile.in currently hard codes /bin/sh
-                              ;; but expects bash
+                              ;; but expects bash. Fixed in upstream but not
+                              ;; released as of 2.2.1
                               (substitute* "Makefile.in"
                                            (("SH_LOG_COMPILER = /bin/sh")
                                             (string-append
                                              "SH_LOG_COMPILER = "
                                              (which "bash"))))))))))
     (native-inputs
-     `(("ruby-yaggo" ,ruby-yaggo)
+     `(("yaggo" ,yaggo)
        ("ruby" ,ruby)
        ("autoconf" ,autoconf)
        ("automake" ,automake)
@@ -311,7 +296,7 @@ parallelism.")
     (license (license:non-copyleft "file://src/LICENSE"
                                    "See src/LICENSE in the distribution."))))
 
-(define-public krona-tools
+(define-public krona-tools ; mostly works? database cannot be used though. See http://sourceforge.net/p/krona/tickets/10/
   (package
    (name "krona-tools")
    (version "2.5")
@@ -325,45 +310,67 @@ parallelism.")
             (sha256
              (base32
               "12ps0y7p19d3cdhc7pp3xlak5k9qq5w246861bngfg8mkfa083qa"))))
-   (build-system gnu-build-system)
+   (build-system perl-build-system)
    (arguments
      `(#:tests? #f
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
-         ;; Package comes with extraneous files e.g. ._ClassifyBLAST.pl
-         ;; delete these
-         (replace 'build
-                  (lambda* _
-                    (for-each (lambda (file)
-                                (delete-file file))
-                              (find-files "." "^\\._"))
-                    #t))
+         (delete 'build)
          (replace 'install
-                  ;; TODO: this is a bit of a mess. I'd say need to remove the
-                  ;; use lib (`ktGetLibPath`);
-                  ;; from each of the scripts, and effectively reimplement the
-                  ;; install.pl script so that the soft links are not required.
-                  ;;
-                  ;; also make lib to be in the perl-style lib directory?
                   (lambda* (#:key outputs #:allow-other-keys)
-                    (let ((out (string-append (assoc-ref outputs "out"))))
-                      (mkdir-p out)
-                      (copy-recursively "lib" (string-append out "/lib"))
-                      (copy-recursively "scripts" (string-append out "/scripts"))
-                      (copy-recursively "data" (string-append out "/data"))
-                      (copy-recursively "img" (string-append out "/img"))
-                      (copy-recursively "src" (string-append out "/src"))
-                      (copy-recursively "taxonomy" (string-append out "/taxonomy"))
-                      (copy-file "install.pl" (string-append out "/install.pl"))
-                      (chdir out)
-                      (system* "perl"
-                               "install.pl"
-                               "--prefix"
-                               out)
-                      (delete-file "install.pl")))))))
+                    (let ((bin   (string-append (assoc-ref outputs "out") "/bin"))
+                          (perl  (string-append (assoc-ref outputs "out")
+                                                "/lib/perl5/site_perl"))
+                          (share (string-append (assoc-ref outputs "out") "/share/krona-tools")))
+                      (mkdir-p bin)
+                      (for-each (lambda (script)
+                                  (let* ((executable (string-append "scripts/" script ".pl")))
+                                    (substitute* executable
+                                      (("use lib (`ktGetLibPath`);") ""))
+                                    (copy-file executable
+                                               (string-append bin "/kt" script))))
+                                '("ClassifyBLAST"
+                                  "GetContigMagnitudes"
+                                  "GetTaxIDFromGI"
+                                  "ImportBLAST"
+                                  "ImportDiskUsage"
+                                  "ImportEC"
+                                  "ImportFCP"
+                                  "ImportGalaxy"
+                                  "ImportMETAREP-BLAST"
+                                  "ImportMETAREP-EC"
+                                  "ImportMGRAST"
+                                  "ImportPhymmBL"
+                                  "ImportRDP"
+                                  "ImportRDPComparison"
+                                  "ImportTaxonomy"
+                                  "ImportText"
+                                  "ImportXML"))
+                      (mkdir-p share)
+                      (copy-recursively "data" (string-append share "/data"))
+                      (copy-recursively "img" (string-append share "/img"))
+                      (copy-recursively "taxonomy" (string-append share "/taxonomy"))
+                      (mkdir-p perl)
+                      ;;$libPath/../img/
+                      ;;'img/hidden.png';
+                      (substitute* '("lib/KronaTools.pm")
+                        (("taxonomyDir = \".libPath/../taxonomy\"")
+                         (string-append "taxonomyDir = \"" share "/taxonomy\"")))
+                      (copy-file "lib/KronaTools.pm" (string-append perl "/KronaTools.pm")))))
+         (add-after 'install 'wrap-program
+                    (lambda* (#:key inputs outputs #:allow-other-keys)
+                      ;; TODO? Make sure scripts find all regular perl inputs at runtime.
+                      (let* ((out (assoc-ref outputs "out"))
+                             (path (getenv "PERL5LIB")))
+                        (for-each (lambda (executable)
+                                    (wrap-program executable
+                                      `("PERL5LIB" ":" prefix
+                                        (,(string-append out
+                                                         "/lib/perl5/site_perl")))))
+                                  (find-files (string-append out "/bin/") ".*"))))))))
    (inputs
-    `(("perl", perl)))
+    `(("perl" ,perl)))
    (home-page "http://sourceforge.net/projects/krona")
    (synopsis "Hierarchical data exploration with zoomable HTML5 pie charts")
    (description
@@ -375,42 +382,6 @@ current version of any major web browser.")
    (license (license:non-copyleft "file://src/LICENSE"
                                   "See src/LICENSE in the distribution."))))
 
-(define-public pplacer ;;unlikely to work since there is missing ocaml deps, at least
-  (package
-    (name "pplacer")
-    (version "1.1.alpha16")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/matsen/pplacer/archive/"
-  version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-                      (replace 'install
-                               (lambda* (#:key outputs #:allow-other-keys)
-                                 (let ((out (string-append (assoc-ref outputs "out"))))
-                                   (mkdir-p out)
-                                   (copy-recursively "bin"
-                                                     (string-append out "bin"))))))))
-    (native-inputs ;;other ocaml packages required most likely
-     `(("sqlite" ,sqlite)
-       ("ocaml" ,ocaml)
-       ("gsl" ,gsl)
-       ("zlib" ,zlib)))
-    (home-page "http://matsen.fhcrc.org/pplacer/")
-    (synopsis "Place query sequences on a fixed reference phylogenetic tree")
-    (description
-     "Pplacer places query sequences on a fixed reference phylogenetic
-tree to maximize phylogenetic likelihood or posterior probability
-according to a reference alignment.  Pplacer is designed to be fast, to
-give useful information about uncertainty, and to offer advanced
-visualization and downstream analysis.")
-    (license license:gpl3)))
 
 (define-public jalview ;;untested, likely doesn't work
   (package
@@ -442,33 +413,262 @@ view 3D structures, and VARNA to display RNA secondary structure.")
    (license license:gpl3+))) ;; TODO: check what version of GPL
 
 
-(define-public prodigal
+(define-public python2-seqmagick ; newer version would be better, see https://github.com/fhcrc/seqmagick/issues/51
   (package
-    (name "prodigal")
-    (version "2.6.2")
+    (name "python2-seqmagick")
+    (version "0.5.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/s/seqmagick/seqmagick-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "06qi5534apbr61kd01d1zfvmwfjvnfqlvdjmkb1ip1xbvc9v4jsw"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2))
+    (inputs
+     `(("python2-setuptools" ,python2-setuptools)
+       ("python2-biopython" ,python2-biopython)))
+    (home-page "http://github.com/fhcrc/seqmagick")
+    (synopsis
+     "Tools for converting and modifying sequence files from the command-line")
+    (description
+     "Bioinformaticians often have to convert sequence files between formats
+and do little manipulations on them, and it's not worth writing scripts for
+that.  seqmagick is a kickass little utility to expose the file format
+conversion in BioPython in a convenient way.  Instead of having a big mess of
+scripts, there is one that takes arguments.")
+    (license license:gpl3)))
+
+(define-public metabat ; seems to work, just waiting for preseq merge on official
+  (package
+    (name "metabat")
+    (version "0.26.1")
     (source (origin
               (method url-fetch)
-	      (uri (string-append "https://github.com/hyattpd/Prodigal/archive/v"
-				  version ".tar.gz"))
+              (uri (string-append
+                    "https://bitbucket.org/berkeleylab/metabat/get/"
+                    version ".tar.bz2"))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "0m8sb0fg6lmxrlpzna0am6svbnlmd3dckrhgzxxgb3gxr5fyj284"))))
+                "0vgrhbaxg4dkxyax2kbigak7w0arhqvw0szwp6gd9wmyilc44kfa"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f ;no check target
+     `(#:tests? #f ; no tests included
        #:phases
        (modify-phases %standard-phases
-	 (delete 'configure)
-	 (replace 'install
-		  (lambda* (#:key outputs #:allow-other-keys)
+         (replace 'configure
+                  (lambda* _
+                    (substitute* "SConstruct"
+                      (("env.Install.idir_prefix, 'README.md'.")
+                       ""))
+                    #t))
+         (replace 'build
+                  (lambda* (#:key inputs outputs #:allow-other-keys)
+                    (substitute* "mehSConstruct"
+                      (("/include/bam/bam.h")
+                       "/include/samtools/bam.h"))
+                    (substitute* "src/BamUtils.h"
+                      (("#include .bam/bam.h.")
+                       "#include \"samtools/bam.h\""))
+                    (substitute* "src/BamUtils.h"
+                      (("#include .bam/sam.h.")
+                       "#include \"samtools/sam.h\""))
+                    (substitute* "src/KseqReader.h"
+                      (("#include \"bam/kseq.h\"")
+                       "#include \"samtools/kseq.h\""))
+                    (mkdir (assoc-ref outputs "out"))
+                    (zero? (system* "scons"
+                                    (string-append
+                                     "PREFIX="
+                                     (assoc-ref outputs "out"))
+                                    (string-append
+                                     "HTSLIB_DIR="
+                                     (assoc-ref inputs "htslib"))
+                                    (string-append
+                                     "SAMTOOLS_DIR="
+                                     (assoc-ref inputs "samtools"))
+                                    (string-append
+                                     "BOOST_ROOT="
+                                     (assoc-ref inputs "boost"))
+                                    "install"))))
+         (delete 'install))))
+    (inputs
+     `(("zlib" ,zlib)
+       ("perl" ,perl)
+       ("samtools" ,samtools)
+       ("htslib" ,htslib)))
+    (native-inputs
+     `(("boost" ,boost)
+       ("scons" ,scons)))
+    (home-page "")
+    (synopsis "Reconstruction of single genomes from complex microbial communities")
+    (description
+     "Grouping large genomic fragments assembled from shotgun metagenomic
+sequences to deconvolute complex microbial communities, or metagenome binning,
+enables the study of individual organisms and their interactions.  MetaBAT is an
+automated metagenome binning software, which integrates empirical probabilistic
+distances of genome abundance and tetranucleotide frequency.")
+   (license (license:non-copyleft "file://license.txt"
+                                  "See LICENSE in the distribution."))))
+
+(define-public samtools ; required for metabat - includes header files, patch for preseq from Ricardo, see mailing list
+  (package
+    (name "samtools")
+    (version "1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/samtools/"
+                       version "/samtools-" version ".tar.bz2"))
+       (sha256
+        (base32
+         "1y5p2hs4gif891b4ik20275a8xf3qrr1zh9wpysp4g8m0g1jckf2"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(;; There are 87 test failures when building on non-64-bit architectures
+       ;; due to invalid test data.  This has since been fixed upstream (see
+       ;; <https://github.com/samtools/samtools/pull/307>), but as there has
+       ;; not been a new release we disable the tests for all non-64-bit
+       ;; systems.
+       #:tests? ,(string=? (or (%current-system) (%current-target-system))
+                           "x86_64-linux")
+       #:modules ((ice-9 ftw)
+                  (ice-9 regex)
+                  (guix build gnu-build-system)
+                  (guix build utils))                
+       #:make-flags (list "LIBCURSES=-lncurses"
+                          (string-append "prefix=" (assoc-ref %outputs "out")))
+       #:phases
+       (alist-cons-after
+        'unpack
+        'patch-tests
+        (lambda* (#:key inputs #:allow-other-keys)
+          (let ((bash (assoc-ref inputs "bash")))
+            (substitute* "test/test.pl"
+              ;; The test script calls out to /bin/bash
+              (("/bin/bash")
+               (string-append bash "/bin/bash"))
+              ;; There are two failing tests upstream relating to the "stats"
+              ;; subcommand in test_usage_subcommand ("did not have Usage"
+              ;; and "usage did not mention samtools stats"), so we disable
+              ;; them.
+              (("(test_usage_subcommand\\(.*\\);)" cmd)
+               (string-append "unless ($subcommand eq 'stats') {" cmd "};")))))
+        (alist-cons-after
+         'install 'install-library
+         (lambda* (#:key outputs #:allow-other-keys)
+           (let ((lib (string-append (assoc-ref outputs "out") "/lib")))
+             (mkdir-p lib)
+             (copy-file "libbam.a" (string-append lib "/libbam.a"))))
+         (alist-cons-after
+          'install 'install-headers
+          (lambda* (#:key outputs #:allow-other-keys)
+            (let ((include (string-append (assoc-ref outputs "out")
+                                          "/include/samtools/")))
+              (mkdir-p include)
+              (for-each (lambda (file)
+                          (copy-file file (string-append include
+                                                         (basename file))))
+                        (scandir "." (lambda (name) (string-match "\\.h$" name))))
+              #t))
+          (alist-delete 'configure %standard-phases))))))
+    (native-inputs `(("pkg-config" ,pkg-config)))
+    (inputs `(("ncurses" ,ncurses)
+              ("perl" ,perl)
+              ("python" ,python)
+              ("zlib" ,zlib)))
+    (home-page "http://samtools.sourceforge.net")
+    (synopsis "Utilities to efficiently manipulate nucleotide sequence alignments")
+    (description
+     "Samtools implements various utilities for post-processing nucleotide
+sequence alignments in the SAM, BAM, and CRAM formats, including indexing,
+variant calling (in conjunction with bcftools), and a simple alignment
+viewer.")
+    (license license:expat)))
+
+(define-public python-nesoni
+  (package
+    (name "python-nesoni")
+    (version "0.130")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/n/nesoni/nesoni-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0lf94fxr1rcrysgldpiiq837x8mgpbphmg7zx3j67fg2lnhn489x"))))
+    (build-system python-build-system)
+    (arguments `(#:python ,python-2)) ; only Python 2 is supported
+    (inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ;; R Depends: limma, edgeR, Matrix, parallel
+       ("r" ,r)
+       
+       ))
+    (home-page
+     "http://bioinformatics.net.au/software.nesoni.shtml")
+    (synopsis
+     "Tools for processing high-throughput sequencing data, with an emphasis on
+bacterial data.")
+    (description
+     "Nesoni focusses on analysing the alignment of reads to a reference genome.
+Use of the SHRiMP and Bowtie2 read aligners is automated by nesoni.  We use
+SHRiMP as it is able to detect small insertions and deletions in addition to
+SNPs.  Output from other aligners may be imported in SAM format.  Nesoni can
+call a consensus of read alignments, taking care to indicate ambiguity.  This
+can then be used in various ways: to determine the protein level changes
+resulting from SNPs and indels, to find differences between multiple strains, or
+to produce n-way comparison data suitable for phylogenetic analysis in
+SplitsTree4.")
+    (license license:gpl2+)))
+
+(define-public shrimp
+  (package
+    (name "shrimp")
+    (version "2.2.3")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "http://compbio.cs.toronto.edu/shrimp/releases/SHRiMP_"
+                    (regexp-substitute/global
+                     #f "\\." version 'pre "_" 'post)
+                    ".src.tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0flr32krdllyvrsx0ny5ibllvjjwvmbw1i2p6rdx52n9m230srk1"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ;no make check
+       #:make-flags (list ; as per BUILDING in src directory for gcc
+                     "CXX=g++"
+                     "CXXFLAGS=-O3 -mmmx -msse -msse2 -fopenmp")
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'install
+                  (lambda* (#:key outputs #:allow-other-keys)
                     (let ((bin (string-append (assoc-ref outputs "out")
                                               "/bin")))
                       (mkdir-p bin)
-                      (copy-file "prodigal" (string-append bin "/prodigal"))
-		      #t))))))
-    (home-page "http://prodigal.ornl.gov")
-    (synopsis "Fast, reliable protein-coding gene prediction for prokaryotic genomes")
+                      (copy-recursively "bin/" bin))
+                    #t)))))
+    (inputs
+     `(("zlib" ,zlib)))
+    (home-page "http://compbio.cs.toronto.edu/shrimp/")
+    (synopsis "A software package for aligning genomic reads against a target genome.")
     (description
-     "TODO")
-    (license license:gpl3+)))
+     "SHRiMP2 is a software package for mapping reads from a donor genome
+against a target (reference) genome.  SHRiMP2 was primarily developed to work
+with short reads produced by Next Generation Sequencing (NGS) machines.")
+   (license license:expat)))

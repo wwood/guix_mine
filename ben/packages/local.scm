@@ -45,6 +45,61 @@
 
   #:use-module (gnu packages bioinformatics))
 
+
+(define-public bedtools
+  (package
+    (name "bedtools")
+    (version "2.24.0")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/arq5x/bedtools2/archive/v"
+                                  version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0lnxrjvs3nnmb4bmskag1wg3h2hd80przz5q3xd0bvs7vyxrvpbl"))
+              ;; Fixed in upstream, see
+              ;; https://github.com/arq5x/bedtools2/issues/271
+              (patches (list (search-patch "bedtools-32bit-compilation.patch")))))
+    (build-system gnu-build-system)
+    (native-inputs `(("python" ,python-2)))
+    (inputs `(("samtools" ,samtools)
+              ("zlib" ,zlib)))
+    (arguments
+     '(#:test-target "test"
+       #:phases
+       (alist-cons-after
+        'unpack 'patch-makefile-SHELL-definition
+        (lambda _
+          ;; patch-makefile-SHELL cannot be used here as it does not
+          ;; yet patch definitions with `:='.  Since changes to
+          ;; patch-makefile-SHELL result in a full rebuild, features
+          ;; of patch-makefile-SHELL are reimplemented here.
+          (substitute* "Makefile"
+            (("^SHELL := .*$") (string-append "SHELL := " (which "bash") " -e \n"))))
+        (alist-delete
+         'configure
+         (alist-replace
+          'install
+          (lambda* (#:key outputs #:allow-other-keys)
+            (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+              (mkdir-p bin)
+              (for-each (lambda (file)
+                          (copy-file file (string-append bin (basename file))))
+                        (find-files "bin" ".*"))))
+          %standard-phases)))))
+    (home-page "https://github.com/arq5x/bedtools2")
+    (synopsis "Tools for genome analysis and arithmetic")
+    (description
+     "Collectively, the bedtools utilities are a swiss-army knife of tools for
+a wide-range of genomics analysis tasks.  The most widely-used tools enable
+genome arithmetic: that is, set theory on the genome.  For example, bedtools
+allows one to intersect, merge, count, complement, and shuffle genomic
+intervals from multiple files in widely-used genomic file formats such as BAM,
+BED, GFF/GTF, VCF.")
+    (license license:gpl2)))
+
+
 (define-public bamm ;  does not work
   (package
     (name "bamm")
@@ -240,7 +295,7 @@ getopt_long(3).")
    (home-page "https://github.com/gmarcais/yaggo")
    (license license:gpl3+)))
 
-(define-public jellyfish ;;currently install works fine but make check fails
+(define-public jellyfish ;;currently install works fine but make check fails. Also need to change it so the build process does not query /proc/cpuinfo, for purity purposes.
   (package
     (name "jellyfish")
     (version "2.2.1")
@@ -412,186 +467,87 @@ sequence and structure visualisation and analysis capabilities.  It uses Jmol to
 view 3D structures, and VARNA to display RNA secondary structure.")
    (license license:gpl3+))) ;; TODO: check what version of GPL
 
-
-(define-public python2-seqmagick ; newer version would be better, see https://github.com/fhcrc/seqmagick/issues/51
+(define-public mxscarna ; not free software (research only). Also fails to compile.
   (package
-    (name "python2-seqmagick")
-    (version "0.5.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/s/seqmagick/seqmagick-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "06qi5534apbr61kd01d1zfvmwfjvnfqlvdjmkb1ip1xbvc9v4jsw"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2))
-    (inputs
-     `(("python2-setuptools" ,python2-setuptools)
-       ("python2-biopython" ,python2-biopython)))
-    (home-page "http://github.com/fhcrc/seqmagick")
-    (synopsis
-     "Tools for converting and modifying sequence files from the command-line")
-    (description
-     "Bioinformaticians often have to convert sequence files between formats
-and do little manipulations on them, and it's not worth writing scripts for
-that.  seqmagick is a kickass little utility to expose the file format
-conversion in BioPython in a convenient way.  Instead of having a big mess of
-scripts, there is one that takes arguments.")
-    (license license:gpl3)))
-
-(define-public metabat ; seems to work, just waiting for preseq merge on official
-  (package
-    (name "metabat")
-    (version "0.26.1")
+    (name "mxscarna")
+    (version "2.1")
     (source (origin
               (method url-fetch)
               (uri (string-append
-                    "https://bitbucket.org/berkeleylab/metabat/get/"
-                    version ".tar.bz2"))
-              (file-name (string-append name "-" version ".tar.gz"))
+                    "http://www.ncrna.org/software/mxscarna/mxscarna_ver"
+                    version "_060309.tar.gz"))
               (sha256
                (base32
-                "0vgrhbaxg4dkxyax2kbigak7w0arhqvw0szwp6gd9wmyilc44kfa"))))
+                "1ihg3s63hb1zshqpbyggbh9l64rj8yw19q2qvy2d9q75fvnql33q"))))
     (build-system gnu-build-system)
     (arguments
-     `(#:tests? #f ; no tests included
+     `(#:tests? #f ; no tests
        #:phases
        (modify-phases %standard-phases
-         (replace 'configure
-                  (lambda* _
-                    (substitute* "SConstruct"
-                      (("env.Install.idir_prefix, 'README.md'.")
-                       ""))
-                    #t))
-         (replace 'build
-                  (lambda* (#:key inputs outputs #:allow-other-keys)
-                    (substitute* "mehSConstruct"
-                      (("/include/bam/bam.h")
-                       "/include/samtools/bam.h"))
-                    (substitute* "src/BamUtils.h"
-                      (("#include .bam/bam.h.")
-                       "#include \"samtools/bam.h\""))
-                    (substitute* "src/BamUtils.h"
-                      (("#include .bam/sam.h.")
-                       "#include \"samtools/sam.h\""))
-                    (substitute* "src/KseqReader.h"
-                      (("#include \"bam/kseq.h\"")
-                       "#include \"samtools/kseq.h\""))
-                    (mkdir (assoc-ref outputs "out"))
-                    (zero? (system* "scons"
-                                    (string-append
-                                     "PREFIX="
-                                     (assoc-ref outputs "out"))
-                                    (string-append
-                                     "HTSLIB_DIR="
-                                     (assoc-ref inputs "htslib"))
-                                    (string-append
-                                     "SAMTOOLS_DIR="
-                                     (assoc-ref inputs "samtools"))
-                                    (string-append
-                                     "BOOST_ROOT="
-                                     (assoc-ref inputs "boost"))
-                                    "install"))))
-         (delete 'install))))
-    (inputs
-     `(("zlib" ,zlib)
-       ("perl" ,perl)
-       ("samtools" ,samtools)
-       ("htslib" ,htslib)))
-    (native-inputs
-     `(("boost" ,boost)
-       ("scons" ,scons)))
-    (home-page "")
-    (synopsis "Reconstruction of single genomes from complex microbial communities")
+         (delete 'configure)
+         (replace 'install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let ((bin (string-append (assoc-ref outputs "out")
+                                              "/bin/")))
+                      (mkdir-p bin)
+                      (copy-file "program/mxscarna"
+                                 (string-append bin "mxscarna")))
+                    #t)))))
+    (home-page "http://www.ncrna.org/software/mxscarna")
+    (synopsis
+     "Fast structural multiple alignment of RNA sequences")
     (description
-     "Grouping large genomic fragments assembled from shotgun metagenomic
-sequences to deconvolute complex microbial communities, or metagenome binning,
-enables the study of individual organisms and their interactions.  MetaBAT is an
-automated metagenome binning software, which integrates empirical probabilistic
-distances of genome abundance and tetranucleotide frequency.")
-   (license (license:non-copyleft "file://license.txt"
-                                  "See LICENSE in the distribution."))))
+     "MXSCARNA (Multiplex Stem Candidate Aligner for RNAs) is a tool for fast
+structural multiple alignment of RNA sequences using progressive alignment based
+on pairwise structural alignment algorithm of SCARNA.")
+    (license license:expat))) ; TODO: not free software, non-profit only, so meh.
 
-(define-public samtools ; required for metabat - includes header files, patch for preseq from Ricardo, see mailing list
+(define-public trnascan-se ; unfinished
   (package
-    (name "samtools")
-    (version "1.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri
-        (string-append "mirror://sourceforge/samtools/"
-                       version "/samtools-" version ".tar.bz2"))
-       (sha256
-        (base32
-         "1y5p2hs4gif891b4ik20275a8xf3qrr1zh9wpysp4g8m0g1jckf2"))))
+    (name "trnascan-se")
+    (version "1.2.1")
+    (source (origin
+              (method url-fetch)
+              (uri "http://lowelab.ucsc.edu/software/tRNAscan-SE.tar.gz")
+              (file-name (string-append name "-" version ".tgz"))
+              (sha256
+               (base32
+                "05pkh8i6hn0qbybrxv7mdy4xdiw6rpa4fbx03c8iqga5d7c28ac6"))))
     (build-system gnu-build-system)
     (arguments
-     `(;; There are 87 test failures when building on non-64-bit architectures
-       ;; due to invalid test data.  This has since been fixed upstream (see
-       ;; <https://github.com/samtools/samtools/pull/307>), but as there has
-       ;; not been a new release we disable the tests for all non-64-bit
-       ;; systems.
-       #:tests? ,(string=? (or (%current-system) (%current-target-system))
-                           "x86_64-linux")
-       #:modules ((ice-9 ftw)
-                  (ice-9 regex)
-                  (guix build gnu-build-system)
-                  (guix build utils))                
-       #:make-flags (list "LIBCURSES=-lncurses"
-                          (string-append "prefix=" (assoc-ref %outputs "out")))
+     `(#:python ,python-2
        #:phases
-       (alist-cons-after
-        'unpack
-        'patch-tests
-        (lambda* (#:key inputs #:allow-other-keys)
-          (let ((bash (assoc-ref inputs "bash")))
-            (substitute* "test/test.pl"
-              ;; The test script calls out to /bin/bash
-              (("/bin/bash")
-               (string-append bash "/bin/bash"))
-              ;; There are two failing tests upstream relating to the "stats"
-              ;; subcommand in test_usage_subcommand ("did not have Usage"
-              ;; and "usage did not mention samtools stats"), so we disable
-              ;; them.
-              (("(test_usage_subcommand\\(.*\\);)" cmd)
-               (string-append "unless ($subcommand eq 'stats') {" cmd "};")))))
-        (alist-cons-after
-         'install 'install-library
-         (lambda* (#:key outputs #:allow-other-keys)
-           (let ((lib (string-append (assoc-ref outputs "out") "/lib")))
-             (mkdir-p lib)
-             (copy-file "libbam.a" (string-append lib "/libbam.a"))))
-         (alist-cons-after
-          'install 'install-headers
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((include (string-append (assoc-ref outputs "out")
-                                          "/include/samtools/")))
-              (mkdir-p include)
-              (for-each (lambda (file)
-                          (copy-file file (string-append include
-                                                         (basename file))))
-                        (scandir "." (lambda (name) (string-match "\\.h$" name))))
-              #t))
-          (alist-delete 'configure %standard-phases))))))
-    (native-inputs `(("pkg-config" ,pkg-config)))
-    (inputs `(("ncurses" ,ncurses)
-              ("perl" ,perl)
-              ("python" ,python)
-              ("zlib" ,zlib)))
-    (home-page "http://samtools.sourceforge.net")
-    (synopsis "Utilities to efficiently manipulate nucleotide sequence alignments")
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build ; didn't try beyond here. Need to modify Makefile etc.
+                  (lambda* (#:key input #:allow-other-keys)
+                    (zero? (system* "gcc"
+                                    "-O3"
+                                    "-ffast-math"
+                                    "-finline-functions"
+                                    "-o"
+                                    "aragorn"
+                                    (string-append
+                                     "aragorn" ,version ".c")))))
+        (replace 'install
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (let ((bin (string-append
+                               (assoc-ref outputs "out") "/bin"))
+                         (man (string-append
+                               (assoc-ref outputs "out") "share/man/man1")))                   
+                     (mkdir-p bin)
+                     (copy-file "aragorn"
+                                (string-append bin "/aragorn"))
+                     (mkdir-p man)
+                     (copy-file "aragorn.1"
+                                (string-append man "/aragorn.1")))
+                   #t)))))
+    (home-page "http://lowelab.ucsc.edu/tRNAscan-SE/")
+    (synopsis
+     "")
     (description
-     "Samtools implements various utilities for post-processing nucleotide
-sequence alignments in the SAM, BAM, and CRAM formats, including indexing,
-variant calling (in conjunction with bcftools), and a simple alignment
-viewer.")
-    (license license:expat)))
+     "")
+   (license license:gpl2+)))
 
 (define-public python-nesoni
   (package
@@ -672,3 +628,297 @@ SplitsTree4.")
 against a target (reference) genome.  SHRiMP2 was primarily developed to work
 with short reads produced by Next Generation Sequencing (NGS) machines.")
    (license license:expat)))
+
+(define-public spades ; possibly might compile, but there is bundled dependencies
+  (package
+    (name "spades")
+    (version "3.6.0")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "http://spades.bioinf.spbau.ru/release"
+                                  version "/SPAdes-" version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1a8kvrf7hpycxfnyspbyp4x47k8zshqv0b469jsfblwa0rfya13c"))))
+    (build-system cmake-build-system)
+    (inputs `(("zlib" ,zlib)))
+    (arguments
+     '(#:test-target "test"
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (setenv "PREFIX" (assoc-ref outputs "out"))
+                    (zero? (system* "sh" "spades_compile.sh"))))
+         (delete 'install))))
+    (home-page "http://bioinf.spbau.ru/en/spades")
+    (synopsis "A single-cell and isolate genome assembler")
+    (description
+     "SPAdes – St. Petersburg genome assembler – is intended for both standard
+isolates and single-cell multiple displacement amplification (MDA) bacteria
+assemblies.")
+    (license license:gpl2)))
+
+(define-public graftm
+  (package
+    (name "graftm")
+    (version "0.6.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/g/graftm/graftm-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1w95ajlk7xvjl5glzx6wrwx72d6kfbgrj9690m36qz6r26fik3ip"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("krona-tools" ,krona-tools)
+       ("orfm" ,orfm)
+       ("diamond" ,diamond)
+                                        ;    ("fxtract" ,fxtract)
+                                        ;    ("fasttree" ,fasttree)
+                                        ;    ("python-biopython" ,python2-biopython)
+                                        ;    ("pplacer" ,pplacer)
+                                        ;    ("seqmagick" ,seqmagick)
+                                        ;    ("python-subprocess32" ,python2-subprocess32)
+                                        ;    ("taxtastic" ,taxtastic)
+       ("python-h5py" ,python2-h5py)
+                                        ;    ("python-biom-format" ,python2-biom-format)
+                                        ;    ("python-extern" ,extern)
+       ("mafft" ,mafft))) 
+    (inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "http://geronimp.github.com/graftM")
+    (synopsis
+     "Identifies and classifies metagenomic marker gene reads")
+    (description
+     "GraftM is a pipeline used for identifying and classifying marker gene reads
+from large metagenomic shotgun sequence datasets. It is able to find marker
+genes using hidden Markov models or sequence similarity search, and classify
+these reads by placement into phylogenetic trees")
+    (license license:gpl3+)))
+
+(define-public python2-biom-format
+  (package
+    (name "python2-biom-format")
+    (version "2.1.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/b/biom-format/biom-format-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "05dssjhk06819xwpvm0yizw6gwxv5rx71h7hp4jdyrc79cwnbd1n"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-numpy" ,python2-numpy)
+       ("python-pyqi" ,python2-pyqi)
+       ("python-scipy" ,python2-scipy)
+       ("python-hypy" ,python2-h5py)))
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "http://www.biom-format.org")
+    (synopsis
+     "Biological Observation Matrix (BIOM) format")
+    (description
+     "Biological Observation Matrix (BIOM) format")
+    (license license:bsd-3)))
+
+(define-public python-pyqi
+  (package
+    (name "python-pyqi")
+    (version "0.3.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/p/pyqi/pyqi-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0pyiym07yv5gdyncxd4qwf2jkb6rzqrlh6b2bq44ww3ray1i25wg"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)
+       ("python-nose" ,python-nose)
+       ("python-tox" ,python-tox)))
+    (home-page "http://bipy.github.io/pyqi")
+    (synopsis "pyqi: expose your interface")
+    (description "pyqi: expose your interface")
+    (license license:bsd-3)))
+
+(define-public python2-pyqi
+  (package-with-python2 python-pyqi))
+
+(define-public python-tox
+  (package
+    (name "python-tox")
+    (version "2.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/t/tox/tox-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1vqy9skwx9xs4az1d3mrfdlc38qphba0xbrj2z12ry7nl4ia0fm0"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-virtualenv" ,python-virtualenv)
+       ("python-py" ,python-py)
+       ("python-pluggy" ,python-pluggy)))
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "http://tox.testrun.org/")
+    (synopsis
+     "virtualenv-based automation of test activities")
+    (description
+     "virtualenv-based automation of test activities")
+    (license license:expat)))
+
+(define-public python2-tox
+  (package-with-python2 python-tox))
+
+(define-public python-pluggy
+  (package
+    (name "python-pluggy")
+    (version "0.3.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/p/pluggy/pluggy-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "18qfzfm40bgx672lkg8q9x5hdh76n7vax99aank7vh2nw21wg70m"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "https://pypi.python.org/pypi/pluggy") ;no obvious homepage
+    (synopsis
+     "plugin and hook calling mechanisms for python")
+    (description
+     "plugin and hook calling mechanisms for python")
+    (license license:expat)))
+
+(define-public python2-pluggy
+  (package-with-python2 python-pluggy))
+
+ (define-public pplacer ;; getting this to compile from source is just too hard
+  (package
+   (name "pplacer")
+   (version "1.1")
+   (source (origin
+             (method url-fetch)
+             (uri (string-append
+                   "http://matsen.fredhutch.org/pplacer/builds/pplacer-v"
+                   version "-Linux.tar.gz"))
+             (sha256
+              (base32
+               "1v8id45bmsd2f99d9s2ki9x8flbas1qfvn4g4dypvgv94h2rqq2n"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:tests? #f ; this is only a binary package
+      #:phases
+      (modify-phases %standard-phases
+        (delete 'configure)
+        (delete 'build)
+        (replace 'install
+                 (lambda* (#:key outputs #:allow-other-keys)
+                   (let ((bin (string-append (assoc-ref outputs "out")
+                                             "/bin")))
+                     (mkdir-p bin)
+                     (copy-file "pplacer"
+                                (string-append bin "/pplacer"))
+                     #t))))))
+   (home-page "http://matsen.fredhutch.org/pplacer/")
+   (synopsis "Places query sequences into phylogenetic trees")
+   (description
+    "Pplacer places query sequences on a fixed reference phylogenetic tree to
+maximize phylogenetic likelihood or posterior probability according to a
+reference alignment.  Pplacer is designed to be fast, to give useful information
+about uncertainty, and to offer advanced visualization and downstream
+analysis.")
+   (license license:gpl2+)))
+
+(define-public taxtastic ; fails to build because of the setup procedure,
+                         ; presumably can be fixed.
+  (package
+    (name "taxtastic")
+    (version "0.5.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/t/taxtastic/taxtastic-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1g7fgnl367njdsk2xify9qh20dy63xzamf6w3bi74isgbhykq00h"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2))
+    (propagated-inputs
+     `(("python-sqlalchemy" ,python2-sqlalchemy)
+       ("python-decorator" ,python2-decorator)
+       ("python-biopython" ,python2-biopython)
+       ("python-xlrd" ,python2-xlrd)))
+    (inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "https://github.com/fhcrc/taxtastic")
+    (synopsis
+     "Tools for taxonomic naming and annotation")
+    (description
+     "Tools for taxonomic naming and annotation")
+    (license license:gpl3)))
+
+(define-public python-xlrd ;sent to mailing list, in process there
+  (package
+    (name "python-xlrd")
+    (version "0.9.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/x/xlrd/xlrd-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0wpa55nvidmm5m2qr622dsh3cj46akdk0h3zjgzschcmydck73cf"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         ;; current test in setup.py does not work as of 0.9.4,
+         ;; so use nose to run tests instead for now.
+         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)
+       ("python-nose" ,python-nose)))
+    (home-page "http://www.python-excel.org/")
+    (synopsis
+     "Library for extracting data from Microsoft Excel (tm) files")
+    (description
+     "Extract data from Excel spreadsheets (.xls and .xlsx, versions 2.0
+onwards) on any platform.  It is pure Python (2.6, 2.7, 3.2+), has support for
+Excel dates and is Unicode-aware.")
+    (license license:bsd-3)))
+
+(define-public python2-xlrd
+  (package-with-python2 python-xlrd))
+

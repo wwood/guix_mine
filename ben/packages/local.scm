@@ -676,23 +676,31 @@ assemblies.")
         (base32
          "1w95ajlk7xvjl5glzx6wrwx72d6kfbgrj9690m36qz6r26fik3ip"))))
     (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+         ;; current test in setup.py does not work as of 0.9.4,
+         ;; so use nose to run tests instead for now.
+         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
     (propagated-inputs
      `(("krona-tools" ,krona-tools)
        ("orfm" ,orfm)
        ("diamond" ,diamond)
-                                        ;    ("fxtract" ,fxtract)
-                                        ;    ("fasttree" ,fasttree)
-                                        ;    ("python-biopython" ,python2-biopython)
-                                        ;    ("pplacer" ,pplacer)
-                                        ;    ("seqmagick" ,seqmagick)
-                                        ;    ("python-subprocess32" ,python2-subprocess32)
-                                        ;    ("taxtastic" ,taxtastic)
+       ("fxtract" ,fxtract)
+       ("fasttree" ,fasttree)
+       ("python-biopython" ,python2-biopython)
+       ("pplacer" ,pplacer)
+       ("seqmagick" ,seqmagick)
+       ("python-subprocess32" ,python2-subprocess32)
+       ("taxtastic" ,taxtastic)
        ("python-h5py" ,python2-h5py)
-                                        ;    ("python-biom-format" ,python2-biom-format)
-                                        ;    ("python-extern" ,extern)
+       ("python-biom-format" ,python2-biom-format)
+       ("python-extern" ,extern)
        ("mafft" ,mafft))) 
     (inputs
-     `(("python-setuptools" ,python-setuptools)))
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
     (home-page "http://geronimp.github.com/graftM")
     (synopsis
      "Identifies and classifies metagenomic marker gene reads")
@@ -718,13 +726,17 @@ these reads by placement into phylogenetic trees")
         (base32
          "05dssjhk06819xwpvm0yizw6gwxv5rx71h7hp4jdyrc79cwnbd1n"))))
     (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:tests? #f)) ; fails for some reason
     (propagated-inputs
      `(("python-numpy" ,python2-numpy)
        ("python-pyqi" ,python2-pyqi)
        ("python-scipy" ,python2-scipy)
        ("python-hypy" ,python2-h5py)))
     (native-inputs
-     `(("python-setuptools" ,python-setuptools)))
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
     (home-page "http://www.biom-format.org")
     (synopsis
      "Biological Observation Matrix (BIOM) format")
@@ -774,12 +786,16 @@ these reads by placement into phylogenetic trees")
         (base32
          "1vqy9skwx9xs4az1d3mrfdlc38qphba0xbrj2z12ry7nl4ia0fm0"))))
     (build-system python-build-system)
+    (arguments
+     `(#:tests? #f)) ; meh
     (propagated-inputs
      `(("python-virtualenv" ,python-virtualenv)
        ("python-py" ,python-py)
        ("python-pluggy" ,python-pluggy)))
     (native-inputs
-     `(("python-setuptools" ,python-setuptools)))
+     `(("python-setuptools" ,python-setuptools)
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-timeout" ,python-pytest-timeout)))
     (home-page "http://tox.testrun.org/")
     (synopsis
      "virtualenv-based automation of test activities")
@@ -854,8 +870,7 @@ about uncertainty, and to offer advanced visualization and downstream
 analysis.")
    (license license:gpl2+)))
 
-(define-public taxtastic ; fails to build because of the setup procedure,
-                         ; presumably can be fixed.
+(define-public taxtastic
   (package
     (name "taxtastic")
     (version "0.5.4")
@@ -878,7 +893,7 @@ analysis.")
        ("python-biopython" ,python2-biopython)
        ("python-xlrd" ,python2-xlrd)))
     (inputs
-     `(("python-setuptools" ,python-setuptools)))
+     `(("python-setuptools" ,python2-setuptools)))
     (home-page "https://github.com/fhcrc/taxtastic")
     (synopsis
      "Tools for taxonomic naming and annotation")
@@ -922,3 +937,172 @@ Excel dates and is Unicode-aware.")
 (define-public python2-xlrd
   (package-with-python2 python-xlrd))
 
+(define-public python2-extern ; could be sent to the mailing list. Does it work
+                                        ; with python3 though? Probably, but
+                                        ; would need to test the software. Also,
+                                        ; does it run the tests at build time?
+  (package
+    (name "python2-extern")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/e/extern/extern-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0fc5s17nsz9dzgknkn18j6ib4w1cqhxw7m3vqqq0xv9w89gvfyj2"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+         ;; current test in setup.py does not work as of 0.9.4,
+         ;; so use nose to run tests instead for now.
+         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
+    (native-inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python-nose)))
+    (home-page "https://github.com/wwood/extern")
+    (synopsis "Subprocess-related functions for ease of use")
+    (description "Extern is an opinionated version of Python's subprocess, making
+it more convenient to run shell commands from within Python code.  For instance,
+exceptions raised by an non-zero exit status include the STDOUT and STDERR in
+the description of the error.")
+    (license license:expat)))
+
+(define-public python-pytest-timeout
+  (package
+    (name "python-pytest-timeout")
+    (version "0.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/p/pytest-timeout/pytest-timeout-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "0wq6h4w7wdpahlga8wv6zx1qj1ni4vpdycx4lq750hwb2l342ay4"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-pytest" ,python-pytest)))
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page
+     "http://bitbucket.org/pytest-dev/pytest-timeout/")
+    (synopsis
+     "py.test plugin to abort hanging tests")
+    (description
+     "py.test plugin to abort hanging tests")
+    (license license:expat)))
+
+(define-public python2-pytest-timeout
+  (package-with-python2 python-pytest-timeout))
+
+(define-public python-pytest ; this is a newer version than in the guix repos
+  (package
+    (name "python-pytest")
+    (version "2.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/p/pytest/pytest-"
+             version ".zip"))
+       (sha256
+        (base32
+         "1jz27903vlm4jp7awmh5qj9walm6md8fk504c99m6zr8ggdnzv99"))
+       (modules '((guix build utils)))
+       (snippet
+        ;; One of the tests involves the /usr directory, so it fails.
+        '(substitute* "testing/test_argcomplete.py"
+           (("def test_remove_dir_prefix\\(self\\):")
+            "@pytest.mark.xfail\n    def test_remove_dir_prefix(self):")))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f)) ; meh from ben
+    (inputs
+     `(("python-setuptools" ,python-setuptools)
+       ("python-py" ,python-py)
+       ("python-nose" ,python-nose)
+       ("python-mock" ,python-mock)))
+    (home-page "http://pytest.org")
+    (synopsis "Python testing library")
+    (description
+     "Pytest is a testing tool that provides auto-discovery of test modules
+and functions, detailed info on failing assert statements, modular fixtures,
+and many external plugins.")
+    (license license:expat)))
+
+(define-public python2-pytest
+  (package-with-python2 python-pytest))
+
+
+(define-public python-py
+  (package
+    (name "python-py")
+    (version "1.4.30")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/p/py/py-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "050m2p5ad9axkrg0p4raxyfxi0sdk2j9di2i385jhz7dhmvfa0xp"))))
+    (build-system python-build-system)
+    (inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "http://pylib.readthedocs.org/")
+    (synopsis "Python library for parsing, I/O, instrospection, and logging")
+    (description
+     "Py is a Python library for file name parsing, .ini file parsing, I/O,
+code introspection, and logging.")
+    (license license:expat)))
+
+(define-public python2-py
+  (package-with-python2 python-py))
+
+(define-public seqmagick
+  (package
+    (name "seqmagick")
+    (version "0.6.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://pypi.python.org/packages/source/s/seqmagick/seqmagick-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "0cgn477n74gsl4qdaakrrhi953kcsd4q3ivk2lr18x74s3g4ma1d"))))
+    (build-system python-build-system)
+    (arguments
+     ;; python2 only, see https://github.com/fhcrc/seqmagick/issues/56
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+         ;; current test in setup.py does not work as of 0.6.1,
+         ;; so use nose to run tests instead for now. See
+         ;; https://github.com/fhcrc/seqmagick/issues/55
+         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
+    (propagated-inputs
+     `(("python-biopython" ,python2-biopython)))
+    (native-inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
+    (home-page "http://github.com/fhcrc/seqmagick")
+    (synopsis
+     "Tools for converting and modifying sequence files")
+    (description
+     "Bioinformaticians often have to convert sequence files between formats
+and do little manipulations on them, and it's not worth writing scripts for
+that.  Seqmagick is a utility to expose the file format conversion in
+BioPython in a convenient way.  Instead of having a big mess of scripts, there
+is one that takes arguments.")
+    (license license:gpl3)))

@@ -14,13 +14,16 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages compression)
-  #:use-module (gnu packages databases)
+  #:use-module (gnu packages cpio)
   #:use-module (gnu packages file)
-  #:use-module (gnu packages gcc)
+  #:use-module (gnu packages flex)
+  #:use-module (gnu packages guile)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages lua)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages ocaml)
@@ -43,7 +46,8 @@
   #:use-module (ice-9 regex)
   
 
-  #:use-module (gnu packages bioinformatics))
+  #:use-module (gnu packages bioinformatics)
+  #:use-module (ben packages scikit-bio))
 
 
 (define-public bedtools
@@ -295,19 +299,20 @@ getopt_long(3).")
    (home-page "https://github.com/gmarcais/yaggo")
    (license license:gpl3+)))
 
-(define-public jellyfish ;;currently install works fine but make check fails. Also need to change it so the build process does not query /proc/cpuinfo, for purity purposes.
+(define-public jellyfish ;;currently install works fine but make check fails. It
+  ;;seems to only refer to /proc/cpuinfo during testing, not as part of the
+  ;;build process
   (package
     (name "jellyfish")
-    (version "2.2.1")
+    (version "2.2.4")
     (source (origin
               (method url-fetch)
-              ;;              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
-              ;;                                version ".tar.gz"))
-              (uri "file:///home/ben/t/Jellyfish-2.2.1.tar.gz")
+              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
+                                  version ".tar.gz"))
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "02mjfabcjjlp25qi222w4zbghz75idsac3d1wmr2vs8vvyc5aq4i"))))
+                "1v5kxh9dm0spks5brvrlsgz17mdmpzwv8wkx52w5kf33xn54gdj4"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -315,16 +320,7 @@ getopt_long(3).")
                       (add-after
                        'unpack 'autoreconf
                        (lambda* _
-                         (and (zero? (system*
-                                      "autoreconf" "-i"))
-                              ;; Makefile.in currently hard codes /bin/sh
-                              ;; but expects bash. Fixed in upstream but not
-                              ;; released as of 2.2.1
-                              (substitute* "Makefile.in"
-                                           (("SH_LOG_COMPILER = /bin/sh")
-                                            (string-append
-                                             "SH_LOG_COMPILER = "
-                                             (which "bash"))))))))))
+                         (zero? (system* "autoreconf" "-vif")))))))
     (native-inputs
      `(("yaggo" ,yaggo)
        ("ruby" ,ruby)
@@ -680,12 +676,13 @@ assemblies.")
      `(#:python ,python-2
        #:phases
        (modify-phases %standard-phases
-         ;; current test in setup.py does not work as of 0.9.4,
+         ;; current test in setup.py does not work
          ;; so use nose to run tests instead for now.
          (replace 'check (lambda _ (zero? (system* "nosetests")))))))
     (propagated-inputs
      `(("krona-tools" ,krona-tools)
        ("orfm" ,orfm)
+       ("hmmer" ,hmmer)
        ("diamond" ,diamond)
        ("fxtract" ,fxtract)
        ("fasttree" ,fasttree)
@@ -696,8 +693,9 @@ assemblies.")
        ("taxtastic" ,taxtastic)
        ("python-h5py" ,python2-h5py)
        ("python-biom-format" ,python2-biom-format)
-       ("python-extern" ,extern)
-       ("mafft" ,mafft))) 
+       ("python-extern" ,python2-extern)
+       ("mafft" ,mafft)
+       ("python-scikit-bio" ,python2-scikit-bio))) 
     (inputs
      `(("python-setuptools" ,python2-setuptools)
        ("python-nose" ,python2-nose)))
@@ -710,39 +708,6 @@ from large metagenomic shotgun sequence datasets. It is able to find marker
 genes using hidden Markov models or sequence similarity search, and classify
 these reads by placement into phylogenetic trees")
     (license license:gpl3+)))
-
-(define-public python2-biom-format
-  (package
-    (name "python2-biom-format")
-    (version "2.1.4")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/b/biom-format/biom-format-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "05dssjhk06819xwpvm0yizw6gwxv5rx71h7hp4jdyrc79cwnbd1n"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2
-       #:tests? #f)) ; fails for some reason
-    (propagated-inputs
-     `(("python-numpy" ,python2-numpy)
-       ("python-pyqi" ,python2-pyqi)
-       ("python-scipy" ,python2-scipy)
-       ("python-hypy" ,python2-h5py)))
-    (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
-    (home-page "http://www.biom-format.org")
-    (synopsis
-     "Biological Observation Matrix (BIOM) format")
-    (description
-     "Biological Observation Matrix (BIOM) format")
-    (license license:bsd-3)))
 
 (define-public python-pyqi
   (package
@@ -836,15 +801,16 @@ these reads by placement into phylogenetic trees")
  (define-public pplacer ;; getting this to compile from source is just too hard
   (package
    (name "pplacer")
-   (version "1.1")
+   (version "1.1.alpha17")
    (source (origin
              (method url-fetch)
              (uri (string-append
-                   "http://matsen.fredhutch.org/pplacer/builds/pplacer-v"
-                   version "-Linux.tar.gz"))
+                   "https://github.com/matsen/pplacer/releases/download/v"
+                   version "/linux.zip"))
+             (file-name (string-append name "-" version ".zip"))
              (sha256
               (base32
-               "1v8id45bmsd2f99d9s2ki9x8flbas1qfvn4g4dypvgv94h2rqq2n"))))
+               "0kc2al3klzbk9697gspk7zc8l9y6g7zyfhsjdrgxhjbq249m4hsf"))))
    (build-system gnu-build-system)
    (arguments
     `(#:tests? #f ; this is only a binary package
@@ -860,6 +826,8 @@ these reads by placement into phylogenetic trees")
                      (copy-file "pplacer"
                                 (string-append bin "/pplacer"))
                      #t))))))
+   (native-inputs
+    `(("unzip" ,unzip)))
    (home-page "http://matsen.fredhutch.org/pplacer/")
    (synopsis "Places query sequences into phylogenetic trees")
    (description
@@ -964,7 +932,7 @@ Excel dates and is Unicode-aware.")
          (replace 'check (lambda _ (zero? (system* "nosetests")))))))
     (native-inputs
      `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python-nose)))
+       ("python-nose" ,python2-nose)))
     (home-page "https://github.com/wwood/extern")
     (synopsis "Subprocess-related functions for ease of use")
     (description "Extern is an opinionated version of Python's subprocess, making
@@ -1002,71 +970,6 @@ the description of the error.")
 
 (define-public python2-pytest-timeout
   (package-with-python2 python-pytest-timeout))
-
-(define-public python-pytest ; this is a newer version than in the guix repos
-  (package
-    (name "python-pytest")
-    (version "2.8.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/p/pytest/pytest-"
-             version ".zip"))
-       (sha256
-        (base32
-         "1jz27903vlm4jp7awmh5qj9walm6md8fk504c99m6zr8ggdnzv99"))
-       (modules '((guix build utils)))
-       (snippet
-        ;; One of the tests involves the /usr directory, so it fails.
-        '(substitute* "testing/test_argcomplete.py"
-           (("def test_remove_dir_prefix\\(self\\):")
-            "@pytest.mark.xfail\n    def test_remove_dir_prefix(self):")))))
-    (build-system python-build-system)
-    (arguments
-     `(#:tests? #f)) ; meh from ben
-    (inputs
-     `(("python-setuptools" ,python-setuptools)
-       ("python-py" ,python-py)
-       ("python-nose" ,python-nose)
-       ("python-mock" ,python-mock)))
-    (home-page "http://pytest.org")
-    (synopsis "Python testing library")
-    (description
-     "Pytest is a testing tool that provides auto-discovery of test modules
-and functions, detailed info on failing assert statements, modular fixtures,
-and many external plugins.")
-    (license license:expat)))
-
-(define-public python2-pytest
-  (package-with-python2 python-pytest))
-
-
-(define-public python-py
-  (package
-    (name "python-py")
-    (version "1.4.30")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/p/py/py-"
-             version ".tar.gz"))
-       (sha256
-        (base32
-         "050m2p5ad9axkrg0p4raxyfxi0sdk2j9di2i385jhz7dhmvfa0xp"))))
-    (build-system python-build-system)
-    (inputs
-     `(("python-setuptools" ,python-setuptools)))
-    (home-page "http://pylib.readthedocs.org/")
-    (synopsis "Python library for parsing, I/O, instrospection, and logging")
-    (description
-     "Py is a Python library for file name parsing, .ini file parsing, I/O,
-code introspection, and logging.")
-    (license license:expat)))
-
-(define-public python2-py
-  (package-with-python2 python-py))
 
 (define-public seqmagick
   (package
@@ -1106,3 +1009,315 @@ that.  Seqmagick is a utility to expose the file format conversion in
 BioPython in a convenient way.  Instead of having a big mess of scripts, there
 is one that takes arguments.")
     (license license:gpl3)))
+
+(define-public python2-subprocess32
+  (package
+  (name "python-subprocess32")
+  (version "3.2.6")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (string-append
+             "https://pypi.python.org/packages/source/s/subprocess32/subprocess32-"
+             version
+             ".tar.gz"))
+      (sha256
+        (base32
+          "1xi0qb9b70kgwa2ks4d4kkib7dmb9i30rl6zf9rpwb5ys9pd9x6x"))))
+  (build-system python-build-system)
+  (arguments
+   `(#:python ,python-2
+     #:tests? #f)) ; no check, and nosetests fails
+  (inputs
+    `(("python-setuptools" ,python2-setuptools)
+      ("python-nose" ,python2-nose)))
+  (home-page
+    "http://code.google.com/p/python-subprocess32/")
+  (synopsis
+    "Backport of the subprocess module from Python 3.2/3.3 for use on 2.x.")
+  (description
+    "Backport of the subprocess module from Python 3.2/3.3 for use on 2.x.")
+  (license license:psfl)))
+
+(define-public newick-utils ; seems to work for the C based tools, but appears
+                            ; to be a dead project so I won't submit to guix
+                            ; proper? Also need to test bindings to be a full
+                            ; package definition. I don't use those though.
+  (let ((commit "acb33ebdf")
+        (revision "1"))
+    (package
+      (name "newick-utils")
+      (version (string-append "1.6." revision "." commit))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/tjunier/newick_utils.git")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "1rg71ffj4swb23y80bkm5jyvkr6p2v38n28xkwqidinvlqpjacbx"))))
+    (build-system gnu-build-system)
+    (arguments
+     ;; disable lua components as they don't appear to compile.  See
+     ;; https://github.com/tjunier/newick_utils/issues/13
+     `(#:configure-flags '("--without-lua")
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'autoconf
+                    (lambda _ (zero? (system* "autoreconf" "-vif")))))))
+    (inputs
+     `(;;("lua" ,lua-5.1)
+       ("libxml2" ,libxml2)))
+    ;; ("guile" ,guile-2.0))) ; TODO: get it to build the guile
+                              ; editor. Currently fails to detect libguile.h
+                              ; during configuration. Does this happen in
+                              ; Ubuntu also?
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("flex" ,flex)
+       ("bison" ,bison)))
+    (synopsis "Programs for working with Newick-formatted phylogenetic trees")
+    (description
+     "A suite of utilities for processing phylogenetic trees in Newick format.
+Functions include re-rooting, extracting subtrees, trimming, pruning,
+condensing, drawing (ASCII graphics or SVG).")
+    (home-page "https://github.com/tjunier/newick_utils")
+    (license license:bsd-3))))
+
+
+(define-public idba ;;works
+  (package
+    (name "idba")
+    (version "1.1.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/loneknightpy/idba/releases/download/"
+                    version "/idba-" version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1220iy4rhcv7nhryq4x4zdcw7grxil4vz4k8lqihy0vw3j73p3mn"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (string-append (assoc-ref outputs "out")))
+                    (bin (string-append out "/bin/")))
+               (mkdir-p bin)
+               (for-each (lambda (file)
+                           (copy-file file
+                                      (string-append bin (basename file))))
+                         (find-files "bin" (lambda (file stat)
+                                             (executable-file? file))))))))))
+    (home-page "http://i.cs.hku.hk/~alse/hkubrg/projects/idba_ud/")
+    (synopsis "Basic iterative de Bruijn graph assembler")
+    (description
+     "IDBA is an iterative de Bruijn graph assember for second generation
+sequencing reads.  IDBA-UD, an extension of IDBA, is designed to utilize
+paired-end reads to assemble low-depth regions and use progressive depth on
+contigs to reduce errors in high-depth regions.  It is a generic purpose
+assembler and especially good for single-cell and metagenomic sequencing
+data. IDBA-Hybrid is another update version of IDBA-UD, which can make use of
+a similar reference genome to improve assembly result.  IDBA-Tran is an
+iterative de Bruijn graph assembler for RNA-Seq data.")
+    (license license:gpl2+)))
+
+(define-public fraggenescan ;; works
+  (package
+    (name "fraggenescan")
+    (version "1.20")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/fraggenescan/"
+                       "FragGeneScan" version ".tar.gz"))
+       (sha256
+        (base32 "1zzigqmvqvjyqv4945kv6nc5ah2xxm1nxgrlsnbzav3f5c0n0pyj"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'build 'patch-run-script
+          (lambda _
+            (substitute* "run_FragGeneScan.pl"
+              (("system\\(\"rm")
+               (string-append "system(\"" (which "rm")))
+              (("system\\(\"mv")
+               (string-append "system(\"" (which "mv"))))
+            #t))
+         (replace 'build
+           (lambda _ (and (zero? (system* "make" "clean"))
+                          (zero? (system* "make" "fgs")))))
+         (replace 'check
+           ;; In lieu of 'make check', run one of the examples and check the
+           ;; output file gets created.
+           (lambda _ (let ((old-path (getenv "PATH")))
+                       ;; temporarily set PATH to current working directory
+                       (setenv "PATH" ".")
+                       (system* "run_FragGeneScan.pl"
+                                "-genome=./example/NC_000913.fna"
+                                "-out=./test"
+                                "-complete=1"
+                                "-train=complete")
+                       (setenv "PATH" old-path))
+                   (and
+                    (file-exists? "test.faa")
+                    (file-exists? "test.ffn")
+                    (file-exists? "test.gff")
+                    (file-exists? "test.out"))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (string-append (assoc-ref outputs "out")))
+                    (bin (string-append out "/bin/"))
+                    (share (string-append out "/share/fraggenescan")))
+               (mkdir-p bin)
+               (copy-file "run_FragGeneScan.pl"
+                          (string-append bin "run_FragGeneScan.pl"))
+               (copy-file "FragGeneScan"
+                          (string-append bin "FragGeneScan"))
+               (copy-file "FGS_gff.py"
+                          (string-append bin "FGS_gff.py"))
+               (copy-file "post_process.pl"
+                          (string-append bin "post_process.pl"))
+               (mkdir-p share)
+               (copy-recursively "train" share)))))))
+    (inputs
+     `(("perl" ,perl)
+       ("python" ,python-2)
+       ("coreutils" ,coreutils)))
+    (home-page "http://omics.informatics.indiana.edu/FragGeneScan/")
+    (synopsis "Finds potentially fragmented genes in short reads")
+    (description
+     "FragGeneScan is a program for predicting bacterial and archaeal genes in
+short and error-prone DNA sequencing reads.  It can also be applied to predict
+prokaryotic genes in incomplete assemblies or complete genomes.")
+    (license license:gpl1)))
+
+(define-public maxbin ;; Works except for the heatmap functions. Requires r-gplots
+  (package
+    (name "maxbin")
+    (version "2.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append "mirror://sourceforge/maxbin2/"
+                       "MaxBin-" version ".tar.gz"))
+       (sha256
+        (base32 "1vs9267zi37ighhxiw390kl647mj2nn4p924dq20rn861mr6h6ad"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'build 'patch-script
+          (lambda* (#:key inputs outputs #:allow-other-keys)
+            (substitute* "run_MaxBin.pl"
+              ;; remove unneeded include
+              (("^use LWP::Simple;") "")
+              ;; fix perl includes
+              (("^require\\(\"\\$Bin\\\\/")
+               "require(\"")
+              ;; specify full dependency paths
+              (("^my \\$BOWTIE2BUILD = \"bowtie2-build\";")
+               (string-append "my $BOWTIE2BUILD = \""
+                              (assoc-ref inputs "bowtie")
+                              "/bin/bowtie2-build\";"))
+              (("^my \\$BOWTIE2 = \"bowtie2\";")
+               (string-append "my $BOWTIE2 = \""
+                              (assoc-ref inputs "bowtie")
+                              "/bin/bowtie2\";"))
+              (("^my \\$HMMSEARCH = \"hmmsearch\";")
+               (string-append "my $HMMSEARCH = \""
+                              (assoc-ref inputs "hmmer")
+                              "/bin/hmmsearch\";"))
+              (("^my \\$RUNFRAG = \"run_FragGeneScan.pl\";")
+               (string-append "my $RUNFRAG = \""
+                              (assoc-ref inputs "fraggenescan")
+                              "/bin/run_FragGeneScan.pl\";"))
+              (("^my \\$IDBA_UD = \"idba_ud\";")
+               (string-append "my $IDBA_UD = \""
+                              (assoc-ref inputs "idba")
+                              "/bin/idba_ud\";"))
+              ;; fix paths to internals HMMs
+              (("^my \\$MARKERHMM = \"\\$Bin/marker.hmm")
+               (string-append "my $MARKERHMM = \""
+                              (assoc-ref outputs "out")
+                              "/share/MaxBin/marker.hmm"))
+              (("\\$MARKERHMM = \"\\$Bin/bacar_marker.hmm\";")
+               (string-append "$MARKERHMM = \""
+                              (assoc-ref outputs "out")
+                              "/share/MaxBin/bacar_marker.hmm\";"))
+              ;; fix paths to internal programs
+              (("^my \\$HEATMAP_R = \"\\$Bin\\\\/")
+               (string-append "my $HEATMAP_R = \""
+                              (assoc-ref outputs "out")
+                              "/share/MaxBin/"))
+              (("^my \\$MAXBIN = \"\\$Bin\\\\/src\\\\/")
+               (string-append "my $MAXBIN = \""
+                              (assoc-ref outputs "out")
+                              "/bin/"))
+              ;; remove ability to use settings file
+              (("open\\(FILE, \"<\\$Bin\\\\/\\$SETTING_FILE\"\\);")
+               "open(FILE, \"/dev/null\");")
+              )
+            #t))
+         (replace 'build (lambda _ (list (chdir "src")
+                                         (system* "make")
+                                         (chdir ".."))
+                                 #t))
+         (delete 'check)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (string-append (assoc-ref outputs "out")))
+                    (bin (string-append out "/bin/"))
+                    (perl (string-append out "/lib/perl5/"))
+                    (share (string-append out "/share/MaxBin/")))
+               (mkdir-p bin)
+               (mkdir-p share)
+               (copy-file "run_MaxBin.pl"
+                          (string-append bin "run_MaxBin.pl"))
+               (copy-file "src/MaxBin"
+                          (string-append bin "MaxBin")) 
+               (copy-file "marker.hmm"
+                          (string-append share "marker.hmm"))
+               (copy-file "bacar_marker.hmm"
+                          (string-append share "bacar_marker.hmm"))
+               (for-each (lambda (file)
+                           (copy-file file
+                                      (string-append perl (basename file))))
+                         (find-files "." ".*pm"))
+               )))
+       (add-after 'install 'post-install-check
+         (lambda* (#:key outputs #:allow-other-keys)
+           (zero? (system* (string-append (assoc-ref outputs "out")
+                                          "/bin/run_MaxBin.pl")))))
+       )))
+    ;; (propagated-inputs
+    ;;  `(("r-gplots" ,r-gplots)))
+    (inputs
+     `(("fraggenescan" ,fraggenescan)
+       ("bowtie" ,bowtie)
+       ("hmmer" ,hmmer)
+       ("idba" ,idba)
+       ("perl" ,perl)))
+    (home-page
+     "http://downloads.jbei.org/data/microbial_communities/MaxBin/MaxBin.html")
+    (synopsis "Binning metagenomic contigs by Expectation-Maximization")
+    (description
+     "MaxBin is software for binning assembled metagenomic sequences based on
+an Expectation-Maximization algorithm.  Users can understand the underlying
+bins (genomes) of the microbes in their metagenomes by simply providing
+assembled metagenomic sequences and the reads coverage information or
+sequencing reads.  For users' convenience MaxBin will report genome-related
+statistics, including estimated completeness, GC content and genome size in
+the binning summary page.")
+    (license license:bsd-3)))

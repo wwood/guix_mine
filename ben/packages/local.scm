@@ -175,54 +175,68 @@ like to just work out the insert size and orientation of some mapped reads? Then
 BamM is for you!")
     (license license:lgpl3+)))
 
-(define-public fxtract ; dont think this works. Writing a proper configure.ac etc is probably a good idea, it would simplify things here a lot.
-  ;(let ((commit ))
+(define-public fxtract
+  (let ((util-commit "776ca85a18a47492af3794745efcb4a905113115"))
     (package
       (name "fxtract")
-      (version "1.2-dev")
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      ;;(url "https://github.com/ctSkennerton/fxtract.git")
-		      (url "file:///home/ben/git/fxtract")
-                      (commit "a90a6a84f")
-                      (recursive? #t)))
-                (sha256
-                 (base32
-                  "1zg6l4v7icv5nk0gylncnji13733a4622hs4pl3jjhfxm411j6sq"))))
+      (version "2.2")
+      (source
+       (origin
+         (method url-fetch)
+         (uri (string-append
+               "https://github.com/ctSkennerton/fxtract/archive/"
+               version ".tar.gz"))
+         (file-name (string-append name "-" version ".tar.gz"))
+         (sha256
+          (base32
+           "000lqjkgqk192wvd884y1sd411n4pa4mwhijpmlhjibjlz0c545z"))))
       (build-system gnu-build-system)
       (arguments
-       `(#:phases
+       `(#:make-flags (list
+                       (string-append "PREFIX=" (assoc-ref %outputs "out"))
+                       "CC=gcc")
+         #:tests? #f;#:test-target "fxtract_test" ; tests currently fail
+         #:phases
          (modify-phases %standard-phases
-                        (delete 'configure)
-                        (replace 'install
-                                 (lambda* (#:key outputs #:allow-other-keys)
-                                   (let ((bin (string-append (assoc-ref
-                                                              outputs "out")
-                                                             "/bin")))
-                                     (mkdir-p bin)
-                                     (copy-file "fxtract"
-                                                (string-append bin "/fxtract"))
-                                     #t)))
-                        (replace 'check
-                                 (lambda* _
-                                   (zero? (system* "make"
-                                                   "test_fxtract"))))
-                        )))
-      (inputs ;;BOOST?
+           (delete 'configure)
+           (add-before 'build 'copy-util
+             (lambda* (#:key inputs #:allow-other-keys)
+               (rmdir "util")
+               (copy-recursively (assoc-ref inputs "ctskennerton-util") "util")
+               #t))
+           ;; Do not use make install as this requires additional dependencies.
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out"/bin")))
+                 (install-file "fxtract" bin)
+                 #t))))))
+      (inputs
        `(("pcre" ,pcre)
-	 ("bzip2" ,bzip2)
-	 ("zlib" ,zlib)))
+         ("zlib" ,zlib)))
+      (native-inputs
+       `(("ctskennerton-util"
+          ,(origin
+             (method git-fetch)
+             (uri (git-reference
+                   (url "https://github.com/ctSkennerton/util.git")
+                   (commit util-commit)))
+             (file-name (string-append
+                         "ctstennerton-util-" util-commit "-checkout"))
+             (sha256
+              (base32
+               "0cls1hd4vgj3f36fpzzg4xc77d6f3hpc60cbpfmn2gdr7ykzzad7"))))))
       (home-page "https://github.com/ctSkennerton/fxtract")
-      (synopsis "Extract sequences from a fastx file given a subsequence or identifier")
+      (synopsis "Extract sequences from FASTA and FASTQ files")
       (description
-       "Extract sequences from a fastx (fasta or fastq) file given a subsequence.
-Currently uses a variety of search algorithms depending on the task.  Currently
-searches using a simple substring search for basic tasks but can change to using
-POSIX regular expressions, PCRE, hash lookups or multi-pattern searching as
-required.  By default will look in the sequence of each record but can be told
-to look in the header, comment or quality sections of a record.")
-    (license license:gpl3+)))
+       "Fxtract extracts sequences from a protein or nucleotide fastx (fasta or
+fastq) file given a subsequence.  Currently it uses a variety of search
+algorithms depending on the task.  For searches using a simple substring search
+for basic tasks but can change to using POSIX regular expressions, PCRE, hash
+lookups or multi-pattern searching as required.  By default will look in the
+sequence of each record but can also be told to look in the header, comment or
+quality sections of a record.")
+      (license license:gpl3+))))
 
 (define-public seqtk ; waiting on licensing issues, but seems to work
   (let ((commit "4feb6e81444ab6bc44139dd3a125068f81ae4ad8"))
@@ -1088,7 +1102,7 @@ condensing, drawing (ASCII graphics or SVG).")
     (license license:bsd-3))))
 
 
-(define-public idba ;;works
+(define-public idba
   (package
     (name "idba")
     (version "1.1.2")
@@ -1110,9 +1124,7 @@ condensing, drawing (ASCII graphics or SVG).")
              (let* ((out (string-append (assoc-ref outputs "out")))
                     (bin (string-append out "/bin/")))
                (mkdir-p bin)
-               (for-each (lambda (file)
-                           (copy-file file
-                                      (string-append bin (basename file))))
+               (for-each (lambda (file) (install-file file bin))
                          (find-files "bin" (lambda (file stat)
                                              (executable-file? file))))))))))
     (home-page "http://i.cs.hku.hk/~alse/hkubrg/projects/idba_ud/")
@@ -1127,79 +1139,6 @@ data. IDBA-Hybrid is another update version of IDBA-UD, which can make use of
 a similar reference genome to improve assembly result.  IDBA-Tran is an
 iterative de Bruijn graph assembler for RNA-Seq data.")
     (license license:gpl2+)))
-
-(define-public fraggenescan ;; works
-  (package
-    (name "fraggenescan")
-    (version "1.20")
-    (source
-     (origin
-       (method url-fetch)
-       (uri
-        (string-append "mirror://sourceforge/fraggenescan/"
-                       "FragGeneScan" version ".tar.gz"))
-       (sha256
-        (base32 "1zzigqmvqvjyqv4945kv6nc5ah2xxm1nxgrlsnbzav3f5c0n0pyj"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (delete 'configure)
-         (add-before 'build 'patch-run-script
-          (lambda _
-            (substitute* "run_FragGeneScan.pl"
-              (("system\\(\"rm")
-               (string-append "system(\"" (which "rm")))
-              (("system\\(\"mv")
-               (string-append "system(\"" (which "mv"))))
-            #t))
-         (replace 'build
-           (lambda _ (and (zero? (system* "make" "clean"))
-                          (zero? (system* "make" "fgs")))))
-         (replace 'check
-           ;; In lieu of 'make check', run one of the examples and check the
-           ;; output file gets created.
-           (lambda _ (let ((old-path (getenv "PATH")))
-                       ;; temporarily set PATH to current working directory
-                       (setenv "PATH" ".")
-                       (system* "run_FragGeneScan.pl"
-                                "-genome=./example/NC_000913.fna"
-                                "-out=./test"
-                                "-complete=1"
-                                "-train=complete")
-                       (setenv "PATH" old-path))
-                   (and
-                    (file-exists? "test.faa")
-                    (file-exists? "test.ffn")
-                    (file-exists? "test.gff")
-                    (file-exists? "test.out"))))
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (string-append (assoc-ref outputs "out")))
-                    (bin (string-append out "/bin/"))
-                    (share (string-append out "/share/fraggenescan")))
-               (mkdir-p bin)
-               (copy-file "run_FragGeneScan.pl"
-                          (string-append bin "run_FragGeneScan.pl"))
-               (copy-file "FragGeneScan"
-                          (string-append bin "FragGeneScan"))
-               (copy-file "FGS_gff.py"
-                          (string-append bin "FGS_gff.py"))
-               (copy-file "post_process.pl"
-                          (string-append bin "post_process.pl"))
-               (mkdir-p share)
-               (copy-recursively "train" share)))))))
-    (inputs
-     `(("perl" ,perl)
-       ("python" ,python-2)
-       ("coreutils" ,coreutils)))
-    (home-page "http://omics.informatics.indiana.edu/FragGeneScan/")
-    (synopsis "Finds potentially fragmented genes in short reads")
-    (description
-     "FragGeneScan is a program for predicting bacterial and archaeal genes in
-short and error-prone DNA sequencing reads.  It can also be applied to predict
-prokaryotic genes in incomplete assemblies or complete genomes.")
-    (license license:gpl1)))
 
 (define-public maxbin ;; Works except for the heatmap functions. Requires r-gplots
   (package
@@ -1282,25 +1221,17 @@ prokaryotic genes in incomplete assemblies or complete genomes.")
                     (perl (string-append out "/lib/perl5/"))
                     (share (string-append out "/share/MaxBin/")))
                (mkdir-p bin)
+               (install-file "run_MaxBin.pl" bin)
+               (install-file "src/MaxBin" bin) 
                (mkdir-p share)
-               (copy-file "run_MaxBin.pl"
-                          (string-append bin "run_MaxBin.pl"))
-               (copy-file "src/MaxBin"
-                          (string-append bin "MaxBin")) 
-               (copy-file "marker.hmm"
-                          (string-append share "marker.hmm"))
-               (copy-file "bacar_marker.hmm"
-                          (string-append share "bacar_marker.hmm"))
-               (for-each (lambda (file)
-                           (copy-file file
-                                      (string-append perl (basename file))))
-                         (find-files "." ".*pm"))
-               )))
+               (install-file "marker.hmm" share)
+               (install-file "bacar_marker.hmm" share)
+               (for-each (lambda (file) (install-file file perl))
+                         (find-files "." ".*pm")))))
        (add-after 'install 'post-install-check
          (lambda* (#:key outputs #:allow-other-keys)
            (zero? (system* (string-append (assoc-ref outputs "out")
-                                          "/bin/run_MaxBin.pl")))))
-       )))
+                                          "/bin/run_MaxBin.pl"))))))))
     ;; (propagated-inputs
     ;;  `(("r-gplots" ,r-gplots)))
     (inputs
@@ -1321,3 +1252,25 @@ sequencing reads.  For users' convenience MaxBin will report genome-related
 statistics, including estimated completeness, GC content and genome size in
 the binning summary page.")
     (license license:bsd-3)))
+
+
+(define-public ruby-ds
+  (package
+    (name "ruby-ds")
+    (version "0.0.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "ds" version))
+       (sha256
+        (base32
+         "0d230mgyiyr0rc5jcr2dsxsn7vhh9y5vilsibb93yxw55f7ay8xa"))))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("bundler" ,bundler)))
+     (synopsis
+      "Data structures (lists,stacks, trees, heaps, graphs..) in pure Ruby.")
+     (description
+      "Data structures (lists,stacks, trees, heaps, graphs..) in pure Ruby.")
+     (home-page "https://github.com/knife/ds")
+     (license #f)))

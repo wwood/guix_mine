@@ -49,61 +49,6 @@
   #:use-module (gnu packages bioinformatics)
   #:use-module (ben packages scikit-bio))
 
-
-(define-public bedtools
-  (package
-    (name "bedtools")
-    (version "2.24.0")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/arq5x/bedtools2/archive/v"
-                                  version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "0lnxrjvs3nnmb4bmskag1wg3h2hd80przz5q3xd0bvs7vyxrvpbl"))
-              ;; Fixed in upstream, see
-              ;; https://github.com/arq5x/bedtools2/issues/271
-              (patches (list (search-patch "bedtools-32bit-compilation.patch")))))
-    (build-system gnu-build-system)
-    (native-inputs `(("python" ,python-2)))
-    (inputs `(("samtools" ,samtools)
-              ("zlib" ,zlib)))
-    (arguments
-     '(#:test-target "test"
-       #:phases
-       (alist-cons-after
-        'unpack 'patch-makefile-SHELL-definition
-        (lambda _
-          ;; patch-makefile-SHELL cannot be used here as it does not
-          ;; yet patch definitions with `:='.  Since changes to
-          ;; patch-makefile-SHELL result in a full rebuild, features
-          ;; of patch-makefile-SHELL are reimplemented here.
-          (substitute* "Makefile"
-            (("^SHELL := .*$") (string-append "SHELL := " (which "bash") " -e \n"))))
-        (alist-delete
-         'configure
-         (alist-replace
-          'install
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
-              (mkdir-p bin)
-              (for-each (lambda (file)
-                          (copy-file file (string-append bin (basename file))))
-                        (find-files "bin" ".*"))))
-          %standard-phases)))))
-    (home-page "https://github.com/arq5x/bedtools2")
-    (synopsis "Tools for genome analysis and arithmetic")
-    (description
-     "Collectively, the bedtools utilities are a swiss-army knife of tools for
-a wide-range of genomics analysis tasks.  The most widely-used tools enable
-genome arithmetic: that is, set theory on the genome.  For example, bedtools
-allows one to intersect, merge, count, complement, and shuffle genomic
-intervals from multiple files in widely-used genomic file formats such as BAM,
-BED, GFF/GTF, VCF.")
-    (license license:gpl2)))
-
-
 (define-public bamm ;  does not work
   (package
     (name "bamm")
@@ -175,69 +120,6 @@ like to just work out the insert size and orientation of some mapped reads? Then
 BamM is for you!")
     (license license:lgpl3+)))
 
-(define-public fxtract
-  (let ((util-commit "776ca85a18a47492af3794745efcb4a905113115"))
-    (package
-      (name "fxtract")
-      (version "2.2")
-      (source
-       (origin
-         (method url-fetch)
-         (uri (string-append
-               "https://github.com/ctSkennerton/fxtract/archive/"
-               version ".tar.gz"))
-         (file-name (string-append name "-" version ".tar.gz"))
-         (sha256
-          (base32
-           "000lqjkgqk192wvd884y1sd411n4pa4mwhijpmlhjibjlz0c545z"))))
-      (build-system gnu-build-system)
-      (arguments
-       `(#:make-flags (list
-                       (string-append "PREFIX=" (assoc-ref %outputs "out"))
-                       "CC=gcc")
-         #:tests? #f;#:test-target "fxtract_test" ; tests currently fail
-         #:phases
-         (modify-phases %standard-phases
-           (delete 'configure)
-           (add-before 'build 'copy-util
-             (lambda* (#:key inputs #:allow-other-keys)
-               (rmdir "util")
-               (copy-recursively (assoc-ref inputs "ctskennerton-util") "util")
-               #t))
-           ;; Do not use make install as this requires additional dependencies.
-           (replace 'install
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out (assoc-ref outputs "out"))
-                      (bin (string-append out"/bin")))
-                 (install-file "fxtract" bin)
-                 #t))))))
-      (inputs
-       `(("pcre" ,pcre)
-         ("zlib" ,zlib)))
-      (native-inputs
-       `(("ctskennerton-util"
-          ,(origin
-             (method git-fetch)
-             (uri (git-reference
-                   (url "https://github.com/ctSkennerton/util.git")
-                   (commit util-commit)))
-             (file-name (string-append
-                         "ctstennerton-util-" util-commit "-checkout"))
-             (sha256
-              (base32
-               "0cls1hd4vgj3f36fpzzg4xc77d6f3hpc60cbpfmn2gdr7ykzzad7"))))))
-      (home-page "https://github.com/ctSkennerton/fxtract")
-      (synopsis "Extract sequences from FASTA and FASTQ files")
-      (description
-       "Fxtract extracts sequences from a protein or nucleotide fastx (fasta or
-fastq) file given a subsequence.  Currently it uses a variety of search
-algorithms depending on the task.  For searches using a simple substring search
-for basic tasks but can change to using POSIX regular expressions, PCRE, hash
-lookups or multi-pattern searching as required.  By default will look in the
-sequence of each record but can also be told to look in the header, comment or
-quality sections of a record.")
-      (license license:gpl3+))))
-
 (define-public seqtk ; waiting on licensing issues, but seems to work
   (let ((commit "4feb6e81444ab6bc44139dd3a125068f81ae4ad8"))
     (package
@@ -282,99 +164,20 @@ files which can also be optionally compressed by gzip.")
                 "file://src/LICENSE"
                 "See src/LICENSE in the distribution.")))))
 
-(define-public yaggo ; patch sent to guix-devel mailing list
-  (package
-   (name "yaggo")
-   (version "1.5.4")
-   (source (origin
-             (method url-fetch)
-             (uri (string-append
-                   "https://github.com/gmarcais/yaggo/archive/v"
-                   version ".tar.gz"))
-             (file-name (string-append name "-" version ".tar.gz"))
-             (sha256
-              (base32
-               "1mxfvrim03xg80agws9zdpk00r0kjpqhw3xbli0w8wvsnsa274y3"))))
-   (build-system ruby-build-system)
-   (arguments
-    `(
-      ;; No rake test, and Makefile in test/ appears malformed.
-      ;; See https://github.com/gmarcais/yaggo/issues/3
-      #:tests? #f
-      #:phases
-      (modify-phases %standard-phases
-        (replace 'build (lambda* _ (zero? (system* "rake" "gem")))))))
-   (synopsis "Generate C++ command line parsers using getopt_long")
-   (description "Yaggo is a tool to generate command line parsers for C++.
-Yaggo stands for 'Yet Another GenGetOpt' and is inspired by GNU Gengetopt.  It
-reads a configuration file describing the switches and argument for a C++
-program and it generates one header file that parses the command line using
-getopt_long(3).")
-   (home-page "https://github.com/gmarcais/yaggo")
-   (license license:gpl3+)))
-
-(define-public jellyfish ;;currently install works fine but make check fails. It
-  ;;seems to only refer to /proc/cpuinfo during testing, not as part of the
-  ;;build process
-  (package
-    (name "jellyfish")
-    (version "2.2.4")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append "https://github.com/gmarcais/Jellyfish/archive/v"
-                                  version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "1v5kxh9dm0spks5brvrlsgz17mdmpzwv8wkx52w5kf33xn54gdj4"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-                      (add-after
-                       'unpack 'autoreconf
-                       (lambda* _
-                         (zero? (system* "autoreconf" "-vif")))))))
-    (native-inputs
-     `(("yaggo" ,yaggo)
-       ("ruby" ,ruby)
-       ("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)
-       ("pkg-config" ,pkg-config)
-       ("file" ,file)
-       ("gzip" ,gzip) ;; deps for make check from here down: gunzip, time, echo, date, bc
-       ("bc" ,bc)
-       ("coreutils" ,coreutils)
-       ))
-    (home-page "http://www.genome.umd.edu/jellyfish.html")
-    (synopsis "A fast multi-threaded k-mer counter")
-    (description
-     "Jellyfish is a tool for fast, memory-efficient counting of
-k-mers in DNA.  A k-mer is a substring of length k, and counting the
-occurrences of all such substrings is a central step in many analyses
-of DNA sequence.  Jellyfish can count k-mers using an order of
-magnitude less memory and an order of magnitude faster than other
-k-mer counting packages by using an efficient encoding of a hash table
-and by exploiting the 'compare-and-swap' CPU instruction to increase
-parallelism.")
-    (license (license:non-copyleft "file://src/LICENSE"
-                                   "See src/LICENSE in the distribution."))))
-
 (define-public krona-tools ; mostly works? database cannot be used though. See http://sourceforge.net/p/krona/tickets/10/
   (package
    (name "krona-tools")
    (version "2.5")
    (source (origin
-            (method url-fetch)
-            (uri (string-append
-                  "http://sourceforge.net/projects/krona/files/KronaTools"
-                  "%20%28Mac%2C%20Linux%29/KronaTools-"
-                  version ".tar/download"))
-            (file-name (string-append name "-" version ".tar"))
-            (sha256
-             (base32
-              "12ps0y7p19d3cdhc7pp3xlak5k9qq5w246861bngfg8mkfa083qa"))))
+             (method url-fetch)
+             (uri (string-append
+                   "http://sourceforge.net/projects/krona/files/KronaTools"
+                   "%20%28Mac%2C%20Linux%29/KronaTools-"
+                   version ".tar/download"))
+             (file-name (string-append name "-" version ".tar"))
+             (sha256
+              (base32
+               "12ps0y7p19d3cdhc7pp3xlak5k9qq5w246861bngfg8mkfa083qa"))))
    (build-system perl-build-system)
    (arguments
      `(#:tests? #f
@@ -383,57 +186,57 @@ parallelism.")
          (delete 'configure)
          (delete 'build)
          (replace 'install
-                  (lambda* (#:key outputs #:allow-other-keys)
-                    (let ((bin   (string-append (assoc-ref outputs "out") "/bin"))
-                          (perl  (string-append (assoc-ref outputs "out")
-                                                "/lib/perl5/site_perl"))
-                          (share (string-append (assoc-ref outputs "out") "/share/krona-tools")))
-                      (mkdir-p bin)
-                      (for-each (lambda (script)
-                                  (let* ((executable (string-append "scripts/" script ".pl")))
-                                    (substitute* executable
-                                      (("use lib (`ktGetLibPath`);") ""))
-                                    (copy-file executable
-                                               (string-append bin "/kt" script))))
-                                '("ClassifyBLAST"
-                                  "GetContigMagnitudes"
-                                  "GetTaxIDFromGI"
-                                  "ImportBLAST"
-                                  "ImportDiskUsage"
-                                  "ImportEC"
-                                  "ImportFCP"
-                                  "ImportGalaxy"
-                                  "ImportMETAREP-BLAST"
-                                  "ImportMETAREP-EC"
-                                  "ImportMGRAST"
-                                  "ImportPhymmBL"
-                                  "ImportRDP"
-                                  "ImportRDPComparison"
-                                  "ImportTaxonomy"
-                                  "ImportText"
-                                  "ImportXML"))
-                      (mkdir-p share)
-                      (copy-recursively "data" (string-append share "/data"))
-                      (copy-recursively "img" (string-append share "/img"))
-                      (copy-recursively "taxonomy" (string-append share "/taxonomy"))
-                      (mkdir-p perl)
-                      ;;$libPath/../img/
-                      ;;'img/hidden.png';
-                      (substitute* '("lib/KronaTools.pm")
-                        (("taxonomyDir = \".libPath/../taxonomy\"")
-                         (string-append "taxonomyDir = \"" share "/taxonomy\"")))
-                      (copy-file "lib/KronaTools.pm" (string-append perl "/KronaTools.pm")))))
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((bin   (string-append (assoc-ref outputs "out") "/bin"))
+                   (perl  (string-append (assoc-ref outputs "out")
+                                         "/lib/perl5/site_perl"))
+                   (share (string-append (assoc-ref outputs "out") "/share/krona-tools")))
+               (mkdir-p bin)
+               (for-each (lambda (script)
+                           (let* ((executable (string-append "scripts/" script ".pl")))
+                             (substitute* executable
+                               (("use lib (`ktGetLibPath`);") ""))
+                             (copy-file executable
+                                        (string-append bin "/kt" script))))
+                         '("ClassifyBLAST"
+                           "GetContigMagnitudes"
+                           "GetTaxIDFromGI"
+                           "ImportBLAST"
+                           "ImportDiskUsage"
+                           "ImportEC"
+                           "ImportFCP"
+                           "ImportGalaxy"
+                           "ImportMETAREP-BLAST"
+                           "ImportMETAREP-EC"
+                           "ImportMGRAST"
+                           "ImportPhymmBL"
+                           "ImportRDP"
+                           "ImportRDPComparison"
+                           "ImportTaxonomy"
+                           "ImportText"
+                           "ImportXML"))
+               (mkdir-p share)
+               (copy-recursively "data" (string-append share "/data"))
+               (copy-recursively "img" (string-append share "/img"))
+               (copy-recursively "taxonomy" (string-append share "/taxonomy"))
+               (mkdir-p perl)
+               ;;$libPath/../img/
+               ;;'img/hidden.png';
+               (substitute* '("lib/KronaTools.pm")
+                 (("taxonomyDir = \".libPath/../taxonomy\"")
+                  (string-append "taxonomyDir = \"" share "/taxonomy\"")))
+               (copy-file "lib/KronaTools.pm" (string-append perl "/KronaTools.pm")))))
          (add-after 'install 'wrap-program
-                    (lambda* (#:key inputs outputs #:allow-other-keys)
-                      ;; TODO? Make sure scripts find all regular perl inputs at runtime.
-                      (let* ((out (assoc-ref outputs "out"))
-                             (path (getenv "PERL5LIB")))
-                        (for-each (lambda (executable)
-                                    (wrap-program executable
-                                      `("PERL5LIB" ":" prefix
-                                        (,(string-append out
-                                                         "/lib/perl5/site_perl")))))
-                                  (find-files (string-append out "/bin/") ".*"))))))))
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             ;; TODO? Make sure scripts find all regular perl inputs at runtime.
+             (let* ((out (assoc-ref outputs "out"))
+                    (path (getenv "PERL5LIB")))
+               (for-each (lambda (executable)
+                           (wrap-program executable
+                             `("PERL5LIB" ":" prefix
+                               (,(string-append out
+                                                "/lib/perl5/site_perl")))))
+                         (find-files (string-append out "/bin/") ".*"))))))))
    (inputs
     `(("perl" ,perl)))
    (home-page "http://sourceforge.net/projects/krona")

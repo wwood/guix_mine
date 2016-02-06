@@ -493,8 +493,8 @@ assemblies.")
      `(#:python ,python-2
        #:phases
        (modify-phases %standard-phases
-         ;; current test in setup.py does not work
-         ;; so use nose to run tests instead for now.
+         ;; current test in setup.py does not work so use nose to run tests
+         ;; instead for now.
          (replace 'check (lambda _ (zero? (system* "nosetests")))))))
     (propagated-inputs
      `(("krona-tools" ,krona-tools)
@@ -512,18 +512,17 @@ assemblies.")
        ("python-biom-format" ,python2-biom-format)
        ("python-extern" ,python2-extern)
        ("mafft" ,mafft)
-       ("python-scikit-bio" ,python2-scikit-bio))) 
+       ("python-scikit-bio" ,python2-scikit-bio)))
     (inputs
      `(("python-setuptools" ,python2-setuptools)
        ("python-nose" ,python2-nose)))
     (home-page "http://geronimp.github.com/graftM")
-    (synopsis
-     "Identifies and classifies metagenomic marker gene reads")
+    (synopsis "Identify and classify metagenomic marker gene reads")
     (description
-     "GraftM is a pipeline used for identifying and classifying marker gene reads
-from large metagenomic shotgun sequence datasets. It is able to find marker
-genes using hidden Markov models or sequence similarity search, and classify
-these reads by placement into phylogenetic trees")
+     "GraftM is a pipeline used for identifying and classifying marker gene
+reads from large metagenomic shotgun sequence datasets.  It is able to find
+marker genes using hidden Markov models or sequence similarity search, and
+classify these reads by placement into phylogenetic trees")
     (license license:gpl3+)))
 
 (define-public python-pyqi
@@ -686,42 +685,6 @@ analysis.")
      "Tools for taxonomic naming and annotation")
     (license license:gpl3)))
 
-(define-public python-xlrd ;sent to mailing list, in process there
-  (package
-    (name "python-xlrd")
-    (version "0.9.4")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/x/xlrd/xlrd-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "0wpa55nvidmm5m2qr622dsh3cj46akdk0h3zjgzschcmydck73cf"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         ;; current test in setup.py does not work as of 0.9.4,
-         ;; so use nose to run tests instead for now.
-         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
-    (native-inputs
-     `(("python-setuptools" ,python-setuptools)
-       ("python-nose" ,python-nose)))
-    (home-page "http://www.python-excel.org/")
-    (synopsis
-     "Library for extracting data from Microsoft Excel (tm) files")
-    (description
-     "Extract data from Excel spreadsheets (.xls and .xlsx, versions 2.0
-onwards) on any platform.  It is pure Python (2.6, 2.7, 3.2+), has support for
-Excel dates and is Unicode-aware.")
-    (license license:bsd-3)))
-
-(define-public python2-xlrd
-  (package-with-python2 python-xlrd))
-
 (define-public python2-extern ; could be sent to the mailing list. Does it work
                                         ; with python3 though? Probably, but
                                         ; would need to test the software. Also,
@@ -787,46 +750,7 @@ the description of the error.")
 
 (define-public python2-pytest-timeout
   (package-with-python2 python-pytest-timeout))
-
-(define-public seqmagick
-  (package
-    (name "seqmagick")
-    (version "0.6.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/s/seqmagick/seqmagick-"
-             version ".tar.gz"))
-       (sha256
-        (base32
-         "0cgn477n74gsl4qdaakrrhi953kcsd4q3ivk2lr18x74s3g4ma1d"))))
-    (build-system python-build-system)
-    (arguments
-     ;; python2 only, see https://github.com/fhcrc/seqmagick/issues/56
-     `(#:python ,python-2
-       #:phases
-       (modify-phases %standard-phases
-         ;; current test in setup.py does not work as of 0.6.1,
-         ;; so use nose to run tests instead for now. See
-         ;; https://github.com/fhcrc/seqmagick/issues/55
-         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
-    (propagated-inputs
-     `(("python-biopython" ,python2-biopython)))
-    (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
-    (home-page "http://github.com/fhcrc/seqmagick")
-    (synopsis
-     "Tools for converting and modifying sequence files")
-    (description
-     "Bioinformaticians often have to convert sequence files between formats
-and do little manipulations on them, and it's not worth writing scripts for
-that.  Seqmagick is a utility to expose the file format conversion in
-BioPython in a convenient way.  Instead of having a big mess of scripts, there
-is one that takes arguments.")
-    (license license:gpl3)))
-
+ 
 (define-public python2-subprocess32
   (package
   (name "python-subprocess32")
@@ -1078,114 +1002,3 @@ the binning summary page.")
      (home-page "https://github.com/knife/ds")
      (license #f)))
 
-
-(define-public dirseq ;; seems to work, could be submitted to guix-devel though
-  ;; it is a bit me-specific.
-  (package
-    (name "dirseq")
-    (version "0.1.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (rubygems-uri "dirseq" version))
-       (sha256
-        (base32
-         "1fixvy3zapl16x71nlsra2g1c3lgf220rmqs5d0llpcd0k4b7hjf"))))
-    (build-system ruby-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'build 'patch-paths-to-inputs
-           (lambda _
-             (substitute* "bin/dirseq"
-               (("\\\"sed") (string-append "\"" (which "sed")))
-               (("\\\"samtools") (string-append "\"" (which "samtools")))
-               (("\\\"bedtools") (string-append "\"" (which "bedtools"))))
-             #t))
-         ;; Call rspec directly so jeweler is not required.
-         (replace 'check
-           (lambda _
-             (zero? (system* "rspec" "spec/script_spec.rb")))))))
-    (native-inputs
-     `(("ruby-rspec" ,ruby-rspec-2)))
-    (inputs
-     `(("bedtools" ,bedtools)
-       ("samtools" ,samtools)))
-    (propagated-inputs
-     `(("bioruby" ,bioruby)
-       ("ruby-bio-commandeer" ,ruby-bio-commandeer)
-       ("ruby-bio-logger" ,ruby-bio-logger)))
-    (synopsis
-     "FPKG (gene expression metric) calculator for metatranscriptomics")
-    (description
-     "FPKG (gene expression metric) calculator for metatranscriptomics")
-    (home-page "http://github.com/wwood/dirseq")
-    (license license:expat)))
-
-;; Waiting to be pushed to guix alongside the OrfM update.
-(define-public ruby-bio-commandeer
-  (package
-    (name "ruby-bio-commandeer")
-    (version "0.1.2")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (rubygems-uri "bio-commandeer" version))
-       (sha256
-        (base32
-         "061jxa6km92qfwzl058r2gp8gfcsbyr7m643nw1pxvmjdswaf6ly"))))
-    (build-system ruby-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           ;; Run test without calling 'rake' so that jeweler is
-           ;; not required as an input.
-           (lambda _
-             (zero? (system* "rspec" "spec/bio-commandeer_spec.rb")))))))
-    (propagated-inputs
-     `(("ruby-bio-logger" ,ruby-bio-logger)
-       ("ruby-systemu" ,ruby-systemu)))
-    (native-inputs
-     `(("bundler" ,bundler)
-       ("ruby-rspec" ,ruby-rspec)))
-    (synopsis "Simplified running of shell commands from within Ruby")
-    (description
-     "Bio-commandeer is a dead simple opinionated method of running shell
-commands from within Ruby.  The advantage of bio-commandeer over other methods
-of running external commands is that when something goes wrong, the error
-message that is reported gives extra detail to ease debugging.")
-    (home-page
-     "http://github.com/wwood/bioruby-commandeer")
-    (license license:expat)))
-
-;; Waiting to be pushed to guix alongside the OrfM update.
-(define-public ruby-systemu
-  (package
-    (name "ruby-systemu")
-    (version "2.6.5")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (rubygems-uri "systemu" version))
-       (sha256
-        (base32
-         "0gmkbakhfci5wnmbfx5i54f25j9zsvbw858yg3jjhfs5n4ad1xq1"))))
-    (build-system ruby-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-before 'check 'patch-version
-           (lambda _
-             (substitute* "Rakefile"
-               (("  This.lib = lib")
-                "  This.lib = 'systemu'")
-               ((" version = ENV\\['VERSION'\\]")
-                (string-append "version='" ,version "'"))))))))
-    (synopsis "Capture of stdout/stderr and handling of child processes")
-    (description
-     "Systemu can be used on any platform to return status, stdout, and stderr
-of any command.  Unlike other methods like open3/popen4 there is no danger of
-full pipes or threading issues hanging your process or subprocess.")
-    (home-page "https://github.com/ahoward/systemu")
-    (license license:ruby)))

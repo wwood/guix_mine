@@ -201,6 +201,8 @@ eq(1)\\}}.")
         (base32
          "02crmbpf14sf0kaz7zpkmqxs59jxz50346ifprbwr0w3dcnfq3jx"))))
     (build-system ruby-build-system)
+    (arguments
+     '(#:test-target "spec"))
     (propagated-inputs
      `(("ruby-builder" ,ruby-builder)
        ("ruby-cucumber-core" ,ruby-cucumber-core)
@@ -210,8 +212,11 @@ eq(1)\\}}.")
        ("ruby-multi-test" ,ruby-multi-test)))
     (native-inputs
      `(("bundler" ,bundler)
-       ("ruby-aruba", ruby-aruba*))) ; use untested aruba version to avoid
-                                     ; dependency cycle
+       ("ruby-aruba", ruby-aruba*) ; use untested aruba version to avoid
+                                   ; dependency cycle
+       ("ruby-rspec" ,ruby-rspec)
+       ("ruby-pry" ,ruby-pry)
+       ("ruby-nokogiri" ,ruby-nokogiri)))
     (synopsis
      "Behaviour Driven Development with elegance and joy")
     (description

@@ -452,10 +452,23 @@ view 3D structures, and VARNA to display RNA secondary structure.")
    (build-system python-build-system)
    (inputs
     `(("python-setuptools" ,python-setuptools)
-      ("numpy" ,numpy))
+      ("numpy" ,numpy)))
    (home-page "http://scikit-bio.org")
    (synopsis
     "Data structures, algorithms and educational resources for bioinformatics.")
    (description
     "Data structures, algorithms and educational resources for bioinformatics.")
    (license license:bsd-3)))
+
+(define-public python2-numexpr-1.4.1
+  (package
+    (inherit python2-numexpr)
+    (version "1.4.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://pypi.python.org/packages/source/"
+                           "n/numexpr/numexpr-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0yvjmrf72lmr9dfnyla21aa5ckakl3wrpy3w6152k62w5b7g3ki7"))))))

@@ -477,7 +477,7 @@ assemblies.")
 (define-public graftm
   (package
     (name "graftm")
-    (version "0.6.3")
+    (version "0.9.2")
     (source
      (origin
        (method url-fetch)
@@ -524,6 +524,33 @@ reads from large metagenomic shotgun sequence datasets.  It is able to find
 marker genes using hidden Markov models or sequence similarity search, and
 classify these reads by placement into phylogenetic trees")
     (license license:gpl3+)))
+
+(define-public python-biom-format
+  (package
+   (name "python-biom-format")
+   (version "2.1.5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "biom-format" version))
+     (sha256
+      (base32
+       "0x73fijwwvwk9473kwijh1f3kirsykncybf5647b8v5hvz4a1h5a"))))
+   (build-system python-build-system)
+   (inputs
+    `(("python-setuptools" ,python-setuptools)))
+   (propagated-inputs
+    `(("python-numpy" ,python-numpy)
+      ("python-pyqi" ,python-pyqi)))
+   (home-page "http://www.biom-format.org")
+   (synopsis
+    "Biological Observation Matrix (BIOM) format")
+   (description
+    "Biological Observation Matrix (BIOM) format")
+   (license license:bsd-3)))
+
+(define-public python2-biom-format
+  (package-with-python2 python-biom-format))
 
 (define-public python-pyqi
   (package
@@ -613,46 +640,6 @@ classify these reads by placement into phylogenetic trees")
 
 (define-public python2-pluggy
   (package-with-python2 python-pluggy))
-
- (define-public pplacer ;; getting this to compile from source is just too hard
-  (package
-   (name "pplacer")
-   (version "1.1.alpha17")
-   (source (origin
-             (method url-fetch)
-             (uri (string-append
-                   "https://github.com/matsen/pplacer/releases/download/v"
-                   version "/linux.zip"))
-             (file-name (string-append name "-" version ".zip"))
-             (sha256
-              (base32
-               "0kc2al3klzbk9697gspk7zc8l9y6g7zyfhsjdrgxhjbq249m4hsf"))))
-   (build-system gnu-build-system)
-   (arguments
-    `(#:tests? #f ; this is only a binary package
-      #:phases
-      (modify-phases %standard-phases
-        (delete 'configure)
-        (delete 'build)
-        (replace 'install
-                 (lambda* (#:key outputs #:allow-other-keys)
-                   (let ((bin (string-append (assoc-ref outputs "out")
-                                             "/bin")))
-                     (mkdir-p bin)
-                     (copy-file "pplacer"
-                                (string-append bin "/pplacer"))
-                     #t))))))
-   (native-inputs
-    `(("unzip" ,unzip)))
-   (home-page "http://matsen.fredhutch.org/pplacer/")
-   (synopsis "Places query sequences into phylogenetic trees")
-   (description
-    "Pplacer places query sequences on a fixed reference phylogenetic tree to
-maximize phylogenetic likelihood or posterior probability according to a
-reference alignment.  Pplacer is designed to be fast, to give useful information
-about uncertainty, and to offer advanced visualization and downstream
-analysis.")
-   (license license:gpl2+)))
 
 (define-public taxtastic
   (package

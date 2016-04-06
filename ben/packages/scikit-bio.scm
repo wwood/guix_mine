@@ -83,7 +83,7 @@
 (define-public python-scikit-bio
   (package
     (name "python-scikit-bio")
-    (version "0.4.0")
+    (version "0.4.2")
     (source
      (origin
        (method url-fetch)
@@ -93,28 +93,73 @@
              ".tar.gz"))
        (sha256
         (base32
-	 "1qx1491q7q784w6l829j0sr7ymv3xb8zva0vij7ql7a0v7zz38wh"))))
+	 "06nrcgfz6c3jb2dnaf1wnvx3dyww94p454c4126gvcvfgv6scczy"))))
     (build-system python-build-system)
-    ;(arguments
-    ; `(#:tests? #f)) ; tests fail because of matplotlib import error (due to lack of display?)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'make-tests-headless
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (substitute* "skbio/test.py"
+               (("^from skbio.util import TestRunner")
+                (string-append "print(\"yes!!!!!!\")\n"
+                               "import matplotlib\n"
+                               "matplotlib.use(\"Agg\")\n"
+                               "from skbio.util import TestRunner")))
+             #t))
+         ;; Install procedure installs extraneous binaries.
+         (add-after 'install 'remove-extraneous-files
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin")))
+               (delete-file-recursively bin))
+             #t))
+         ;; `setup.py test' does not run tests.
+         (delete 'check)
+         ;; (add-after 'install 'check-after
+         ;;   (lambda* (#:key inputs outputs #:allow-other-keys)
+         ;;     ;; Loading skbio loads matplotlib.pyplot which fails due to lack
+         ;;     ;; of screen. Fix by doing "matplotlib.use('Agg')" at the
+         ;;     ;; beginning (never got this to work though
+         ;;     (let ((pythonpath
+         ;;             (string-append
+         ;;              (getenv "PYTHONPATH")
+         ;;              ":" (assoc-ref outputs "out")
+         ;;              "/lib/python"
+         ;;              (string-take (string-take-right
+         ;;                            (assoc-ref inputs "python") 5) 3)
+         ;;              "/site-packages")))
+         ;;       (display pythonpath)
+         ;;       (display "\n")
+         ;;       (setenv "PYTHONPATH" pythonpath)
+         ;;       ;;(zero? (system* "make" "test"))
+         ;;       (zero?
+         ;;        (with-directory-excursion "ci"
+         ;;          (system* "python" "-v" "skbio/test.py")))
+         ;;       ))))))
+         )))
     (native-inputs
      `(("python-nose" ,python-nose)
        ("python-pep8" ,python-pep8)
        ("python-flake8" ,python-flake8)
-       ("python-dateutil" ,python-dateutil-2))) ;remove the -2 for python2 version
-    (inputs
+       ("python-dateutil" ,python-dateutil-2)
+       ))
+    (propagated-inputs
      `(("python-setuptools" ,python-setuptools)
        ("python-bz2file" ,python-bz2file)
-       ("python-numpy" ,python-numpy)
-       ("python-matplotlib" ,python-matplotlib)
-       ("python-scipy" ,python-scipy)
-       ("python-pandas" ,python-pandas)
-       ("python-future" ,python-future)
-       ("python-natsort" ,python-natsort)
-       ("python-six" ,python-six)
-       ("python-ipython" ,python-ipython)
-       ("python-decorator" ,python-decorator)
+       ("python-lockfile" ,python-lockfile)
        ("python-cachecontrol" ,python-cachecontrol)
+       ("python-contextlib2" ,python-contextlib2)
+       ("python-decorator" ,python-decorator)
+       ("python-future" ,python-future)
+       ("python-ipython" ,python-ipython)
+       ("python-matplotlib" ,python-matplotlib)
+       ("python-natsort" ,python-natsort)
+       ("python-numpy" ,python-numpy)
+       ("python-pandas" ,python-pandas)
+       ("python-scipy" ,python-scipy)
+       ("python-six" ,python-six)
+       ;("python-nose" ,python-nose) ;native or no?
        ))
     (home-page "http://scikit-bio.org")
     (synopsis
@@ -132,7 +177,7 @@ File I/O.")
 (define-public python-natsort
   (package
    (name "python-natsort")
-   (version "4.0.3")
+   (version "4.0.4")
    (source
     (origin
      (method url-fetch)
@@ -142,7 +187,7 @@ File I/O.")
            ".tar.gz"))
      (sha256
       (base32
-       "17rv4rr2j1avxds105kl6y6qbzvyfj691ldq0h53zl64wj6gqfr8"))))
+       "0f8q66pyczgy1cm3nh8rkh7hgl9h49zx9r06mivg4y5sbzla6sy7"))))
    (build-system python-build-system)
    (native-inputs
     `(("python-pytest" ,python-pytest)
@@ -163,101 +208,101 @@ File I/O.")
 (define-public python2-natsort
   (package-with-python2 python-natsort))
 
-(define-public python-hypothesis
-  (package
-   (name "python-hypothesis")
-   (version "1.6.2")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (string-append
-           "https://pypi.python.org/packages/source/h/hypothesis/hypothesis-"
-           version
-           ".tar.gz"))
-     (sha256
-      (base32
-       "0kkbwpnzmrx8m0ba1410q7fkjv314alqax4gicrsyy2g9c5rkkcj"))))
-   (build-system python-build-system)
-   ;(arguments
-   ; `(#:tests? #f)) ;; fails because test directory not included in the distribution?
-   (native-inputs
-    `(("python-flake8" ,python-flake8)
-      ("python-pytest" ,python-pytest)
-      ("python-pytest-cache" ,python-pytest-cache)))
-   (inputs
-    `(("python-setuptools" ,python-setuptools)))
-   (home-page
-    "https://github.com/DRMacIver/hypothesis")
-   (synopsis "A library for property based testing")
-   (description
-    "A library for property based testing")
-   (license #f)))
+;; (define-public python-hypothesis
+;;   (package
+;;    (name "python-hypothesis")
+;;    (version "1.6.2")
+;;    (source
+;;     (origin
+;;      (method url-fetch)
+;;      (uri (string-append
+;;            "https://pypi.python.org/packages/source/h/hypothesis/hypothesis-"
+;;            version
+;;            ".tar.gz"))
+;;      (sha256
+;;       (base32
+;;        "0kkbwpnzmrx8m0ba1410q7fkjv314alqax4gicrsyy2g9c5rkkcj"))))
+;;    (build-system python-build-system)
+;;    ;(arguments
+;;    ; `(#:tests? #f)) ;; fails because test directory not included in the distribution?
+;;    (native-inputs
+;;     `(("python-flake8" ,python-flake8)
+;;       ("python-pytest" ,python-pytest)
+;;       ("python-pytest-cache" ,python-pytest-cache)))
+;;    (inputs
+;;     `(("python-setuptools" ,python-setuptools)))
+;;    (home-page
+;;     "https://github.com/DRMacIver/hypothesis")
+;;    (synopsis "A library for property based testing")
+;;    (description
+;;     "A library for property based testing")
+;;    (license #f)))
 
-(define-public python2-hypothesis
-  (package-with-python2 python-hypothesis))
+;; (define-public python2-hypothesis
+;;   (package-with-python2 python-hypothesis))
 
-(define-public python-pytest-cache
-  (package
-   (name "python-pytest-cache")
-   (version "1.0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (string-append
-           "https://pypi.python.org/packages/source/p/pytest-cache/pytest-cache-"
-           version
-           ".tar.gz"))
-     (sha256
-      (base32
-       "1a873fihw4rhshc722j4h6j7g3nj7xpgsna9hhg3zn6ksknnhx5y"))))
-   (build-system python-build-system)
-   (native-inputs
-    `(("python-execnet" ,python-execnet)
-      ("python-pytest" ,python-pytest)))
-   (inputs
-    `(("python-setuptools" ,python-setuptools)))
-   (home-page
-    "http://bitbucket.org/hpk42/pytest-cache/")
-   (synopsis
-    "pytest plugin with mechanisms for caching across test runs")
-   (description
-    "pytest plugin with mechanisms for caching across test runs")
-   (license #f)))
+;; (define-public python-pytest-cache
+;;   (package
+;;    (name "python-pytest-cache")
+;;    (version "1.0")
+;;    (source
+;;     (origin
+;;      (method url-fetch)
+;;      (uri (string-append
+;;            "https://pypi.python.org/packages/source/p/pytest-cache/pytest-cache-"
+;;            version
+;;            ".tar.gz"))
+;;      (sha256
+;;       (base32
+;;        "1a873fihw4rhshc722j4h6j7g3nj7xpgsna9hhg3zn6ksknnhx5y"))))
+;;    (build-system python-build-system)
+;;    (native-inputs
+;;     `(("python-execnet" ,python-execnet)
+;;       ("python-pytest" ,python-pytest)))
+;;    (inputs
+;;     `(("python-setuptools" ,python-setuptools)))
+;;    (home-page
+;;     "http://bitbucket.org/hpk42/pytest-cache/")
+;;    (synopsis
+;;     "pytest plugin with mechanisms for caching across test runs")
+;;    (description
+;;     "pytest plugin with mechanisms for caching across test runs")
+;;    (license #f)))
 
-(define-public python2-pytest-cache
-  (package-with-python2 python-pytest-cache))
+;; (define-public python2-pytest-cache
+;;   (package-with-python2 python-pytest-cache))
 
-(define-public python-execnet
-  (package
-    (name "python-execnet")
-    (version "1.4.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/e/execnet/execnet-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "1rpk1vyclhg911p3hql0m0nrpq7q7mysxnaaw6vs29cpa6kx8vgn"))))
-    (build-system python-build-system)
-    (inputs
-     `(("python-setuptools" ,python-setuptools)))
-    (home-page "http://codespeak.net/execnet")
-    (synopsis
-     "execnet: rapid multi-Python deployment")
-    (description
-     "execnet: rapid multi-Python deployment")
-    (license expat)))
+;; (define-public python-execnet
+;;   (package
+;;     (name "python-execnet")
+;;     (version "1.4.1")
+;;     (source
+;;      (origin
+;;        (method url-fetch)
+;;        (uri (string-append
+;;              "https://pypi.python.org/packages/source/e/execnet/execnet-"
+;;              version
+;;              ".tar.gz"))
+;;        (sha256
+;;         (base32
+;;          "1rpk1vyclhg911p3hql0m0nrpq7q7mysxnaaw6vs29cpa6kx8vgn"))))
+;;     (build-system python-build-system)
+;;     (inputs
+;;      `(("python-setuptools" ,python-setuptools)))
+;;     (home-page "http://codespeak.net/execnet")
+;;     (synopsis
+;;      "execnet: rapid multi-Python deployment")
+;;     (description
+;;      "execnet: rapid multi-Python deployment")
+;;     (license expat)))
 
-(define-public python2-execnet
-  (package-with-python2 python-execnet))
+;; (define-public python2-execnet
+;;   (package-with-python2 python-execnet))
 
 (define-public python-cachecontrol
   (package
    (name "python-cachecontrol")
-   (version "0.11.5")
+   (version "0.11.6")
    (source
     (origin
      (method url-fetch)
@@ -267,7 +312,7 @@ File I/O.")
            ".tar.gz"))
      (sha256
       (base32
-       "0hnglhgx8qxspmigz8swyg76zhlg98v8q17lcw950yxizvb8915p"))))
+       "15bn8xll6z15h0zqhfjy1n8dn8p0fcb4m0rhnfanq63z7r2wpprp"))))
    (build-system python-build-system)
    (inputs
     `(("python-setuptools" ,python-setuptools)
@@ -342,37 +387,37 @@ File I/O.")
 (define-public python2-pytest-flakes
   (package-with-python2 python-pytest-flakes))
 
-(define-public python-pytest-cov
-  (package
-   (name "python-pytest-cov")
-   (version "2.1.0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (string-append
-           "https://pypi.python.org/packages/source/p/pytest-cov/pytest-cov-"
-           version
-           ".tar.gz"))
-     (sha256
-      (base32
-       "01l5c0m1a39r7p89xlk3x6sry5h0kf0m29j0y6ihz4z97fpc71kf"))))
-   (build-system python-build-system)
-   (inputs
-    `(("python-setuptools" ,python-setuptools)
-      ("python-py" ,python-py)
-      ("python-pytest" ,python-pytest)
-      ("python-coverage" ,python-coverage)
-      ("python-cov-core" ,python-cov-core)))
-   (home-page
-    "https://github.com/schlamar/pytest-cov")
-   (synopsis
-    "py.test plugin for coverage reporting with support for both centralised and distributed testing, including subprocesses and multiprocessing")
-   (description
-    "py.test plugin for coverage reporting with support for both centralised and distributed testing, including subprocesses and multiprocessing")
-   (license #f)))
+;; (define-public python-pytest-cov
+;;   (package
+;;    (name "python-pytest-cov")
+;;    (version "2.1.0")
+;;    (source
+;;     (origin
+;;      (method url-fetch)
+;;      (uri (string-append
+;;            "https://pypi.python.org/packages/source/p/pytest-cov/pytest-cov-"
+;;            version
+;;            ".tar.gz"))
+;;      (sha256
+;;       (base32
+;;        "01l5c0m1a39r7p89xlk3x6sry5h0kf0m29j0y6ihz4z97fpc71kf"))))
+;;    (build-system python-build-system)
+;;    (inputs
+;;     `(("python-setuptools" ,python-setuptools)
+;;       ("python-py" ,python-py)
+;;       ("python-pytest" ,python-pytest)
+;;       ("python-coverage" ,python-coverage)
+;;       ("python-cov-core" ,python-cov-core)))
+;;    (home-page
+;;     "https://github.com/schlamar/pytest-cov")
+;;    (synopsis
+;;     "py.test plugin for coverage reporting with support for both centralised and distributed testing, including subprocesses and multiprocessing")
+;;    (description
+;;     "py.test plugin for coverage reporting with support for both centralised and distributed testing, including subprocesses and multiprocessing")
+;;    (license #f)))
 
-(define-public python2-pytest-cov
-  (package-with-python2 python-pytest-cov))
+;; (define-public python2-pytest-cov
+;;   (package-with-python2 python-pytest-cov))
 
 (define-public python-cov-core
   (package

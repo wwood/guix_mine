@@ -51,7 +51,7 @@
   #:use-module (gnu packages zip)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages fontutils)
-  #:use-module (gnu packages gdbm)
+;  #:use-module (gnu packages gdbm)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages ghostscript)
   #:use-module (gnu packages glib)

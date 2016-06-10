@@ -10,6 +10,7 @@
   #:use-module (guix build-system python)
   #:use-module (guix build-system ruby)
   #:use-module (guix build-system trivial)
+  #:use-module (guix build-system r)
   #:use-module (gnu packages)
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages algebra)
@@ -826,3 +827,30 @@ the binning summary page.")
      (home-page "https://github.com/knife/ds")
      (license #f)))
 
+(define-public ruby-bio-kseq
+  (package
+    (name "ruby-bio-kseq")
+    (version "0.0.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "bio-kseq" version))
+       (sha256
+        (base32
+         "1xyaha46khb5jc6wzkbf7040jagac49jbimn0vcrzid0j8jdikrz"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)
+       ("ruby-rake-compiler" ,ruby-rake-compiler)))
+    (inputs
+     `(("zlib" ,zlib)))
+    (synopsis "Ruby bindings for the kseq.h FASTA/Q parser")
+    (description
+     "@code{Bio::Kseq} provides ruby bindings to the @code{kseq.h} FASTA and
+FASTQ parsing code.  It provides a fast iterator over sequences and their
+quality scores.")
+    (home-page "https://github.com/gusevfe/bio-kseq")
+    (license license:expat)))

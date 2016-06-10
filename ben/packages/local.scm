@@ -45,9 +45,8 @@
   #:use-module (gnu packages zip)
   #:use-module (ice-9 regex)
   
-
-  #:use-module (gnu packages bioinformatics)
-  #:use-module (ben packages scikit-bio))
+  #:use-module (ace packages external)
+  #:use-module (gnu packages bioinformatics))
 
 (define-public bamm ;  does not work
   (package
@@ -164,146 +163,34 @@ files which can also be optionally compressed by gzip.")
                 "file://src/LICENSE"
                 "See src/LICENSE in the distribution.")))))
 
-(define-public krona-tools ; mostly works? database cannot be used though. See http://sourceforge.net/p/krona/tickets/10/
-  (package
-   (name "krona-tools")
-   (version "2.5")
-   (source (origin
-             (method url-fetch)
-             (uri (string-append
-                   "http://sourceforge.net/projects/krona/files/KronaTools"
-                   "%20%28Mac%2C%20Linux%29/KronaTools-"
-                   version ".tar/download"))
-             (file-name (string-append name "-" version ".tar"))
-             (sha256
-              (base32
-               "12ps0y7p19d3cdhc7pp3xlak5k9qq5w246861bngfg8mkfa083qa"))))
-   (build-system perl-build-system)
-   (arguments
-     `(#:tests? #f
-       #:phases
-       (modify-phases %standard-phases
-         (delete 'configure)
-         (delete 'build)
-         (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((bin   (string-append (assoc-ref outputs "out") "/bin"))
-                   (perl  (string-append (assoc-ref outputs "out")
-                                         "/lib/perl5/site_perl"))
-                   (share (string-append (assoc-ref outputs "out") "/share/krona-tools")))
-               (mkdir-p bin)
-               (for-each (lambda (script)
-                           (let* ((executable (string-append "scripts/" script ".pl")))
-                             (substitute* executable
-                               (("use lib (`ktGetLibPath`);") ""))
-                             (copy-file executable
-                                        (string-append bin "/kt" script))))
-                         '("ClassifyBLAST"
-                           "GetContigMagnitudes"
-                           "GetTaxIDFromGI"
-                           "ImportBLAST"
-                           "ImportDiskUsage"
-                           "ImportEC"
-                           "ImportFCP"
-                           "ImportGalaxy"
-                           "ImportMETAREP-BLAST"
-                           "ImportMETAREP-EC"
-                           "ImportMGRAST"
-                           "ImportPhymmBL"
-                           "ImportRDP"
-                           "ImportRDPComparison"
-                           "ImportTaxonomy"
-                           "ImportText"
-                           "ImportXML"))
-               (mkdir-p share)
-               (copy-recursively "data" (string-append share "/data"))
-               (copy-recursively "img" (string-append share "/img"))
-               (copy-recursively "taxonomy" (string-append share "/taxonomy"))
-               (mkdir-p perl)
-               ;;$libPath/../img/
-               ;;'img/hidden.png';
-               (substitute* '("lib/KronaTools.pm")
-                 (("taxonomyDir = \".libPath/../taxonomy\"")
-                  (string-append "taxonomyDir = \"" share "/taxonomy\"")))
-               (copy-file "lib/KronaTools.pm" (string-append perl "/KronaTools.pm")))))
-         (add-after 'install 'wrap-program
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             ;; TODO? Make sure scripts find all regular perl inputs at runtime.
-             (let* ((out (assoc-ref outputs "out"))
-                    (path (getenv "PERL5LIB")))
-               (for-each (lambda (executable)
-                           (wrap-program executable
-                             `("PERL5LIB" ":" prefix
-                               (,(string-append out
-                                                "/lib/perl5/site_perl")))))
-                         (find-files (string-append out "/bin/") ".*"))))))))
-   (inputs
-    `(("perl" ,perl)))
-   (home-page "http://sourceforge.net/projects/krona")
-   (synopsis "Hierarchical data exploration with zoomable HTML5 pie charts")
-   (description
-    "Krona is a flexible tool for exploring the relative proportions of
-hierarchical data, such as metagenomic classifications, using a radial,
-space-filling display.  It is implemented using HTML5 and JavaScript, allowing
-charts to be explored locally or served over the Internet, requiring only a
-current version of any major web browser.")
-   (license (license:non-copyleft "file://src/LICENSE"
-                                  "See src/LICENSE in the distribution."))))
-
-
-(define-public jalview ;;untested, likely doesn't work
-  (package
-   (name "jalview")
-   (version "2.8.2")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append
-                  "http://www.jalview.org/source/jalview_"
-                  (regexp-substitute/global
-                   #f "\\." version 'pre "_" 'post)
-                  ".tar.gz"))
-            (file-name (string-append name "-" version ".tar.gz"))
-            (sha256
-             (base32
-              "12z7hqrqq3rccw6rgjc2gl9bnbkq4fnlw37267ax79mgdj15vi49"))))
-   (build-system gnu-build-system)
-   (native-inputs
-    `(("jdk" ,icedtea6 "jdk") ;;TODO: this version of java needed specifically?
-      ("perl" ,perl)))
-   (home-page "http://www.jalview.org")
-   (synopsis "Multiple sequence alignment editing, visualisation and analysis")
-   (description
-    "Use it to view and edit sequence alignments, analyse them with
-phylogenetic trees and principal components analysis (PCA) plots and explore
-molecular structures and annotation.  Jalview has built in DNA, RNA and protein
-sequence and structure visualisation and analysis capabilities.  It uses Jmol to
-view 3D structures, and VARNA to display RNA secondary structure.")
-   (license license:gpl3+))) ;; TODO: check what version of GPL
-
-(define-public python-scikit-bio
-  (package
-   (name "python-scikit-bio")
-   (version "0.2.3")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (string-append
-           "https://pypi.python.org/packages/source/s/scikit-bio/scikit-bio-"
-           version
-           ".tar.gz"))
-     (sha256
-      (base32
-       "10y6fiz7w6gc34rllixmcg8k1xb6f0yidl2mpg9614r494xwdvjz"))))
-   (build-system python-build-system)
-   (inputs
-    `(("python-setuptools" ,python-setuptools)
-      ("numpy" ,numpy)))
-   (home-page "http://scikit-bio.org")
-   (synopsis
-    "Data structures, algorithms and educational resources for bioinformatics.")
-   (description
-    "Data structures, algorithms and educational resources for bioinformatics.")
-   (license license:bsd-3)))
+;; (define-public jalview ;;untested, likely doesn't work
+;;   (package
+;;    (name "jalview")
+;;    (version "2.8.2")
+;;    (source (origin
+;;             (method url-fetch)
+;;             (uri (string-append
+;;                   "http://www.jalview.org/source/jalview_"
+;;                   (regexp-substitute/global
+;;                    #f "\\." version 'pre "_" 'post)
+;;                   ".tar.gz"))
+;;             (file-name (string-append name "-" version ".tar.gz"))
+;;             (sha256
+;;              (base32
+;;               "12z7hqrqq3rccw6rgjc2gl9bnbkq4fnlw37267ax79mgdj15vi49"))))
+;;    (build-system gnu-build-system)
+;;    (native-inputs
+;;     `(("jdk" ,icedtea6 "jdk") ;;TODO: this version of java needed specifically?
+;;       ("perl" ,perl)))
+;;    (home-page "http://www.jalview.org")
+;;    (synopsis "Multiple sequence alignment editing, visualisation and analysis")
+;;    (description
+;;     "Use it to view and edit sequence alignments, analyse them with
+;; phylogenetic trees and principal components analysis (PCA) plots and explore
+;; molecular structures and annotation.  Jalview has built in DNA, RNA and protein
+;; sequence and structure visualisation and analysis capabilities.  It uses Jmol to
+;; view 3D structures, and VARNA to display RNA secondary structure.")
+;;    (license license:gpl3+))) ;; TODO: check what version of GPL
 
 (define-public python2-numexpr-1.4.1
   (package
@@ -525,35 +412,37 @@ assemblies.")
              ".tar.gz"))
        (sha256
         (base32
-         "1w95ajlk7xvjl5glzx6wrwx72d6kfbgrj9690m36qz6r26fik3ip"))))
+         "0wy4w2jvh6ip6ari0m55zvkyg3vnvsyn2l93n85d1d2xndbgns2v"))))
     (build-system python-build-system)
     (arguments
-     `(#:python ,python-2
+     `(#:python ,python-2 ; python-2 only
        #:phases
        (modify-phases %standard-phases
          ;; current test in setup.py does not work so use nose to run tests
          ;; instead for now.
          (replace 'check (lambda _ (zero? (system* "nosetests")))))))
+    (native-inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
+    (inputs
+     `(("python-biopython" ,python2-biopython)
+       ("python-subprocess32" ,python2-subprocess32)
+       ("python-biom-format" ,python2-biom-format)
+       ("python-extern" ,python2-extern)
+       ("python-scikit-bio" ,python2-scikit-bi)
+       ("python-h5py" ,python2-h5py)
+       ("python-tempdir" ,python2-tempdir)))
     (propagated-inputs
-     `(("krona-tools" ,krona-tools)
        ("orfm" ,orfm)
        ("hmmer" ,hmmer)
        ("diamond" ,diamond)
        ("fxtract" ,fxtract)
        ("fasttree" ,fasttree)
-       ("python-biopython" ,python2-biopython)
+       ("krona-tools" ,krona-tools)
        ("pplacer" ,pplacer)
        ("seqmagick" ,seqmagick)
-       ("python-subprocess32" ,python2-subprocess32)
        ("taxtastic" ,taxtastic)
-       ("python-h5py" ,python2-h5py)
-       ("python-biom-format" ,python2-biom-format)
-       ("python-extern" ,python2-extern)
-       ("mafft" ,mafft)
-       ("python-scikit-bio" ,python2-scikit-bio)))
-    (inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
+       ("mafft" ,mafft))
     (home-page "http://geronimp.github.com/graftM")
     (synopsis "Identify and classify metagenomic marker gene reads")
     (description
@@ -563,121 +452,31 @@ marker genes using hidden Markov models or sequence similarity search, and
 classify these reads by placement into phylogenetic trees")
     (license license:gpl3+)))
 
-(define-public python-biom-format
+(define-public python-tempdir
   (package
-   (name "python-biom-format")
-   (version "2.1.5")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (pypi-uri "biom-format" version))
-     (sha256
-      (base32
-       "0x73fijwwvwk9473kwijh1f3kirsykncybf5647b8v5hvz4a1h5a"))))
-   (build-system python-build-system)
-   (inputs
-    `(("python-setuptools" ,python-setuptools)))
-   (propagated-inputs
-    `(("python-numpy" ,python-numpy)
-      ("python-pyqi" ,python-pyqi)))
-   (home-page "http://www.biom-format.org")
-   (synopsis
-    "Biological Observation Matrix (BIOM) format")
-   (description
-    "Biological Observation Matrix (BIOM) format")
-   (license license:bsd-3)))
-
-(define-public python2-biom-format
-  (package-with-python2 python-biom-format))
-
-(define-public python-pyqi
-  (package
-    (name "python-pyqi")
-    (version "0.3.2")
+    (name "python-tempdir")
+    (version "0.7.1")
     (source
      (origin
        (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/p/pyqi/pyqi-"
-             version
-             ".tar.gz"))
+       (uri (pypi-uri "tempdir" version))
        (sha256
         (base32
-         "0pyiym07yv5gdyncxd4qwf2jkb6rzqrlh6b2bq44ww3ray1i25wg"))))
+         "13msyyxqbicr111a294x7fsqbkl6a31fyrqflx3q7k547gnq15k8"))))
     (build-system python-build-system)
-    (native-inputs
-     `(("python-setuptools" ,python-setuptools)
-       ("python-nose" ,python-nose)
-       ("python-tox" ,python-tox)))
-    (home-page "http://bipy.github.io/pyqi")
-    (synopsis "pyqi: expose your interface")
-    (description "pyqi: expose your interface")
-    (license license:bsd-3)))
-
-(define-public python2-pyqi
-  (package-with-python2 python-pyqi))
-
-(define-public python-tox
-  (package
-    (name "python-tox")
-    (version "2.1.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/t/tox/tox-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "1vqy9skwx9xs4az1d3mrfdlc38qphba0xbrj2z12ry7nl4ia0fm0"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:tests? #f)) ; meh
-    (propagated-inputs
-     `(("python-virtualenv" ,python-virtualenv)
-       ("python-py" ,python-py)
-       ("python-pluggy" ,python-pluggy)))
-    (native-inputs
-     `(("python-setuptools" ,python-setuptools)
-       ("python-pytest" ,python-pytest)
-       ("python-pytest-timeout" ,python-pytest-timeout)))
-    (home-page "http://tox.testrun.org/")
-    (synopsis
-     "virtualenv-based automation of test activities")
-    (description
-     "virtualenv-based automation of test activities")
-    (license license:expat)))
-
-(define-public python2-tox
-  (package-with-python2 python-tox))
-
-(define-public python-pluggy
-  (package
-    (name "python-pluggy")
-    (version "0.3.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/p/pluggy/pluggy-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "18qfzfm40bgx672lkg8q9x5hdh76n7vax99aank7vh2nw21wg70m"))))
-    (build-system python-build-system)
-    (native-inputs
+    (inputs
      `(("python-setuptools" ,python-setuptools)))
-    (home-page "https://pypi.python.org/pypi/pluggy") ;no obvious homepage
+    (home-page
+     "https://bitbucket.org/another_thomas/tempdir")
     (synopsis
-     "plugin and hook calling mechanisms for python")
+     "Tempdirs are temporary directories, based on tempfile.mkdtemp")
     (description
-     "plugin and hook calling mechanisms for python")
-    (license license:expat)))
+     "Tempdirs are temporary directories, based on tempfile.mkdtemp")
+    (license expat)
+    (properties `((python2-variant . ,(delay python2-pytest-cache))))))
 
-(define-public python2-pluggy
-  (package-with-python2 python-pluggy))
+(define-public python2-tempdir
+  (package-with-python2 (strip-python2-variant python-tempdir)))
 
 (define-public taxtastic
   (package

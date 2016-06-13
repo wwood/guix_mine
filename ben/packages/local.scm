@@ -22,6 +22,7 @@
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
   #:use-module (gnu packages guile)
+  #:use-module (gnu packages gcc)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
@@ -1055,3 +1056,77 @@ FASTQ parsing code.  It provides a fast iterator over sequences and their
 quality scores.")
     (home-page "https://github.com/gusevfe/bio-kseq")
     (license license:expat)))
+
+(define-public r-vegan
+  (package
+   (name "r-vegan")
+   (version "2.3-5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "vegan" version))
+     (sha256
+      (base32
+       "00bvqv10jsq5cpanrbavvv0iy7zp19p2v7xj0z5y8smaf5843dlw"))))
+   (build-system r-build-system)
+   (native-inputs
+    `(("gfortran" ,gfortran)))
+   (propagated-inputs
+    `(("r-cluster" ,r-cluster)
+      ("r-lattice" ,r-lattice)
+      ;("r-mass" ,r-mass) ; included in base R
+      ("r-mgcv" ,r-mgcv)
+      ("r-permute" ,r-permute)))
+   (home-page "https://cran.r-project.org")
+   (synopsis "Community Ecology Package")
+   (description
+    "Ordination methods, diversity analysis and other functions for community and vegetation ecologists.")
+   (license license:gpl2+)))
+
+(define-public r-mgcv
+  (package
+   (name "r-mgcv")
+   (version "1.8-12")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "mgcv" version))
+     (sha256
+      (base32
+       "1khzy36nn6xbnzqfc2953ng0sv8w91mns1ymhibaqn1150x1qid0"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(;("r-graphics" ,r-graphics)
+      ;("r-matrix" ,r-matrix)
+      ;("r-methods" ,r-methods)
+      ;("r-nlme" ,r-nlme)
+                                        ;("r-stats" ,r-stats)
+      ))
+   (home-page
+    "http://cran.r-project.org/web/packages/mgcv")
+   (synopsis
+    "Mixed GAM Computation Vehicle with GCV/AIC/REML Smoothness Estimation")
+   (description
+    "GAMs, GAMMs and other generalized ridge regression with multiple smoothing parameter estimation by GCV, REML or UBRE/AIC.  Includes a gam() function, a wide variety of smoothers, JAGS support and distributions beyond the exponential family.")
+   (license license:gpl2+)))
+
+(define-public r-permute
+  (package
+   (name "r-permute")
+   (version "0.9-0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "permute" version))
+     (sha256
+      (base32
+       "0w68cqw6s4pixix8bh1qzsy1pm64jqh1cjznw74h82ygp8sj7p73"))))
+   (build-system r-build-system)
+   ;(propagated-inputs `(("r-stats" ,r-stats)))
+   (home-page
+    "https://github.com/gavinsimpson/permute")
+   (synopsis
+    "Functions for Generating Restricted Permutations of Data")
+   (description
+    "This package provides a set of restricted permutation designs for freely exchangeable, line transects (time series), and spatial grid designs plus permutation of blocks (groups of samples) is provided. 'permute' also allows split-plot designs, in which the whole-plots or split-plots or both can be freely-exchangeable or one of the restricted designs.  The 'permute' package is modelled after the permutation schemes of 'Canoco 3.1' (and later) by Cajo ter Braak.")
+   (license license:gpl2+)))

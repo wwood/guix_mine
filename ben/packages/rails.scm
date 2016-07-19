@@ -292,7 +292,7 @@ eq(1)\\}}.")
      "A common interface to multiple JSON libraries, including Oj, Yajl, the JSON gem (with C-extensions), the pure-Ruby JSON gem, NSJSONSerialization, gson.rb, JrJackson, and OkJson.")
     (home-page
      "http://github.com/intridea/multi_json")
-    (license expat)))
+    (license license:expat)))
 
 (define-public ruby-oj
   (package
@@ -324,7 +324,7 @@ eq(1)\\}}.")
     (description
      "The fastest JSON parser and object serializer. ")
     (home-page "http://www.ohler.com/oj")
-    (license expat)))
+    (license license:expat)))
 
 (define-public ruby-yajl-ruby
   (package
@@ -1579,4 +1579,595 @@ minutes of work.
      "https://github.com/travis-ci/travis.rb")
     (license license:expat)))
 
+
+(define-public ruby-rails
+  (package
+   (name "ruby-rails")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rails" version))
+     (sha256
+      (base32
+       "1vymw9wpygfwx3cz29ak8nrzfhj01bbca8fcc5swsv1x8pfy4yrf"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actioncable" ,ruby-actioncable)
+      ("ruby-actionmailer" ,ruby-actionmailer)
+      ("ruby-actionpack" ,ruby-actionpack)
+      ("ruby-actionview" ,ruby-actionview)
+      ("ruby-activejob" ,ruby-activejob)
+      ("ruby-activemodel" ,ruby-activemodel)
+      ("ruby-activerecord" ,ruby-activerecord)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("bundler" ,bundler)
+      ("ruby-railties" ,ruby-railties)
+      ("ruby-sprockets-rails" ,ruby-sprockets-rails)))
+   (synopsis
+    "Ruby on Rails is a full-stack web framework optimized for programmer happiness and sustainable productivity. It encourages beautiful code by favoring convention over configuration.")
+   (description
+    "Ruby on Rails is a full-stack web framework optimized for programmer happiness and sustainable productivity.  It encourages beautiful code by favoring convention over configuration.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+
+(define-public ruby-actioncable
+  (package
+   (name "ruby-actioncable")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "actioncable" version))
+     (sha256
+      (base32
+       "1x78kvrwkc6i8bwli8kkf21yikz70b5s6jl2ncpb8fz7dj1xkkj3"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actionpack" ,ruby-actionpack)
+      ("ruby-nio4r" ,ruby-nio4r)
+      ("ruby-websocket-driver" ,ruby-websocket-driver)))
+   (synopsis
+    "Structure many real-time application concerns into channels over a single WebSocket connection.")
+   (description
+    "Structure many real-time application concerns into channels over a single WebSocket connection.")
+   (home-page "http://rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-actionmailer
+  (package
+   (name "ruby-actionmailer")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "actionmailer" version))
+     (sha256
+      (base32
+       "1lyrw3jgpmjbsjp9lsd4qhyr9slsm1h3pcb75kmszs9lg8bkb586"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actionpack" ,ruby-actionpack)
+      ("ruby-actionview" ,ruby-actionview)
+      ("ruby-activejob" ,ruby-activejob)
+      ("ruby-mail" ,ruby-mail)
+      ("ruby-rails-dom-testing"
+       ,ruby-rails-dom-testing)))
+   (synopsis
+    "Email on Rails. Compose, deliver, receive, and test emails using the familiar controller/view pattern. First-class support for multipart email and attachments.")
+   (description
+    "Email on Rails.  Compose, deliver, receive, and test emails using the familiar controller/view pattern.  First-class support for multipart email and attachments.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-actionpack
+  (package
+   (name "ruby-actionpack")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "actionpack" version))
+     (sha256
+      (base32
+       "0yfq3l561808bh9ahp245a14ikh2li8k67nvk3rjdpxciwkvmqvw"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actionview" ,ruby-actionview)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-rack" ,ruby-rack)
+      ("ruby-rack-test" ,ruby-rack-test)
+      ("ruby-rails-dom-testing"
+       ,ruby-rails-dom-testing)
+      ("ruby-rails-html-sanitizer"
+       ,ruby-rails-html-sanitizer)))
+   (synopsis
+    "Web apps on Rails. Simple, battle-tested conventions for building and testing MVC web applications. Works with any Rack-compatible server.")
+   (description
+    "Web apps on Rails.  Simple, battle-tested conventions for building and testing MVC web applications.  Works with any Rack-compatible server.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-actionview
+  (package
+   (name "ruby-actionview")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "actionview" version))
+     (sha256
+      (base32
+       "10f9d1jl945vr0l4sfr8v7rf3lkdbq33f5yvnx36aa2vskz529m1"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-builder" ,ruby-builder)
+      ("ruby-erubis" ,ruby-erubis)
+      ("ruby-rails-dom-testing"
+       ,ruby-rails-dom-testing)
+      ("ruby-rails-html-sanitizer"
+       ,ruby-rails-html-sanitizer)))
+   (synopsis
+    "Simple, battle-tested conventions and helpers for building web pages.")
+   (description
+    "Simple, battle-tested conventions and helpers for building web pages.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-activejob
+  (package
+   (name "ruby-activejob")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "activejob" version))
+     (sha256
+      (base32
+       "1xrchgz6xm5j2wqfqhh6qixvssv37hsdpyi4m2zb1m53qjn0q3pv"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-globalid" ,ruby-globalid)))
+   (synopsis
+    "Declare job classes that can be run by a variety of queueing backends.")
+   (description
+    "Declare job classes that can be run by a variety of queueing backends.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-activemodel
+  (package
+   (name "ruby-activemodel")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "activemodel" version))
+     (sha256
+      (base32
+       "11j5rixlcp3i8a5mxfl4b0yhac3kzzhgmvcibbnphy5x974nr8aa"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)))
+   (synopsis
+    "A toolkit for building modeling frameworks like Active Record. Rich support for attributes, callbacks, validations, serialization, internationalization, and testing.")
+   (description
+    "This package provides a toolkit for building modeling frameworks like Active Record.  Rich support for attributes, callbacks, validations, serialization, internationalization, and testing.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-activerecord
+  (package
+   (name "ruby-activerecord")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "activerecord" version))
+     (sha256
+      (base32
+       "1sl1f0capcdfvvabsc3cxfrdq78nwafp1340zq6gxqrwkvab1nxq"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activemodel" ,ruby-activemodel)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-arel" ,ruby-arel)))
+   (synopsis
+    "Databases on Rails. Build a persistent domain model by mapping database tables to Ruby classes. Strong conventions for associations, validations, aggregations, migrations, and testing come baked-in.")
+   (description
+    "Databases on Rails.  Build a persistent domain model by mapping database tables to Ruby classes.  Strong conventions for associations, validations, aggregations, migrations, and testing come baked-in.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-railties
+  (package
+   (name "ruby-railties")
+   (version "5.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "railties" version))
+     (sha256
+      (base32
+       "0jrp9752vsfm8jz7mz8spns2cgzhg374hn1nrrnjl433rkjr6b3r"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actionpack" ,ruby-actionpack)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-method-source" ,ruby-method-source)
+      ("ruby-rake" ,ruby-rake)
+      ("ruby-thor" ,ruby-thor)))
+   (synopsis
+    "Rails internals: application bootup, plugins, generators, and rake tasks.")
+   (description
+    "Rails internals: application bootup, plugins, generators, and rake tasks.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-sprockets-rails
+  (package
+   (name "ruby-sprockets-rails")
+   (version "3.1.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "sprockets-rails" version))
+     (sha256
+      (base32
+       "1sak0as7ka964f6zjb1w8hkvfkkbf55kpcyvh7k6nyrb6pqnwmnf"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-actionpack" ,ruby-actionpack)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-sprockets" ,ruby-sprockets)))
+   (synopsis "Sprockets Rails integration")
+   (description "Sprockets Rails integration")
+   (home-page
+    "https://github.com/rails/sprockets-rails")
+   (license license:expat)))
+
+(define-public ruby-nio4r
+  (package
+   (name "ruby-nio4r")
+   (version "1.2.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "nio4r" version))
+     (sha256
+      (base32
+       "1adnm77xfxck0mrvid5d7lwng783gh580rh3y18nq4bwdikr6nha"))))
+   (build-system ruby-build-system)
+   (synopsis "New IO for Ruby")
+   (description "New IO for Ruby")
+   (home-page "https://github.com/celluloid/nio4r")
+   (license license:expat)))
+
+(define-public ruby-websocket-driver
+  (package
+   (name "ruby-websocket-driver")
+   (version "0.6.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "websocket-driver" version))
+     (sha256
+      (base32
+       "1m37q24mxykvixcj8sv0jz7y2a88spysxg5rp4zf4p1q7mbblshy"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-websocket-extensions"
+       ,ruby-websocket-extensions)))
+   (synopsis
+    "WebSocket protocol handler with pluggable I/O")
+   (description
+    "WebSocket protocol handler with pluggable I/O")
+   (home-page
+    "http://github.com/faye/websocket-driver-ruby")
+   (license license:expat)))
+
+(define-public ruby-mail
+  (package
+   (name "ruby-mail")
+   (version "2.6.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "mail" version))
+     (sha256
+      (base32
+       "0c9vqfy0na9b5096i5i4qvrvhwamjnmajhgqi3kdsdfl8l6agmkp"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-mime-types" ,ruby-mime-types)))
+   (synopsis "A really Ruby Mail handler.")
+   (description
+    "This package provides a really Ruby Mail handler.")
+   (home-page "https://github.com/mikel/mail")
+   (license license:expat)))
+
+(define-public ruby-rails-dom-testing
+  (package
+   (name "ruby-rails-dom-testing")
+   (version "2.0.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rails-dom-testing" version))
+     (sha256
+      (base32
+       "15sf7ndil079v8icipp8j37ys4ircqzri00k3s92j5xns3lfn25i"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-nokogiri" ,ruby-nokogiri)))
+   (synopsis
+    " This gem can compare doms and assert certain elements exists in doms using Nokogiri. ")
+   (description
+    " This gem can compare doms and assert certain elements exists in doms using Nokogiri. ")
+   (home-page
+    "https://github.com/rails/rails-dom-testing")
+   (license license:expat)))
+
+(define-public ruby-rack-test
+  (package
+   (name "ruby-rack-test")
+   (version "0.6.3")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rack-test" version))
+     (sha256
+      (base32
+       "0h6x5jq24makgv2fq5qqgjlrk74dxfy62jif9blk43llw8ib2q7z"))))
+   (build-system ruby-build-system)
+   (propagated-inputs `(("ruby-rack" ,ruby-rack)))
+   (synopsis
+    "Rack::Test is a small, simple testing API for Rack apps. It can be used on its
+own or as a reusable starting point for Web frameworks and testing libraries
+to build on. Most of its initial functionality is an extraction of Merb 1.0's
+request helpers feature.")
+   (description
+    "Rack::Test is a small, simple testing API for Rack apps.  It can be used on its
+own or as a reusable starting point for Web frameworks and testing libraries
+to build on.  Most of its initial functionality is an extraction of Merb 1.0's
+request helpers feature.")
+   (home-page "http://github.com/brynary/rack-test")
+   (license #f)))
+
+(define-public ruby-rails-html-sanitizer
+  (package
+   (name "ruby-rails-html-sanitizer")
+   (version "1.0.3")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rails-html-sanitizer" version))
+     (sha256
+      (base32
+       "138fd86kv073zqfx0xifm646w6bgw2lr8snk16lknrrfrss8xnm7"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-loofah" ,ruby-loofah)))
+   (synopsis
+    "HTML sanitization for Rails applications")
+   (description
+    "HTML sanitization for Rails applications")
+   (home-page
+    "https://github.com/rails/rails-html-sanitizer")
+   (license license:expat)))
+
+(define-public ruby-erubis
+  (package
+   (name "ruby-erubis")
+   (version "2.7.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "erubis" version))
+     (sha256
+      (base32
+       "1fj827xqjs91yqsydf0zmfyw9p4l2jz5yikg3mppz6d7fi8kyrb3"))))
+   (build-system ruby-build-system)
+   (synopsis
+    "  Erubis is an implementation of eRuby and has the following features:
+
+  * Very fast, almost three times faster than ERB and about 10% faster than eruby.
+  * Multi-language support (Ruby/PHP/C/Java/Scheme/Perl/Javascript)
+  * Auto escaping support
+  * Auto trimming spaces around '<% %>'
+  * Embedded pattern changeable (default '<% %>')
+  * Enable to handle Processing Instructions (PI) as embedded pattern (ex. '<?rb ... ?>')
+  * Context object available and easy to combine eRuby template with YAML datafile
+  * Print statement available
+  * Easy to extend and customize in subclass
+  * Ruby on Rails support
+")
+   (description
+    "  Erubis is an implementation of eRuby and has the following features:
+
+  * Very fast, almost three times faster than ERB and about 10% faster than eruby.
+  * Multi-language support (Ruby/PHP/C/Java/Scheme/Perl/Javascript)
+  * Auto escaping support
+  * Auto trimming spaces around '<% %>'
+  * Embedded pattern changeable (default '<% %>')
+  * Enable to handle Processing Instructions (PI) as embedded pattern (ex. '<?rb ... ?>')
+  * Context object available and easy to combine eRuby template with YAML datafile
+  * Print statement available
+  * Easy to extend and customize in subclass
+  * Ruby on Rails support
+")
+   (home-page "http://www.kuwata-lab.com/erubis/")
+   (license #f)))
+
+(define-public ruby-globalid
+  (package
+   (name "ruby-globalid")
+   (version "0.3.6")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "globalid" version))
+     (sha256
+      (base32
+       "145xrpsfx1qqjy33r6qa588wb16dvdhxzj2aysh755vhg6hgm291"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)))
+   (synopsis
+    "URIs for your models makes it easy to pass references around.")
+   (description
+    "URIs for your models makes it easy to pass references around.")
+   (home-page "http://www.rubyonrails.org")
+   (license license:expat)))
+
+(define-public ruby-rake
+  (package
+   (name "ruby-rake")
+   (version "11.2.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rake" version))
+     (sha256
+      (base32
+       "0m7fk7n0q459b1866cpq0gyz6904srhajrag0ybpdyl5sw4c2xff"))))
+   (build-system ruby-build-system)
+   (synopsis
+    "Rake is a Make-like program implemented in Ruby. Tasks and dependencies are
+specified in standard Ruby syntax.
+
+Rake has the following features:
+
+* Rakefiles (rake's version of Makefiles) are completely defined in
+  standard Ruby syntax.  No XML files to edit.  No quirky Makefile
+  syntax to worry about (is that a tab or a space?)
+
+* Users can specify tasks with prerequisites.
+
+* Rake supports rule patterns to synthesize implicit tasks.
+
+* Flexible FileLists that act like arrays but know about manipulating
+  file names and paths.
+
+* A library of prepackaged tasks to make building rakefiles easier. For example,
+  tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
+  tasks for building RDoc and Gems were included in rake but they're now
+  available in RDoc and RubyGems respectively.)
+
+* Supports parallel execution of tasks.")
+   (description
+    "Rake is a Make-like program implemented in Ruby.  Tasks and dependencies are
+specified in standard Ruby syntax.
+
+Rake has the following features:
+
+* Rakefiles (rake's version of Makefiles) are completely defined in
+  standard Ruby syntax.  No XML files to edit.  No quirky Makefile
+  syntax to worry about (is that a tab or a space?)
+
+* Users can specify tasks with prerequisites.
+
+* Rake supports rule patterns to synthesize implicit tasks.
+
+* Flexible FileLists that act like arrays but know about manipulating
+  file names and paths.
+
+* A library of prepackaged tasks to make building rakefiles easier.  For example,
+  tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
+  tasks for building RDoc and Gems were included in rake but they're now
+  available in RDoc and RubyGems respectively.)
+
+* Supports parallel execution of tasks.")
+   (home-page "https://github.com/ruby/rake")
+   (license license:expat)))
+
+(define-public ruby-sprockets
+(package
+  (name "ruby-sprockets")
+  (version "3.6.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "sprockets" version))
+      (sha256
+        (base32
+          "0flynmaaxa53pv15x7kcxr7z6h1hn7ifrxk13dfhhvh6h38jnzkv"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-concurrent" ,ruby-concurrent)
+      ("ruby-rack" ,ruby-rack)))
+  (synopsis
+    "Sprockets is a Rack-based asset packaging system that concatenates and serves JavaScript, CoffeeScript, CSS, LESS, Sass, and SCSS.")
+  (description
+    "Sprockets is a Rack-based asset packaging system that concatenates and serves JavaScript, CoffeeScript, CSS, LESS, Sass, and SCSS.")
+  (home-page "https://github.com/rails/sprockets")
+  (license license:expat)))
+
+(define-public ruby-websocket-extensions
+(package
+  (name "ruby-websocket-extensions")
+  (version "0.1.2")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "websocket-extensions" version))
+      (sha256
+        (base32
+          "07qnsafl6203a2zclxl20hy4jq11c471cgvd0bj5r9fx1qqw06br"))))
+  (build-system ruby-build-system)
+  (synopsis
+    "Generic extension manager for WebSocket connections")
+  (description
+    "Generic extension manager for WebSocket connections")
+  (home-page
+    "http://github.com/faye/websocket-extensions-ruby")
+  (license license:expat)))
+
+(define-public ruby-loofah
+(package
+  (name "ruby-loofah")
+  (version "2.0.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "loofah" version))
+      (sha256
+        (base32
+          "109ps521p0sr3kgc460d58b4pr1z4mqggan2jbsf0aajy9s6xis8"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-nokogiri" ,ruby-nokogiri)))
+  (synopsis
+    "Loofah is a general library for manipulating and transforming HTML/XML
+documents and fragments. It's built on top of Nokogiri and libxml2, so
+it's fast and has a nice API.
+
+Loofah excels at HTML sanitization (XSS prevention). It includes some
+nice HTML sanitizers, which are based on HTML5lib's whitelist, so it
+most likely won't make your codes less secure. (These statements have
+not been evaluated by Netexperts.)
+
+ActiveRecord extensions for sanitization are available in the
+`loofah-activerecord` gem (see
+https://github.com/flavorjones/loofah-activerecord).")
+  (description
+    "Loofah is a general library for manipulating and transforming HTML/XML
+documents and fragments.  It's built on top of Nokogiri and libxml2, so
+it's fast and has a nice API.
+
+Loofah excels at HTML sanitization (XSS prevention).  It includes some
+nice HTML sanitizers, which are based on HTML5lib's whitelist, so it
+most likely won't make your codes less secure. (These statements have
+not been evaluated by Netexperts.)
+
+ActiveRecord extensions for sanitization are available in the
+`loofah-activerecord` gem (see
+https://github.com/flavorjones/loofah-activerecord).")
+  (home-page
+    "https://github.com/flavorjones/loofah")
+  (license license:expat)))
 

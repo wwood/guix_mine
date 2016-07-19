@@ -39,6 +39,7 @@
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
+  #:use-module (gnu packages tcsh)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages valgrind)
   #:use-module (gnu packages vim)
@@ -1130,3 +1131,42 @@ quality scores.")
    (description
     "This package provides a set of restricted permutation designs for freely exchangeable, line transects (time series), and spatial grid designs plus permutation of blocks (groups of samples) is provided. 'permute' also allows split-plot designs, in which the whole-plots or split-plots or both can be freely-exchangeable or one of the restricted designs.  The 'permute' package is modelled after the permutation schemes of 'Canoco 3.1' (and later) by Cajo ter Braak.")
    (license license:gpl2+)))
+
+(define-public mummer ; potentially works, except that all the files need to be
+                                        ; moved to the output directory before
+                                        ; making, I think. Need also to remove
+                                        ; crud afterwards, I guess. Gah. Have a
+                                        ; look at the debian package, they seem
+                                        ; to steal the code from somewhere else.
+  
+  (package
+    (name "mummer")
+    (version "3.23")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://sourceforge/mummer/MUMmer"
+                                  version ".tar.gz"))
+              (sha256
+               (base32
+                "0bv6mwqg6imgyxga24xm1cb3mfs56zba485kxgmdiq6fv3vx9yhy"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:parallel-build? #f
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'build 'patch-paths
+           (lambda _
+             (substitute* "Makefile"
+               ((" /bin/sh") (string-append " " (which "sh"))))
+             (substitute* "scripts/Makefile"
+               ((" /bin/sh") (string-append " " (which "sh")))))))))
+               
+    (inputs
+     `(("perl" ,perl) ; dunno which level these are required at
+       ("tcsh" ,tcsh)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:gpl3+))) ;fixme

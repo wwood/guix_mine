@@ -19,16 +19,22 @@
   #:use-module (gnu packages boost)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
+  #:use-module (gnu packages curl)
   #:use-module (gnu packages file)
-  #:use-module (gnu packages flex)
+  #:use-module (gnu packages flex) 
+  #:use-module (gnu packages glib)
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages groff)
   #:use-module (gnu packages java)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
+  #:use-module (gnu packages man)
   #:use-module (gnu packages maths)
+  #:use-module (gnu packages mpi)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages ocaml)
+  #:use-module (gnu packages parallel)
   #:use-module (gnu packages pcre)
   #:use-module (gnu packages perl)
   #:use-module (gnu packages pkg-config)
@@ -39,6 +45,7 @@
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
+  #:use-module (gnu packages texinfo)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages valgrind)
   #:use-module (gnu packages vim)
@@ -369,10 +376,10 @@ against a target (reference) genome.  SHRiMP2 was primarily developed to work
 with short reads produced by Next Generation Sequencing (NGS) machines.")
    (license license:expat)))
 
-(define-public spades ; possibly might compile, but there is bundled dependencies
+(define-public spades ; there is bundled dependencies
   (package
     (name "spades")
-    (version "3.6.0")
+    (version "3.8.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://spades.bioinf.spbau.ru/release"
@@ -380,19 +387,27 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1a8kvrf7hpycxfnyspbyp4x47k8zshqv0b469jsfblwa0rfya13c"))))
+                "1c5kqspl6wirbpcbjblax9l3kgnf32jhr2m52nhfvrqszp8warw8"))))
     (build-system cmake-build-system)
-    (inputs `(("zlib" ,zlib)))
+    (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
+     `(("zlib" ,zlib)
+       ("bzip2" ,bzip2)
+       ("python-wrapper" ,python-wrapper))) ; native-input ?
     (arguments
-     '(#:test-target "test"
-       #:phases
+     '(#:phases
        (modify-phases %standard-phases
          (delete 'configure)
          (replace 'build
-                  (lambda* (#:key outputs #:allow-other-keys)
+           (lambda* (#:key outputs #:allow-other-keys)
                     (setenv "PREFIX" (assoc-ref outputs "out"))
                     (zero? (system* "sh" "spades_compile.sh"))))
-         (delete 'install))))
+         (delete 'install)
+         (delete 'check)
+         (add-after 'install 'post-install-check
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (zero? (system*
+                     (string-append (assoc-ref outputs "out") "/bin/spades.py")
+                     "--test")))))))
     (home-page "http://bioinf.spbau.ru/en/spades")
     (synopsis "A single-cell and isolate genome assembler")
     (description
@@ -435,7 +450,7 @@ assemblies.")
        ("python-h5py" ,python2-h5py)
        ("python-tempdir" ,python2-tempdir)))
     (propagated-inputs
-       ("orfm" ,orfm)
+     `(("orfm" ,orfm)
        ("hmmer" ,hmmer)
        ("diamond" ,diamond)
        ("fxtract" ,fxtract)
@@ -444,7 +459,7 @@ assemblies.")
        ("pplacer" ,pplacer)
        ("seqmagick" ,seqmagick)
        ("taxtastic" ,taxtastic)
-       ("mafft" ,mafft))
+       ("mafft" ,mafft)))
     (home-page "http://geronimp.github.com/graftM")
     (synopsis "Identify and classify metagenomic marker gene reads")
     (description
@@ -828,104 +843,473 @@ the binning summary page.")
      (home-page "https://github.com/knife/ds")
      (license #f)))
 
-(define-public ruby-bio-kseq
+(define-public pagan
   (package
-    (name "ruby-bio-kseq")
-    (version "0.0.2")
+    (name "pagan")
+    (version "20150723")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "http://wasabiapp.org/download/pagan/pagan.src."
+                    version ".tgz"))
+              (sha256
+               (base32
+                "0gy81zrlmmkkkp27lhq2k6jq05nfa7w9g80bnwrakd1vixargpk8"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:make-flags (list "-f" "Makefile.no_Qt") 
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'delete-bundled-boost
+           (lambda _
+             (delete-file-recursively "boost")
+             #t))
+         (delete 'configure)
+         (add-before 'build 'setup-build
+           (lambda _
+             (chdir "src")
+             (substitute* "Makefile.no_Qt"
+               (("/usr/bin/g\\+\\+") "g++"))
+             #t))
+         (replace 'check
+           (lambda _
+             ;; There are no tests, instead just run one of the examples.
+             (zero? (system* "./pagan" "--ref-seqfile"
+                             "../examples/protein_placement/reference_aa.fas"
+                             "--ref-treefile"
+                             "../examples/protein_placement/reference_tree.nhx"
+                             "--queryfile"
+                             "../examples/protein_placement/input_aa_frags.fas"
+                             "--outfile" "aa_frags_alignment" "--guided"
+                             "--fragments"))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (install-file "pagan" (string-append
+                                    (assoc-ref outputs "out") "/bin"))
+             #t)))))
+    (inputs
+     `(("boost" ,boost)
+       ("curl" ,curl)))
+    (propagated-inputs 
+     ;; TODO: make these regular inputs by patching the source code, likely by
+     ;; ensuring the test methods always return true, and the system call uses
+     ;; the full path to the executable.
+     `(("exonerate" ,exonerate)
+       ("mafft" ,mafft)
+       ("raxml" ,raxml)
+       ("bppsuite" ,bpp-suite)))
+    (home-page "")
+    (synopsis "Probabilistic multiple sequence alignment program")
+    (description
+     "PAGAN is a general-purpose method for the alignment of sequence
+graphs. PAGAN is based on the phylogeny-aware progressive alignment algorithm
+and uses graphs to describe the uncertainty in the presence of characters at
+certain sequence positions.  However, graphs also allow describing the
+uncertainty in input sequences and modelling e.g. homopolymer errors in Roche
+454 reads, or representing inferred ancestral sequences against which other
+sequences can then be aligned.")
+    ;; According to 
+    (license license:gpl3+)))
+
+(define-public exonerate
+  (package
+    (name "exonerate")
+    (version "2.2.0")
     (source
      (origin
        (method url-fetch)
-       (uri (rubygems-uri "bio-kseq" version))
+       (uri
+        (string-append
+         "http://ftp.ebi.ac.uk/pub/software/vertebrategenomics/exonerate/"
+         "exonerate-" version ".tar.gz"))
        (sha256
         (base32
-         "1xyaha46khb5jc6wzkbf7040jagac49jbimn0vcrzid0j8jdikrz"))))
-    (build-system ruby-build-system)
-    (arguments
-     `(#:test-target "spec"))
+         "1zz5dxhpkrv5k892kcjp3wqsw5ml54qg88lmi2gk5yl82c5p58hf"))))
+    (build-system gnu-build-system)
     (native-inputs
-     `(("bundler" ,bundler)
-       ("ruby-rspec" ,ruby-rspec)
-       ("ruby-rake-compiler" ,ruby-rake-compiler)))
+     `(("pkg-config" ,pkg-config)))
     (inputs
-     `(("zlib" ,zlib)))
-    (synopsis "Ruby bindings for the kseq.h FASTA/Q parser")
+     `(("glib" ,glib)))
+    (home-page "https://www.ebi.ac.uk/about/vertebrate-genomics/software/exonerate")
+    (synopsis "Generic tool for biological sequence alignment")
     (description
-     "@code{Bio::Kseq} provides ruby bindings to the @code{kseq.h} FASTA and
-FASTQ parsing code.  It provides a fast iterator over sequences and their
-quality scores.")
-    (home-page "https://github.com/gusevfe/bio-kseq")
-    (license license:expat)))
+     "Exonerate is a generic tool for pairwise sequence comparison.  It allows
+the alignment of sequences using a many alignment models, either exhaustive
+dynamic programming or a variety of heuristics.")
+    (license license:gpl3)))
 
-(define-public r-vegan
+(define-public raxml
   (package
-   (name "r-vegan")
-   (version "2.3-5")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "vegan" version))
-     (sha256
-      (base32
-       "00bvqv10jsq5cpanrbavvv0iy7zp19p2v7xj0z5y8smaf5843dlw"))))
-   (build-system r-build-system)
-   (native-inputs
-    `(("gfortran" ,gfortran)))
-   (propagated-inputs
-    `(("r-cluster" ,r-cluster)
-      ("r-lattice" ,r-lattice)
-      ;("r-mass" ,r-mass) ; included in base R
-      ("r-mgcv" ,r-mgcv)
-      ("r-permute" ,r-permute)))
-   (home-page "https://cran.r-project.org")
-   (synopsis "Community Ecology Package")
-   (description
-    "Ordination methods, diversity analysis and other functions for community and vegetation ecologists.")
-   (license license:gpl2+)))
+    (name "raxml")
+    (version "8.2.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://github.com/stamatak/standard-RAxML/archive/v"
+         version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1dlnyi4m7aixqnc6bshwkd5c04ww03sj6c7sdv6ywh6nzk2x76x9"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests.
+       ;; Use 'standard' Makefile rather than SSE or AVX ones.
+       #:make-flags (list "-f" "Makefile.HYBRID.gcc") 
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin"))
+                    (executable "raxmlHPC-HYBRID"))
+               (install-file executable bin)
+               (symlink (string-append bin "/" executable)
+                        "raxml"))
+             #t)))))
+    (inputs
+     `(("openmpi" ,openmpi)))
+    (home-page "http://sco.h-its.org/exelixis/web/software/raxml/index.html")
+    (synopsis "Randomized Axelerated Maximum Likelihood phylogenetic trees")
+    (description
+     "RAxML is a tool for phylogenetic analysis and post-analysis of large
+phylogenies.")
+    (license license:gpl3))) ;?
 
-(define-public r-mgcv
-  (package
-   (name "r-mgcv")
-   (version "1.8-12")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "mgcv" version))
-     (sha256
-      (base32
-       "1khzy36nn6xbnzqfc2953ng0sv8w91mns1ymhibaqn1150x1qid0"))))
-   (build-system r-build-system)
-   (propagated-inputs
-    `(;("r-graphics" ,r-graphics)
-      ;("r-matrix" ,r-matrix)
-      ;("r-methods" ,r-methods)
-      ;("r-nlme" ,r-nlme)
-                                        ;("r-stats" ,r-stats)
-      ))
-   (home-page
-    "http://cran.r-project.org/web/packages/mgcv")
-   (synopsis
-    "Mixed GAM Computation Vehicle with GCV/AIC/REML Smoothness Estimation")
-   (description
-    "GAMs, GAMMs and other generalized ridge regression with multiple smoothing parameter estimation by GCV, REML or UBRE/AIC.  Includes a gam() function, a wide variety of smoothers, JAGS support and distributions beyond the exponential family.")
-   (license license:gpl2+)))
+(define-public bpp-core
+  ;; The last release was in 2014 and the recommended way to install from source
+  ;; is to clone the git repository, so we do this.
+  ;; http://biopp.univ-montp2.fr/wiki/index.php/Main_Page
+  (let ((commit "7d8bced0d1a87291ea8dd7046b7fb5ff9c35c582"))
+    (package
+      (name "bpp-core")
+      (version (string-append "2.2.0-1." (string-take commit 7)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "http://biopp.univ-montp2.fr/git/bpp-core")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "10djsq5vlnkilv436gnmh4irpk49v29pa69r6xiryg32xmvn909j"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:parallel-build? #f))
+      (inputs
+       `(("gcc" ,gcc-5)))
+      (home-page "http://biopp.univ-montp2.fr")
+      (synopsis "C++ libraries for Bioinformatics")
+      (description
+       "Bio++ is a set of C++ libraries for Bioinformatics, including sequence
+analysis, phylogenetics, molecular evolution and population genetics.  Bio++ is
+Object Oriented and is designed to be both easy to use and computer efficient.
+Bio++ intends to help programmers to write computer expensive programs, by
+providing them a set of re-usable tools.")
+      (license license:cecill-c))))
 
-(define-public r-permute
+
+
+(define-public bpp-phyl
+  ;; The last release was in 2014 and the recommended way to install from source
+  ;; is to clone the git repository, so we do this.
+  ;; http://biopp.univ-montp2.fr/wiki/index.php/Main_Page
+  (let ((commit "0c07167b629f68b569bf274d1ad0c4af83276ae2"))
+    (package
+      (name "bpp-phyl")
+      (version (string-append "2.2.0-1." (string-take commit 7)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "http://biopp.univ-montp2.fr/git/bpp-phyl")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "1ssjgchzwj3iai26kyly7gwkdv8sk59nqhkb1wpap3sf5m6kyllh"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:parallel-build? #f
+         ;; If out-of-source, test data is not copied into the build directory
+         ;; so the tests fail.
+         #:out-of-source? #f))
+      (inputs
+       `(("bpp-core" ,bpp-core)
+         ("bpp-seq" ,bpp-seq)
+         ;; GCC 4.8 fails due to an 'internal compiler error', so we use a more
+         ;; modern GCC.
+         ("gcc" ,gcc-5)))
+      (home-page "http://biopp.univ-montp2.fr")
+      (synopsis "Bio++ Phylogenetic Library")
+      (description
+       "Bio++ is a set of C++ libraries for Bioinformatics, including sequence
+analysis, phylogenetics, molecular evolution and population genetics.  Bio++ is
+Object Oriented and is designed to be both easy to use and computer efficient.
+Bio++ intends to help programmers to write computer expensive programs, by
+providing them a set of re-usable tools.")
+      (license license:cecill-c))))
+
+(define-public bpp-popgen
+  ;; The last release was in 2014 and the recommended way to install from source
+  ;; is to clone the git repository, so we do this.
+  ;; http://biopp.univ-montp2.fr/wiki/index.php/Main_Page
+  (let ((commit "e472bac9b1a148803895d747cd6d0c5904f85d9f"))
+    (package
+      (name "bpp-popgen")
+      (version (string-append "2.2.0-1." (string-take commit 7)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "http://biopp.univ-montp2.fr/git/bpp-popgen")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "0yn82dzn1n5629nzja68xfrhi655709rjanyryb36vzkmymy6dw5"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:parallel-build? #f
+         #:tests? #f)) ; There are no tests.
+      (inputs
+       `(("bpp-core" ,bpp-core)
+         ("bpp-seq" ,bpp-seq)
+         ("gcc" ,gcc-5)))
+      (home-page "http://biopp.univ-montp2.fr")
+      (synopsis "Bio++ Phylogenetic Library")
+      (description
+       "Bio++ is a set of C++ libraries for Bioinformatics, including sequence
+analysis, phylogenetics, molecular evolution and population genetics.  Bio++ is
+Object Oriented and is designed to be both easy to use and computer efficient.
+Bio++ intends to help programmers to write computer expensive programs, by
+providing them a set of re-usable tools.")
+      (license license:cecill-c))))
+
+(define-public bppsuite
+  ;; The last release was in 2014 and the recommended way to install from source
+  ;; is to clone the git repository, so we do this.
+  ;; http://biopp.univ-montp2.fr/wiki/index.php/Main_Page
+  (let ((commit "c516147f57aa50961121cd505bed52cd7603698b"))
+    (package
+      (name "bppsuite")
+      (version (string-append "2.2.0-1." (string-take commit 7)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "http://biopp.univ-montp2.fr/git/bppsuite")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "1y87pxvw0jxjizhq2dr9g2r91md45k1p9ih2sl1yy1y3p934l2kb"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:parallel-build? #f
+         #:tests? #f)) ; There are no tests.
+      (native-inputs
+       `(("groff" ,groff)
+         ("man-db" ,man-db)
+         ("texinfo" ,texinfo)))
+      (inputs
+       `(("bpp-core" ,bpp-core)
+         ("bpp-seq" ,bpp-seq)
+         ("bpp-phyl" ,bpp-phyl)
+         ("bpp-phyl" ,bpp-popgen)
+         ("gcc" ,gcc-5)))
+      (home-page "http://biopp.univ-montp2.fr")
+      (synopsis "Bio++ Program Suite")
+      (description
+       "Bio++ is a set of C++ libraries for Bioinformatics, including sequence
+analysis, phylogenetics, molecular evolution and population genetics.  Bio++ is
+Object Oriented and is designed to be both easy to use and computer efficient.
+Bio++ intends to help programmers to write computer expensive programs, by
+providing them a set of re-usable tools.")
+      (license license:cecill-c))))
+
+(define-public prank
   (package
-   (name "r-permute")
-   (version "0.9-0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "permute" version))
-     (sha256
-      (base32
-       "0w68cqw6s4pixix8bh1qzsy1pm64jqh1cjznw74h82ygp8sj7p73"))))
-   (build-system r-build-system)
-   ;(propagated-inputs `(("r-stats" ,r-stats)))
-   (home-page
-    "https://github.com/gavinsimpson/permute")
-   (synopsis
-    "Functions for Generating Restricted Permutations of Data")
-   (description
-    "This package provides a set of restricted permutation designs for freely exchangeable, line transects (time series), and spatial grid designs plus permutation of blocks (groups of samples) is provided. 'permute' also allows split-plot designs, in which the whole-plots or split-plots or both can be freely-exchangeable or one of the restricted designs.  The 'permute' package is modelled after the permutation schemes of 'Canoco 3.1' (and later) by Cajo ter Braak.")
-   (license license:gpl2+)))
+    (name "prank")
+    (version "150803")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "http://wasabiapp.org/download/prank/prank.source."
+                    version ".tgz"))
+              (sha256
+               (base32
+                "0am4z94fs3w2n5xpfls9zda61vq7qqz4q2i7b9hlsxz5q4j3kfm4"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'enter-src-dir
+            (lambda _
+              (chdir "src")
+              #t))
+         (delete 'configure)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin"))
+                    (man (string-append out "/share/man/man1")))
+               (install-file "prank" bin)
+               (install-file "prank.1" man))
+             #t)))))
+    (propagated-inputs
+     ;; TODO: Make these tools regular inputs by modifying prank code.
+     `(("mafft" ,mafft)
+       ("exonerate" ,exonerate)
+       ("bppsuite" ,bppsuite)))
+    (home-page "http://wasabiapp.org/software/prank/")
+    (synopsis "Probabilistic multiple sequence alignment program")
+    (description
+     "PRANK is a probabilistic multiple sequence alignment program for DNA,
+codon and amino-acid sequences.  It is based on a novel algorithm that treats
+insertions correctly and avoids over-estimation of the number of deletion
+events.  In addition, PRANK borrows ideas from maximum likelihood methods used
+in phylogenetics and correctly takes into account the evolutionary distances
+between sequences.  Lastly, PRANK allows for defining a potential structure
+for sequences to be aligned and then, simultaneously with the alignment,
+predicts the locations of structural units in the sequences.")
+    (license license:gpl3+))) ;?
+
+(define-public roary
+  (package
+    (name "roary")
+    (version "3.6.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/sanger-pathogens/Roary/archive/v"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1dxsb1mi1d440gia1mwq94bvjbp42amfqmwai6nlcrni1x4icbmw"))
+              (patches (search-patches "prank.patch")))) ;fix
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'delete-bundled-binaries
+           (lambda _
+             (delete-file-recursively "binaries")
+             #t))
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check
+           (lambda _
+             (setenv "PATH" (string-append (getenv "PATH") ":"
+                                           (getcwd) "/bin"))
+             (setenv "PERL5LIB" (string-append (getenv "PERL5LIB") ":"
+                                               (getcwd) "/lib"))
+             (copy-file "t/data/real_data_1.gff" "1.gff")
+             (copy-file "t/data/real_data_2.gff" "2.gff")
+             (delete-file-recursively "t")
+             (and
+              ;; (zero? (system* "roary" "-a")) ; check dependencies
+              (zero? (system* "roary"
+                              "-f" "test_out"
+                              "-v"
+                              "-z"
+                              "-e"
+                              "1.gff"
+                              "2.gff"))
+              #f
+              )))
+              ;; (zero? (system* "FastTree" "-nt" "-gtr"
+              ;;                 "test_out/core_gene_alignment.aln" ">"
+              ;;                 "my_tree.newick"))
+              ;; (zero? (system* "contrib/roary_plots/roary_plots.py"
+              ;;                 "my_tree.newick"
+              ;;                 "test_out/gene_presence_absence.csv")))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin"))
+                    (lib (string-append out "/lib"))
+                    (roary-plots "contrib/roary_plots"))
+               (mkdir-p bin)
+               (mkdir-p lib)
+               (copy-recursively "bin" bin)
+               (copy-recursively "lib" lib)
+               (install-file (string-append roary-plots "/roary_plots.py")
+                          bin)
+               (mkdir-p (string-append bin "/roary_files"))
+               (copy-recursively (string-append roary-plots "/roary_files")
+                                 (string-append bin "/roary_files"))
+             #t))))))
+    (inputs
+     `(("perl" ,perl)
+       ("r" ,r)
+       ("python" ,python-wrapper))) ; For 'roary_plots' contrib
+    (propagated-inputs
+     `(("perl-array-utils" ,perl-array-utils);Array::Utils
+       ("bioperl" ,bioperl-minimal);Bio::Perl
+       ("perl-exception-class" ,perl-exception-class);Exception::Class
+       ("perl-file-find-rule" ,perl-file-find-rule);File::Find::Rule
+       ("perl-file-grep" ,perl-file-grep);File::Grep
+       ("perl-file-path" ,perl-file-path);File::Path
+       ("perl-file-slurper" ,perl-file-slurper);File::Slurper
+       ("perl-file-temp" ,perl-file-temp);File::Temp
+       ("perl-file-which" ,perl-file-which);File::Which
+       ;("perl-getopt-long" ,perl-getopt-long);Getopt::Long
+       ("perl-graph" ,perl-graph);Graph
+       ("perl-graph-readwrite" ,perl-graph-readwrite);Graph::Writer::Dot
+       ("perl-scalar-list-utils" ,perl-scalar-list-utils);List::Util
+       ("perl-log-log4perl" ,perl-log-log4perl);Log::Log4perl
+       ("perl-moose" ,perl-moose);Moose, Moose::Role
+       ("perl-text-csv" ,perl-text-csv);Text::CSV
+       ("perl-perlio-utf8_strict" ,perl-perlio-utf8_strict);PerlIO::utf8_strict 
+       ("bedtools" ,bedtools)
+       ("cd-hit" ,cd-hit)
+       ("blast+" ,blast+)
+       ("mcl" ,mcl)
+       ("parallel" ,parallel)
+       ("prank" ,prank)
+       ("mafft" ,mafft)
+       ("fasttree" ,fasttree)
+       ("r-ggplot2" ,r-ggplot2)
+       ;; Below are inputs for the 'roary_plots' contrib.
+       ("python-biopython" ,python-biopython)
+       ("python-numpy" ,python-numpy)
+       ("python-pandas" ,python-pandas)
+       ("python-matplotlib" ,python-matplotlib)
+       ("python-seaborn" ,python-seaborn)))
+    (home-page "http://sanger-pathogens.github.io/Roary")
+    (synopsis "")
+    (description
+     "")
+    (license license:gpl3)))
+
+
+
+
+
+
+
+;; Part of Perl 5 apparently
+;; (define-public perl-getopt-long
+;;   (package
+;;     (name "perl-getopt-long")
+;;     (version "v2.49.1")
+;;     (source
+;;      (origin
+;;        (method url-fetch)
+;;        (uri (string-append
+;;              "mirror://cpan/authors/id/J/JV/JV/Getopt-Long-"
+;;              version ".tar.gz"))
+;;        (sha256
+;;         (base32
+;;          "0bw8gbhj8s5gmkqvs3m7pk9arqhgqssrby4yimh29ah9alix9ylq"))))
+;;     (build-system perl-build-system)
+;;     (home-page "http://search.cpan.org/dist/Getopt-Long")
+;;     (synopsis "Parse command line options")
+;;     (description "")
+;;     (license #f)))
+
+
+
+

@@ -1,0 +1,61 @@
+
+(define-module (ben packages findm)
+  #:use-module ((guix licenses) #:prefix license:)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages algebra)
+  #:use-module (gnu packages base)
+  #:use-module (gnu packages compression)
+  #:use-module (gnu packages databases)
+  #:use-module (gnu packages readline)
+  #:use-module (gnu packages autotools)
+  #:use-module (gnu packages java)
+  #:use-module (gnu packages libffi)
+  #:use-module (gnu packages perl)
+  #:use-module (gnu packages python)
+  #:use-module (gnu packages ragel)
+  #:use-module (gnu packages tls)
+  #:use-module (gnu packages version-control)
+  #:use-module (guix packages)
+  #:use-module (guix download)
+  #:use-module (guix git-download)
+  #:use-module (guix utils)
+  #:use-module (guix build-system gnu)
+  #:use-module (gnu packages xml)
+  #:use-module (gnu packages web)
+  #:use-module (guix build-system ruby)
+
+  #:use-module (gnu packages ruby)
+  #:use-module (ben packages rails)
+  )
+
+
+(define-public findm
+  (package
+    (name "findm")
+    (version "alpha")
+    (source #f)
+    (build-system ruby-build-system)
+    (propagated-inputs
+     `(("ruby-rails" ,ruby-rails)
+       ("ruby-sqlite3" ,ruby-sqlite3)
+       ("ruby-sass-rails" ,ruby-sass-rails)
+       ("ruby-uglifier" ,ruby-uglifier)
+       ("ruby-coffee-rails" ,ruby-coffee-rails)
+       ("ruby-jquery-rails" ,ruby-jquery-rails)
+       ("ruby-turbolinks" ,ruby-turbolinks)
+       ("ruby-jbuilder" ,ruby-jbuilder)
+       ("ruby-sdoc" ,ruby-sdoc)
+       ("ruby-bio-commandeer" ,ruby-bio-commandeer)
+       ("ruby-therubyracer" ,ruby-therubyracer)
+       ("ruby-puma" ,ruby-puma)
+       ("ruby-byebug" ,ruby-byebug)
+       ("ruby-web-console" ,ruby-web-console)
+       ("ruby-spring" ,ruby-spring)))
+    (synopsis
+     "")
+    (description
+     "")
+    (home-page
+     "http://findm.ecogenomic.org")
+    (license #f)))
+

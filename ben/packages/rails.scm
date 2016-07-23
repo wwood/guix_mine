@@ -1,10 +1,5 @@
 ;;; GNU Guix --- Functional package management for GNU
-;;; Copyright © 2014, 2015 Pjotr Prins <pjotr.guix@thebird.nl>
-;;; Copyright © 2014, 2015 Ludovic Courtès <ludo@gnu.org>
-;;; Copyright © 2014, 2015 Mark H Weaver <mhw@netris.org>
-;;; Copyright © 2014, 2015 David Thompson <davet@gnu.org>
-;;; Copyright © 2015 Ricardo Wurmus <rekado@elephly.net>
-;;; Copyright © 2015 Ben Woodcroft <donttrustben@gmail.com>
+;;; Copyright © 2016 Ben Woodcroft <donttrustben@gmail.com>
 ;;;
 ;;; This file is part of GNU Guix.
 ;;;
@@ -47,7 +42,7 @@
   #:use-module (guix build-system ruby)
 
   #:use-module (gnu packages ruby)
-  #:use-module (ben packages rails-submitted)
+;  #:use-module (ben packages rails-submitted)
   )
 
 
@@ -1334,49 +1329,6 @@ but it can function as a stand-alone templating engine.")
 
 
 
-
-;; (define-public ruby-rack-test
-;;   (package
-;;     (name "ruby-rack-test")
-;;     (version "0.6.3")
-;;     (source
-;;      (origin
-;;        (method url-fetch)
-;;        (uri (rubygems-uri "rack-test" version))
-;;        (sha256
-;;         (base32
-;;          "0h6x5jq24makgv2fq5qqgjlrk74dxfy62jif9blk43llw8ib2q7z"))))
-;;     (build-system ruby-build-system)
-;;     (arguments
-;;      ;; Disable tests because of circular dependencies: requires sinatra,
-;;      ;; which requires rack-protection, which requires rack-test.
-;;      `(#:tests? #f
-;;        #:phases
-;;        (modify-phases %standard-phases
-;;          (add-after 'enter-src-dir 'fix-dependencies
-;;            (lambda _
-;;              ;; Remove test dependencies as we are not testing.
-;;              (substitute* "Gemfile"
-;;                (("^gem \\\"sinatra\\\"") "")
-;;                (("^gem 'rspec'") "")
-;;                (("^gem \\\"codeclimate-test-reporter.*") ""))
-;;              (substitute* "Rakefile"
-;;                (("^require .rspec.*") "")))))))
-;;     (propagated-inputs
-;;      `(("ruby-rack" ,ruby-rack)))
-;;     (native-inputs
-;;      `(("bundler" ,bundler)))
-;;     (synopsis "Testing API for Rack applications")
-;;     (description
-;;      "Rack::Test is a small, simple testing API for Rack applications.  It can
-;; be used on its own or as a reusable starting point for Web frameworks and
-;; testing libraries to build on.")
-;;     (home-page "http://github.com/brynary/rack-test")
-;;     (license license:expat)))
-
-
-
-
 (define-public ruby-backports
   (package
   (name "ruby-backports")
@@ -1579,7 +1531,6 @@ minutes of work.
      "https://github.com/travis-ci/travis.rb")
     (license license:expat)))
 
-
 (define-public ruby-rails
   (package
    (name "ruby-rails")
@@ -1592,6 +1543,12 @@ minutes of work.
       (base32
        "1vymw9wpygfwx3cz29ak8nrzfhj01bbca8fcc5swsv1x8pfy4yrf"))))
    (build-system ruby-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+        (replace 'check
+          (lambda _
+            (zero? (system* "rails" "new" "/tmp/my_webapp")))))))
    (propagated-inputs
     `(("ruby-actioncable" ,ruby-actioncable)
       ("ruby-actionmailer" ,ruby-actionmailer)
@@ -1603,14 +1560,14 @@ minutes of work.
       ("ruby-activesupport" ,ruby-activesupport)
       ("bundler" ,bundler)
       ("ruby-railties" ,ruby-railties)
-      ("ruby-sprockets-rails" ,ruby-sprockets-rails)))
+      ("ruby-sprockets-rails" ,ruby-sprockets-rails)
+      ("ruby-spring" ,ruby-spring)))
    (synopsis
     "Ruby on Rails is a full-stack web framework optimized for programmer happiness and sustainable productivity. It encourages beautiful code by favoring convention over configuration.")
    (description
     "Ruby on Rails is a full-stack web framework optimized for programmer happiness and sustainable productivity.  It encourages beautiful code by favoring convention over configuration.")
    (home-page "http://www.rubyonrails.org")
    (license license:expat)))
-
 
 (define-public ruby-actioncable
   (package
@@ -1624,6 +1581,8 @@ minutes of work.
       (base32
        "1x78kvrwkc6i8bwli8kkf21yikz70b5s6jl2ncpb8fz7dj1xkkj3"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionpack" ,ruby-actionpack)
       ("ruby-nio4r" ,ruby-nio4r)
@@ -1647,6 +1606,8 @@ minutes of work.
       (base32
        "1lyrw3jgpmjbsjp9lsd4qhyr9slsm1h3pcb75kmszs9lg8bkb586"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionpack" ,ruby-actionpack)
       ("ruby-actionview" ,ruby-actionview)
@@ -1673,6 +1634,8 @@ minutes of work.
       (base32
        "0yfq3l561808bh9ahp245a14ikh2li8k67nvk3rjdpxciwkvmqvw"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionview" ,ruby-actionview)
       ("ruby-activesupport" ,ruby-activesupport)
@@ -1701,6 +1664,8 @@ minutes of work.
       (base32
        "10f9d1jl945vr0l4sfr8v7rf3lkdbq33f5yvnx36aa2vskz529m1"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-activesupport" ,ruby-activesupport)
       ("ruby-builder" ,ruby-builder)
@@ -1728,6 +1693,8 @@ minutes of work.
       (base32
        "1xrchgz6xm5j2wqfqhh6qixvssv37hsdpyi4m2zb1m53qjn0q3pv"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f))
    (propagated-inputs
     `(("ruby-activesupport" ,ruby-activesupport)
       ("ruby-globalid" ,ruby-globalid)))
@@ -1750,6 +1717,8 @@ minutes of work.
       (base32
        "11j5rixlcp3i8a5mxfl4b0yhac3kzzhgmvcibbnphy5x974nr8aa"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f))
    (propagated-inputs
     `(("ruby-activesupport" ,ruby-activesupport)))
    (synopsis
@@ -1771,6 +1740,8 @@ minutes of work.
       (base32
        "1sl1f0capcdfvvabsc3cxfrdq78nwafp1340zq6gxqrwkvab1nxq"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f))
    (propagated-inputs
     `(("ruby-activemodel" ,ruby-activemodel)
       ("ruby-activesupport" ,ruby-activesupport)
@@ -1794,11 +1765,12 @@ minutes of work.
       (base32
        "0jrp9752vsfm8jz7mz8spns2cgzhg374hn1nrrnjl433rkjr6b3r"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionpack" ,ruby-actionpack)
       ("ruby-activesupport" ,ruby-activesupport)
       ("ruby-method-source" ,ruby-method-source)
-      ("ruby-rake" ,ruby-rake)
       ("ruby-thor" ,ruby-thor)))
    (synopsis
     "Rails internals: application bootup, plugins, generators, and rake tasks.")
@@ -1819,6 +1791,8 @@ minutes of work.
       (base32
        "1sak0as7ka964f6zjb1w8hkvfkkbf55kpcyvh7k6nyrb6pqnwmnf"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionpack" ,ruby-actionpack)
       ("ruby-activesupport" ,ruby-activesupport)
@@ -1841,6 +1815,14 @@ minutes of work.
       (base32
        "1adnm77xfxck0mrvid5d7lwng783gh580rh3y18nq4bwdikr6nha"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; inclusion of ruby-progressbar fails
+   (native-inputs
+    `(("bundler" ,bundler)
+      ("ruby-rake-compiler" ,ruby-rake-compiler)
+      ("ruby-rspec" ,ruby-rspec)
+      ("ruby-rubocop" ,ruby-rubocop)
+      ("ruby-progressbar" ,ruby-progressbar)))
    (synopsis "New IO for Ruby")
    (description "New IO for Ruby")
    (home-page "https://github.com/celluloid/nio4r")
@@ -1858,6 +1840,8 @@ minutes of work.
       (base32
        "1m37q24mxykvixcj8sv0jz7y2a88spysxg5rp4zf4p1q7mbblshy"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-websocket-extensions"
        ,ruby-websocket-extensions)))
@@ -1881,6 +1865,11 @@ minutes of work.
       (base32
        "0c9vqfy0na9b5096i5i4qvrvhwamjnmajhgqi3kdsdfl8l6agmkp"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; needs more pkgs
+   (native-inputs
+    `(("bundler" ,bundler)
+      ("ruby-rspec" ,ruby-rspec)))
    (propagated-inputs
     `(("ruby-mime-types" ,ruby-mime-types)))
    (synopsis "A really Ruby Mail handler.")
@@ -1895,12 +1884,18 @@ minutes of work.
    (version "2.0.1")
    (source
     (origin
-     (method url-fetch)
-     (uri (rubygems-uri "rails-dom-testing" version))
-     (sha256
-      (base32
-       "15sf7ndil079v8icipp8j37ys4ircqzri00k3s92j5xns3lfn25i"))))
+      (method url-fetch)
+      ;; The gem does not include a Rakefile, so we fetch the tarball from
+      ;; Github.
+      (uri (string-append "https://github.com/rails/rails-dom-testing/archive/v"
+                          version ".tar.gz"))
+      (file-name (string-append name "-" version ".tar.gz"))
+      (sha256
+       (base32
+        "17pb4nns4cl6nnh6vxldm086cvhc02vhgy1d5mm0imwpqjb0pb6q"))))
    (build-system ruby-build-system)
+   (native-inputs
+    `(("bundler" ,bundler)))
    (propagated-inputs
     `(("ruby-activesupport" ,ruby-activesupport)
       ("ruby-nokogiri" ,ruby-nokogiri)))
@@ -1911,32 +1906,6 @@ minutes of work.
    (home-page
     "https://github.com/rails/rails-dom-testing")
    (license license:expat)))
-
-(define-public ruby-rack-test
-  (package
-   (name "ruby-rack-test")
-   (version "0.6.3")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (rubygems-uri "rack-test" version))
-     (sha256
-      (base32
-       "0h6x5jq24makgv2fq5qqgjlrk74dxfy62jif9blk43llw8ib2q7z"))))
-   (build-system ruby-build-system)
-   (propagated-inputs `(("ruby-rack" ,ruby-rack)))
-   (synopsis
-    "Rack::Test is a small, simple testing API for Rack apps. It can be used on its
-own or as a reusable starting point for Web frameworks and testing libraries
-to build on. Most of its initial functionality is an extraction of Merb 1.0's
-request helpers feature.")
-   (description
-    "Rack::Test is a small, simple testing API for Rack apps.  It can be used on its
-own or as a reusable starting point for Web frameworks and testing libraries
-to build on.  Most of its initial functionality is an extraction of Merb 1.0's
-request helpers feature.")
-   (home-page "http://github.com/brynary/rack-test")
-   (license #f)))
 
 (define-public ruby-rails-html-sanitizer
   (package
@@ -1950,6 +1919,8 @@ request helpers feature.")
       (base32
        "138fd86kv073zqfx0xifm646w6bgw2lr8snk16lknrrfrss8xnm7"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-loofah" ,ruby-loofah)))
    (synopsis
@@ -1959,49 +1930,6 @@ request helpers feature.")
    (home-page
     "https://github.com/rails/rails-html-sanitizer")
    (license license:expat)))
-
-(define-public ruby-erubis
-  (package
-   (name "ruby-erubis")
-   (version "2.7.0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (rubygems-uri "erubis" version))
-     (sha256
-      (base32
-       "1fj827xqjs91yqsydf0zmfyw9p4l2jz5yikg3mppz6d7fi8kyrb3"))))
-   (build-system ruby-build-system)
-   (synopsis
-    "  Erubis is an implementation of eRuby and has the following features:
-
-  * Very fast, almost three times faster than ERB and about 10% faster than eruby.
-  * Multi-language support (Ruby/PHP/C/Java/Scheme/Perl/Javascript)
-  * Auto escaping support
-  * Auto trimming spaces around '<% %>'
-  * Embedded pattern changeable (default '<% %>')
-  * Enable to handle Processing Instructions (PI) as embedded pattern (ex. '<?rb ... ?>')
-  * Context object available and easy to combine eRuby template with YAML datafile
-  * Print statement available
-  * Easy to extend and customize in subclass
-  * Ruby on Rails support
-")
-   (description
-    "  Erubis is an implementation of eRuby and has the following features:
-
-  * Very fast, almost three times faster than ERB and about 10% faster than eruby.
-  * Multi-language support (Ruby/PHP/C/Java/Scheme/Perl/Javascript)
-  * Auto escaping support
-  * Auto trimming spaces around '<% %>'
-  * Embedded pattern changeable (default '<% %>')
-  * Enable to handle Processing Instructions (PI) as embedded pattern (ex. '<?rb ... ?>')
-  * Context object available and easy to combine eRuby template with YAML datafile
-  * Print statement available
-  * Easy to extend and customize in subclass
-  * Ruby on Rails support
-")
-   (home-page "http://www.kuwata-lab.com/erubis/")
-   (license #f)))
 
 (define-public ruby-globalid
   (package
@@ -2015,6 +1943,8 @@ request helpers feature.")
       (base32
        "145xrpsfx1qqjy33r6qa588wb16dvdhxzj2aysh755vhg6hgm291"))))
    (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f))
    (propagated-inputs
     `(("ruby-activesupport" ,ruby-activesupport)))
    (synopsis
@@ -2022,67 +1952,6 @@ request helpers feature.")
    (description
     "URIs for your models makes it easy to pass references around.")
    (home-page "http://www.rubyonrails.org")
-   (license license:expat)))
-
-(define-public ruby-rake
-  (package
-   (name "ruby-rake")
-   (version "11.2.2")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (rubygems-uri "rake" version))
-     (sha256
-      (base32
-       "0m7fk7n0q459b1866cpq0gyz6904srhajrag0ybpdyl5sw4c2xff"))))
-   (build-system ruby-build-system)
-   (synopsis
-    "Rake is a Make-like program implemented in Ruby. Tasks and dependencies are
-specified in standard Ruby syntax.
-
-Rake has the following features:
-
-* Rakefiles (rake's version of Makefiles) are completely defined in
-  standard Ruby syntax.  No XML files to edit.  No quirky Makefile
-  syntax to worry about (is that a tab or a space?)
-
-* Users can specify tasks with prerequisites.
-
-* Rake supports rule patterns to synthesize implicit tasks.
-
-* Flexible FileLists that act like arrays but know about manipulating
-  file names and paths.
-
-* A library of prepackaged tasks to make building rakefiles easier. For example,
-  tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
-  tasks for building RDoc and Gems were included in rake but they're now
-  available in RDoc and RubyGems respectively.)
-
-* Supports parallel execution of tasks.")
-   (description
-    "Rake is a Make-like program implemented in Ruby.  Tasks and dependencies are
-specified in standard Ruby syntax.
-
-Rake has the following features:
-
-* Rakefiles (rake's version of Makefiles) are completely defined in
-  standard Ruby syntax.  No XML files to edit.  No quirky Makefile
-  syntax to worry about (is that a tab or a space?)
-
-* Users can specify tasks with prerequisites.
-
-* Rake supports rule patterns to synthesize implicit tasks.
-
-* Flexible FileLists that act like arrays but know about manipulating
-  file names and paths.
-
-* A library of prepackaged tasks to make building rakefiles easier.  For example,
-  tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
-  tasks for building RDoc and Gems were included in rake but they're now
-  available in RDoc and RubyGems respectively.)
-
-* Supports parallel execution of tasks.")
-   (home-page "https://github.com/ruby/rake")
    (license license:expat)))
 
 (define-public ruby-sprockets
@@ -2097,6 +1966,8 @@ Rake has the following features:
         (base32
           "0flynmaaxa53pv15x7kcxr7z6h1hn7ifrxk13dfhhvh6h38jnzkv"))))
   (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
   (propagated-inputs
     `(("ruby-concurrent" ,ruby-concurrent)
       ("ruby-rack" ,ruby-rack)))
@@ -2119,6 +1990,8 @@ Rake has the following features:
         (base32
           "07qnsafl6203a2zclxl20hy4jq11c471cgvd0bj5r9fx1qqw06br"))))
   (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests not included
   (synopsis
     "Generic extension manager for WebSocket connections")
   (description
@@ -2139,6 +2012,11 @@ Rake has the following features:
         (base32
           "109ps521p0sr3kgc460d58b4pr1z4mqggan2jbsf0aajy9s6xis8"))))
   (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; 1 test fails
+  (native-inputs
+   `(("ruby-hoe" ,ruby-hoe)
+     ("ruby-rr" ,ruby-rr)))
   (propagated-inputs
     `(("ruby-nokogiri" ,ruby-nokogiri)))
   (synopsis
@@ -2169,5 +2047,562 @@ ActiveRecord extensions for sanitization are available in the
 https://github.com/flavorjones/loofah-activerecord).")
   (home-page
     "https://github.com/flavorjones/loofah")
+  (license license:expat)))
+
+(define-public ruby-rr
+(package
+  (name "ruby-rr")
+  (version "1.2.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rr" version))
+      (sha256
+        (base32
+          "0b05ycaw17wbxzycv1wvzklpqjnmi0dqy01igcl5jfmy1ydky66r"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; test files not included
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec)))
+  (synopsis
+    "RR is a test double framework that features a rich selection of double techniques and a terse syntax.")
+  (description
+    "RR is a test double framework that features a rich selection of double techniques and a terse syntax.")
+  (home-page "https://rr.github.io/rr")
+  (license license:expat)))
+
+(define-public ruby-rubocop
+(package
+  (name "ruby-rubocop")
+  (version "0.41.2")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rubocop" version))
+      (sha256
+        (base32
+          "02adr908a9l8nhdfjz137i20w1dv8mbfiamy0m9z9q0fvslfdxly"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; test files not included
+  (propagated-inputs
+    `(("ruby-parser" ,ruby-parser)
+      ("ruby-powerpack" ,ruby-powerpack)
+      ("ruby-rainbow" ,ruby-rainbow)
+      ("ruby-progressbar" ,ruby-progressbar)
+      ("ruby-unicode-display-width"
+       ,ruby-unicode-display-width)))
+  (synopsis
+    "    Automatic Ruby code style checking tool.
+    Aims to enforce the community-driven Ruby Style Guide.
+")
+  (description
+    "    Automatic Ruby code style checking tool.
+    Aims to enforce the community-driven Ruby Style Guide.
+")
+  (home-page "http://github.com/bbatsov/rubocop")
+  (license license:expat)))
+
+(define-public ruby-parser
+(package
+  (name "ruby-parser")
+  (version "2.3.1.2")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "parser" version))
+      (sha256
+        (base32
+          "0fxcs83z28wxn6bphbq5q40c1y5ab8zl8ww17jwkbi032wf6iik6"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; need more
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-racc" ,ruby-racc)))
+  (propagated-inputs `(("ruby-ast" ,ruby-ast)))
+  (synopsis "A Ruby parser written in pure Ruby.")
+  (description
+    "This package provides a Ruby parser written in pure Ruby.")
+  (home-page
+    "https://github.com/whitequark/parser")
+  (license license:expat)))
+
+(define-public ruby-powerpack
+(package
+  (name "ruby-powerpack")
+  (version "0.1.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "powerpack" version))
+      (sha256
+        (base32
+          "1fnn3fli5wkzyjl4ryh0k90316shqjfnhydmc7f8lqpi0q21va43"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:test-target "spec"))
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec)
+     ("ruby-yard" ,ruby-yard)))
+  (synopsis
+    "A few useful extensions to core Ruby classes.")
+  (description
+    "This package provides a few useful extensions to core Ruby classes.")
+  (home-page
+    "https://github.com/bbatsov/powerpack")
+  (license license:expat)))
+
+(define-public ruby-rainbow
+(package
+  (name "ruby-rainbow")
+  (version "2.1.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rainbow" version))
+      (sha256
+        (base32
+          "11licivacvfqbjx2rwppi8z89qff2cgs67d4wyx42pc5fg7g9f00"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:test-target "spec"))
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec)))
+  (synopsis
+    "Colorize printed text on ANSI terminals")
+  (description
+    "Colorize printed text on ANSI terminals")
+  (home-page "https://github.com/sickill/rainbow")
+  (license license:expat)))
+
+(define-public ruby-progressbar
+(package
+  (name "ruby-progressbar")
+  (version "0.21.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "progressbar" version))
+      (sha256
+        (base32
+          "17haw9c6c9q6imsn83pii32jnihpg76jgd09x7y4hjqq45n3qcdh"))))
+  (build-system ruby-build-system)
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-yard" ,ruby-yard)))
+  (synopsis
+    "Ruby/ProgressBar is a text progress bar library for Ruby. It can indicate progress with percentage, a progress bar, and estimated remaining time.")
+  (description
+    "Ruby/ProgressBar is a text progress bar library for Ruby.  It can indicate progress with percentage, a progress bar, and estimated remaining time.")
+  (home-page
+    "http://github.com/peleteiro/progressbar")
+  (license #f)))
+
+(define-public ruby-unicode-display-width
+(package
+  (name "ruby-unicode-display-width")
+  (version "1.1.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "unicode-display_width" version))
+      (sha256
+        (base32
+          "194d70pfxq4d7rrk0vsk1dvj46ns2f350308khi7q5cvnmg3h1xs"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; test data not included in gem.
+  (synopsis
+    "[Unicode 1.1.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data.")
+  (description
+    "[Unicode 1.1.0] Determines the monospace display width of a string using EastAsianWidth.txt, Unicode general category, and other data.")
+  (home-page
+    "http://github.com/janlelis/unicode-display_width")
+  (license license:expat)))
+
+(define-public ruby-ast
+(package
+  (name "ruby-ast")
+  (version "2.3.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "ast" version))
+      (sha256
+        (base32
+          "0pp82blr5fakdk27d1d21xq9zchzb6vmyb1zcsl520s3ygvprn8m"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; TODO: run tests
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-bacon" ,ruby-bacon)
+     ("ruby-racc" ,ruby-racc)))
+  (synopsis
+    "A library for working with Abstract Syntax Trees.")
+  (description
+    "This package provides a library for working with Abstract Syntax Trees.")
+  (home-page "https://whitequark.github.io/ast/")
+  (license license:expat)))
+
+(define-public ruby-racc
+(package
+  (name "ruby-racc")
+  (version "1.4.14")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "racc" version))
+      (sha256
+        (base32
+          "00yhs2ag7yy5v83mqvkbnhk9bvsh6mx3808k53n61ddzx446v1zl"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; tests fail to compile
+  (native-inputs
+   `(("ruby-hoe" ,ruby-hoe)
+     ("ruby-rake-compiler" ,ruby-rake-compiler)))
+  (synopsis
+    "Racc is a LALR(1) parser generator.
+  It is written in Ruby itself, and generates Ruby program.
+
+  NOTE: Ruby 1.8.x comes with Racc runtime module.  You
+  can run your parsers generated by racc 1.4.x out of the
+  box.")
+  (description
+    "Racc is a LALR(1) parser generator.
+  It is written in Ruby itself, and generates Ruby program.
+
+  NOTE: Ruby 1.8.x comes with Racc runtime module.  You
+  can run your parsers generated by racc 1.4.x out of the
+  box.")
+  (home-page
+    "http://i.loveruby.net/en/projects/racc/")
+  (license license:expat)))
+
+(define-public ruby-spring
+  (package
+    (name "ruby-spring")
+    (version "1.7.2")
+    (source
+     (origin
+       (method url-fetch)
+       ;; Download from GitHub so that the tests are present.
+       (uri (string-append
+             "https://github.com/rails/spring/archive/v"
+             version
+             ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1dd58y0cpsm2izj74yscn0ybfygmgcbbfdw1891g7cq41aai4b35"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'remove-unecessary-dependencies
+           (lambda _
+             (substitute* "spring.gemspec"
+               ((", '.*") "\n")))))))
+    ;;((".*_dependency.*") "")))))))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-activesupport" ,ruby-activesupport)
+       ("ruby-bump" ,ruby-bump)))
+    (synopsis
+     "Preloads your application so things like console, rake and tests run faster")
+    (description
+     "Preloads your application so things like console, rake and tests run faster")
+    (home-page "https://github.com/rails/spring")
+    (license license:expat)))
+
+;; (define-public ruby-rake
+;; (package
+;;   (name "ruby-rake")
+;;   (version "11.2.2")
+;;   (source
+;;     (origin
+;;       (method url-fetch)
+;;       (uri (rubygems-uri "rake" version))
+;;       (sha256
+;;         (base32
+;;           "0m7fk7n0q459b1866cpq0gyz6904srhajrag0ybpdyl5sw4c2xff"))))
+;;   (build-system ruby-build-system)
+;;   (native-inputs
+;;    `(("bundler" ,bundler)))
+;;   (synopsis
+;;     "Rake is a Make-like program implemented in Ruby. Tasks and dependencies are
+;; specified in standard Ruby syntax.
+;; Rake has the following features:
+;; * Rakefiles (rake's version of Makefiles) are completely defined in
+;;   standard Ruby syntax.  No XML files to edit.  No quirky Makefile
+;;   syntax to worry about (is that a tab or a space?)
+;; * Users can specify tasks with prerequisites.
+;; * Rake supports rule patterns to synthesize implicit tasks.
+;; * Flexible FileLists that act like arrays but know about manipulating
+;;   file names and paths.
+;; * A library of prepackaged tasks to make building rakefiles easier. For example,
+;;   tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
+;;   tasks for building RDoc and Gems were included in rake but they're now
+;;   available in RDoc and RubyGems respectively.)
+;; * Supports parallel execution of tasks.")
+;;   (description
+;;     "Rake is a Make-like program implemented in Ruby.  Tasks and dependencies are
+;; specified in standard Ruby syntax.
+;; Rake has the following features:
+;; * Rakefiles (rake's version of Makefiles) are completely defined in
+;;   standard Ruby syntax.  No XML files to edit.  No quirky Makefile
+;;   syntax to worry about (is that a tab or a space?)
+;; * Users can specify tasks with prerequisites.
+;; * Rake supports rule patterns to synthesize implicit tasks.
+;; * Flexible FileLists that act like arrays but know about manipulating
+;;   file names and paths.
+;; * A library of prepackaged tasks to make building rakefiles easier.  For example,
+;;   tasks for building tarballs and publishing to FTP or SSH sites.  (Formerly
+;;   tasks for building RDoc and Gems were included in rake but they're now
+;;   available in RDoc and RubyGems respectively.)
+;; * Supports parallel execution of tasks.")
+;;   (home-page "https://github.com/ruby/rake")
+;;   (license license:expat)))
+
+(define-public ruby-bump
+(package
+  (name "ruby-bump")
+  (version "0.5.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "bump" version))
+      (sha256
+        (base32
+          "1sm6lz99a8n2g5pdjyb6shx64x7w8y96z7qxp813ph6micd7v8vz"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Tests are not included in the gem.
+  (synopsis "Bump your gem version file")
+  (description "Bump your gem version file")
+  (home-page "https://github.com/gregorym/bump")
+  (license license:expat)))
+
+(define-public ruby-sass-rails
+(package
+  (name "ruby-sass-rails")
+  (version "5.0.6")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "sass-rails" version))
+      (sha256
+        (base32
+          "0iji20hb8crncz14piss1b29bfb6l89sz3ai5fny3iw39vnxkdcb"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-railties" ,ruby-railties)
+      ("ruby-sass" ,ruby-sass)
+      ("ruby-sprockets" ,ruby-sprockets)
+      ("ruby-sprockets-rails" ,ruby-sprockets-rails)
+      ("ruby-tilt" ,ruby-tilt)))
+  (synopsis
+    "Sass adapter for the Rails asset pipeline.")
+  (description
+    "Sass adapter for the Rails asset pipeline.")
+  (home-page "https://github.com/rails/sass-rails")
+  (license license:expat)))
+
+(define-public ruby-uglifier
+(package
+  (name "ruby-uglifier")
+  (version "3.0.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "uglifier" version))
+      (sha256
+        (base32
+          "05a7xqzzlliqbd32jfkmis08pb0cljns7jx14ybkqb9zbg7ph35h"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-execjs" ,ruby-execjs)))
+  (synopsis
+    "Uglifier minifies JavaScript files by wrapping UglifyJS to be accessible in Ruby")
+  (description
+    "Uglifier minifies JavaScript files by wrapping UglifyJS to be accessible in Ruby")
+  (home-page "http://github.com/lautis/uglifier")
+  (license license:expat)))
+
+(define-public ruby-coffee-rails
+(package
+  (name "ruby-coffee-rails")
+  (version "4.2.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "coffee-rails" version))
+      (sha256
+        (base32
+          "0988qh0aa4060vmxxszzrpb0zpffcmh4d8c5jrs0bf6nfng40wwi"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-coffee-script" ,ruby-coffee-script)
+      ("ruby-railties" ,ruby-railties)))
+  (synopsis
+    "CoffeeScript adapter for the Rails asset pipeline.")
+  (description
+    "CoffeeScript adapter for the Rails asset pipeline.")
+  (home-page
+    "https://github.com/rails/coffee-rails")
+  (license license:expat)))
+
+(define-public ruby-coffee-script
+(package
+  (name "ruby-coffee-script")
+  (version "2.4.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "coffee-script" version))
+      (sha256
+        (base32
+          "0rc7scyk7mnpfxqv5yy4y5q1hx3i7q3ahplcp4bq2g5r24g2izl2"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-coffee-script-source"
+       ,ruby-coffee-script-source)
+      ("ruby-execjs" ,ruby-execjs)))
+  (synopsis
+    "    Ruby CoffeeScript is a bridge to the JS CoffeeScript compiler.
+")
+  (description
+    "    Ruby CoffeeScript is a bridge to the JS CoffeeScript compiler.
+")
+  (home-page
+    "http://github.com/josh/ruby-coffee-script")
+  (license license:expat)))
+
+(define-public ruby-jquery-rails
+(package
+  (name "ruby-jquery-rails")
+  (version "4.1.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "jquery-rails" version))
+      (sha256
+        (base32
+          "1asbrr9hqf43q9qbjf87f5lm7fp12pndh76z89ks6jwxf1350fj1"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-rails-dom-testing"
+       ,ruby-rails-dom-testing)
+      ("ruby-railties" ,ruby-railties)
+      ("ruby-thor" ,ruby-thor)))
+  (synopsis
+    "This gem provides jQuery and the jQuery-ujs driver for your Rails 4+ application.")
+  (description
+    "This gem provides jQuery and the jQuery-ujs driver for your Rails 4+ application.")
+  (home-page
+    "http://rubygems.org/gems/jquery-rails")
+  (license license:expat)))
+
+(define-public ruby-turbolinks
+(package
+  (name "ruby-turbolinks")
+  (version "5.0.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "turbolinks" version))
+      (sha256
+        (base32
+          "1dpsl17mygsd3hjcb2zq05n9zygbi0qc5130h276lw6py8g7nppc"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-turbolinks-source"
+       ,ruby-turbolinks-source)))
+  (synopsis
+    "Rails engine for Turbolinks 5 support")
+  (description
+    "Rails engine for Turbolinks 5 support")
+  (home-page
+    "https://github.com/turbolinks/turbolinks-rails")
+  (license license:expat)))
+
+(define-public ruby-jbuilder
+(package
+  (name "ruby-jbuilder")
+  (version "2.6.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "jbuilder" version))
+      (sha256
+        (base32
+          "1jbh1296imd0arc9nl1m71yfd7kg505p8srr1ijpsqv4hhbz5qci"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-multi-json" ,ruby-multi-json)))
+  (synopsis
+    "Create JSON structures via a Builder-style DSL")
+  (description
+    "Create JSON structures via a Builder-style DSL")
+  (home-page "https://github.com/rails/jbuilder")
+  (license license:expat)))
+
+(define-public ruby-web-console
+(package
+  (name "ruby-web-console")
+  (version "3.3.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "web-console" version))
+      (sha256
+        (base32
+          "1gcasyydiinr8nmkjc0n63dgbx875rdkxxbcq82yz6z8qp5bwwh7"))))
+  (build-system ruby-build-system)
+  (propagated-inputs
+    `(("ruby-actionview" ,ruby-actionview)
+      ("ruby-activemodel" ,ruby-activemodel)
+      ("ruby-debug-inspector" ,ruby-debug-inspector)
+      ("ruby-railties" ,ruby-railties)))
+  (synopsis
+    "A debugging tool for your Ruby on Rails applications.")
+  (description
+    "This package provides a debugging tool for your Ruby on Rails applications.")
+  (home-page
+    "https://github.com/rails/web-console")
+  (license license:expat)))
+
+(define-public ruby-sass
+(package
+  (name "ruby-sass")
+  (version "3.4.22")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "sass" version))
+      (sha256
+        (base32
+          "0dkj6v26fkg1g0majqswwmhxva7cd6p3psrhdlx93qal72dssywy"))))
+  (build-system ruby-build-system)
+  (synopsis
+    "      Sass makes CSS fun again. Sass is an extension of CSS, adding
+      nested rules, variables, mixins, selector inheritance, and more.
+      It's translated to well-formatted, standard CSS using the
+      command line tool or a web-framework plugin.
+")
+  (description
+    "      Sass makes CSS fun again.  Sass is an extension of CSS, adding
+      nested rules, variables, mixins, selector inheritance, and more.
+      It's translated to well-formatted, standard CSS using the
+      command line tool or a web-framework plugin.
+")
+  (home-page "http://sass-lang.com/")
   (license license:expat)))
 

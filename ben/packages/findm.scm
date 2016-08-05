@@ -25,6 +25,7 @@
   #:use-module (guix build-system ruby)
 
   #:use-module (gnu packages ruby)
+  #:use-module (gnu packages rails)
   #:use-module (ben packages rails)
   )
 
@@ -47,7 +48,7 @@
        ("ruby-sdoc" ,ruby-sdoc)
        ("ruby-bio-commandeer" ,ruby-bio-commandeer)
        ("ruby-therubyracer" ,ruby-therubyracer)
-       ("ruby-puma" ,ruby-puma)
+       ;("ruby-puma" ,ruby-puma)
        ("ruby-byebug" ,ruby-byebug)
        ("ruby-web-console" ,ruby-web-console)
        ("ruby-spring" ,ruby-spring)))

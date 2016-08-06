@@ -1073,17 +1073,12 @@ sequences can then be aligned.")
            ;; Some libraries are not available in base Ubuntu, so we modify the
            ;; RPATH of some libraries
            (lambda* (#:key inputs #:allow-other-keys)
-             (zero?
-              (length
-               (filter
-                (lambda (input)
-                  (not (zero? (system*
-                               "patchelf" "--set-rpath"
-                               (string-append
-                                (assoc-ref inputs input)
-                                "/lib")
-                               "bin/libQt5WebKit.so.5"))))
-                '("libxslt" "gstreamer"))))))
+             (zero? (system*
+                     "patchelf" "--set-rpath"
+                     (string-append
+                      (assoc-ref inputs "libxslt") "/lib:"
+                      (assoc-ref inputs "gstreamer") "/lib")
+                     "bin/libQt5WebKit.so.5"))))
          (replace 'install
                   (lambda* (#:key outputs #:allow-other-keys)
                     (copy-recursively "." (assoc-ref outputs "out"))

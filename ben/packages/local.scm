@@ -34,6 +34,7 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages groff)
+  #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
@@ -1069,15 +1070,20 @@ sequences can then be aligned.")
          (delete 'build)
          (delete 'check)
          (add-before 'install 'patch-rpaths
-                     ;; Some libraries may not be available, so we modify the
-                     ;; RPATH of some libraries
-                     (lambda* (#:key inputs #:allow-other-keys)
-                       (zero? (system*
+           ;; Some libraries are not available in base Ubuntu, so we modify the
+           ;; RPATH of some libraries
+           (lambda* (#:key inputs #:allow-other-keys)
+             (zero?
+              (length
+               (filter
+                (lambda (input)
+                  (not (zero? (system*
                                "patchelf" "--set-rpath"
                                (string-append
-                                (assoc-ref inputs "libxslt")
+                                (assoc-ref inputs input)
                                 "/lib")
                                "bin/libQt5WebKit.so.5"))))
+                '("libxslt" "gstreamer"))))))
          (replace 'install
                   (lambda* (#:key outputs #:allow-other-keys)
                     (copy-recursively "." (assoc-ref outputs "out"))
@@ -1087,7 +1093,8 @@ sequences can then be aligned.")
     (native-inputs
      `(("patchelf" ,patchelf)))
     (inputs
-     `(("libxslt" ,libxslt)))
+     `(("libxslt" ,libxslt)
+       ("gstreamer" ,gstreamer)))
     (home-page "")
     (synopsis "")
     (description

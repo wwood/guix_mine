@@ -23,6 +23,7 @@
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cups)
   #:use-module (gnu packages databases)
+  #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex) 
   #:use-module (gnu packages fontutils)
@@ -1067,11 +1068,26 @@ sequences can then be aligned.")
          (delete 'configure)
          (delete 'build)
          (delete 'check)
+         (add-before 'install 'patch-rpaths
+                     ;; Some libraries may not be available, so we modify the
+                     ;; RPATH of some libraries
+                     (lambda* (#:key inputs #:allow-other-keys)
+                       (zero? (system*
+                               "patchelf" "--set-rpath"
+                               (string-append
+                                (assoc-ref inputs "libxslt")
+                                "/lib")
+                               "bin/libQt5WebKit.so.5"))))
          (replace 'install
                   (lambda* (#:key outputs #:allow-other-keys)
                     (copy-recursively "." (assoc-ref outputs "out"))
                     #t))
-         (delete 'validate-runpath))))
+         (delete 'validate-runpath)
+         )))
+    (native-inputs
+     `(("patchelf" ,patchelf)))
+    (inputs
+     `(("libxslt" ,libxslt)))
     (home-page "")
     (synopsis "")
     (description

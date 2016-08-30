@@ -992,3 +992,43 @@ sequences can then be aligned.")
      "")
     (license license:gpl3+))) ;fixme
 
+(define-public e-mem
+  (package
+    (name "e-mem")
+    (version "1.0.0")
+    (source (origin
+              (method url-fetch)
+              (uri "http://www.csd.uwo.ca/%7Eilie/E-MEM/e-mem.zip")
+              (sha256
+               (base32
+                "0cj6lf601y82an1rs9qvryad2q70kzz2wgjrf3rpyyirvlzqzkyw"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:make-flags (list (string-append "BIN_DIR=" %output "/bin"))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-after 'unpack 'enter-source-directory
+           (lambda _ (chdir "../e-mem_2") #t))
+         (add-before 'build 'create-bin
+           (lambda* (#:key outputs #:allow-other-keys)
+             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
+             #t))
+         (replace 'check
+           (lambda* (#:key outputs #:allow-other-keys)
+             (symlink
+              (string-append (assoc-ref outputs "out") "/bin/e-mem")
+              "e-mem")
+             (zero? (system* "./run_example"))))
+         (delete 'install))))
+    (native-inputs
+     `(("unzip" ,unzip)))
+    (inputs
+     `(("boost" ,boost)))
+    (home-page "http://www.csd.uwo.ca/%7Eilie/E-MEM/")
+    (synopsis "Efficient computation of genomic maximal exact matches")
+    (description
+     "E-MEM is a C++/OpenMP program designed to efficiently compute @dfn{Maximal
+Exact Matches} MEMs between large genomes.  It can be used as a stand alone
+application or a drop in replacement for MUMmer3.")
+    (license license:gpl3+)))

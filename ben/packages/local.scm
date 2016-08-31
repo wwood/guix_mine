@@ -4,6 +4,7 @@
   #:use-module (guix utils)
   #:use-module (guix download)
   #:use-module (guix git-download)
+  #:use-module (guix hg-download)
   #:use-module (guix gexp)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system cmake)
@@ -1032,3 +1033,88 @@ sequences can then be aligned.")
 Exact Matches} MEMs between large genomes.  It can be used as a stand alone
 application or a drop in replacement for MUMmer3.")
     (license license:gpl3+)))
+
+
+(define-public glimmerhmm
+  (package
+    (name "glimmerhmm")
+    (version "3.0.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "ftp://ccb.jhu.edu/pub/software/glimmerhmm/GlimmerHMM-"
+                    version ".tar.gz"))
+              (sha256
+               (base32
+                "09q7cp8ccdyczdi5r7nbvis7fx7vs7fyijslh7bs6jcz5dwj3qs3"))))
+    (build-system gnu-build-system)
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:gpl3+))) ;?
+
+
+(define-public panphlan
+  ;; The newest release 1.2 is far out of date, so we package from a new
+  ;; changeset.
+  (let ((changeset "e113395491e6e9d353aa157333659f60e98de168"))
+    (package
+      (name "panphlan")
+      (version (string-append "1.2-1." (string-take changeset 7)))
+      (source (origin
+                (method url-fetch)
+                ;; Use the direct download rather than hg-download so that
+                ;; sub-repositories are not downloaded.
+                (uri (string-append
+                      "https://bitbucket.org/CibioCM/panphlan/get/"
+                      (string-take changeset 12) ".zip"))
+                (file-name (string-append name "-" version ".zip"))
+                (sha256
+                 (base32
+                  "0d51q5ls8igddwjf67cf0fw62aaxylm57s3c5lb98v3bn48p8xw0"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'build)
+           (replace 'check
+             ;; There are no tests, so we run a quick sanity check.
+             (lambda _
+               (zero? (length (filter (lambda (file)
+                                        (not (zero? (system*
+                                                     (string-append "./" file)
+                                                     "-h"))))
+                                      (find-files "." ".*py"))))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out  (assoc-ref outputs "out"))
+                      (bin  (string-append out "/bin"))
+                      (path (getenv "PATH"))
+                      (pythonpath (getenv "PYTHONPATH")))
+                 (for-each (lambda (file)
+                             (install-file file bin)
+                             (wrap-program (string-append bin "/" file)
+                               `("PATH" ":" prefix (,path)))
+                             (wrap-program (string-append bin "/" file)
+                               `("PYTHONPATH" ":" prefix (,pythonpath))))
+                           (find-files "." ".*py")))
+               #t)))))
+      (native-inputs
+       `(("unzip" ,unzip)))
+      (inputs
+       `(("python" ,python-wrapper)
+         ("bowtie" ,bowtie)
+         ("samtools" ,samtools)
+         ("python-numpy" ,python-numpy)
+         ("python-biopython" ,python-biopython)))
+      (home-page "http://segatalab.cibio.unitn.it/tools/panphlan/")
+      (synopsis "Strain-level metagenomic profiling tool")
+      (description
+       "PanPhlAn is a strain-level metagenomic profiling tool for identifying
+the gene composition and in-vivo transcriptional activity of individual strains
+in metagenomic samples.  Its strain-tracking and functional analysis of unknown
+pathogens makes it useful for culture-free infectious outbreak epidemiology and
+microbial population studies.")
+      (license license:expat))))

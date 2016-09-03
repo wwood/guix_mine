@@ -40,6 +40,7 @@
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages java)
+  #:use-module (gnu packages less)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
@@ -1118,3 +1119,334 @@ in metagenomic samples.  Its strain-tracking and functional analysis of unknown
 pathogens makes it useful for culture-free infectious outbreak epidemiology and
 microbial population studies.")
       (license license:expat))))
+
+
+(define-public barrnap
+  (package
+   (name "barrnap")
+   (version "0.7")
+   (source
+    (origin
+      (method url-fetch)
+      (uri (string-append
+            "https://github.com/tseemann/barrnap/archive/"
+            version ".tar.gz"))
+      (file-name (string-append name "-" version ".tar.gz"))
+      (sha256
+       (base32
+        "16y040np76my3y82hgk4yy790smbsk4h8d60d5swlv7ha3i768gg"))
+      (modules '((guix build utils)))
+      ;; Remove pre-built binaries.
+      (snippet '(begin
+                  (delete-file-recursively "binaries")
+                  #t))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:test-target "test"
+      #:phases
+      (modify-phases %standard-phases
+        (add-after 'unpack 'patch-nhmer-path
+          (lambda* (#:key inputs #:allow-other-keys)
+            (substitute* "bin/barrnap"
+              (("^my \\$NHMMER = .*")
+               (string-append "my $NHMMER = '"
+                              (assoc-ref inputs "hmmer")
+                              "/bin/nhmmer';\n")))
+            #t))
+        (delete 'configure)
+        (delete 'build)
+        (replace 'install
+          (lambda* (#:key outputs #:allow-other-keys)
+            (let* ((out  (assoc-ref outputs "out"))
+                   (bin  (string-append out "/bin"))
+                   (path (getenv "PATH"))
+                   (file "barrnap"))
+              (install-file (string-append "bin/" file) bin)
+              (wrap-program (string-append bin "/" file)
+                            `("PATH" ":" prefix (,path)))
+              (copy-recursively "db" out))
+            #t)))))
+   (inputs
+    `(("perl" ,perl)
+      ("hmmer" ,hmmer)))
+   (home-page "https://github.com/tseemann/barrnap")
+   (synopsis "Bacterial ribosomal RNA predictor")
+   (description
+    "Barrnap predicts the location of ribosomal RNA genes in genomes.  It
+supports bacteria (5S, 23S, 16S), archaea (5S,5.8S,23S,16S), mitochondria (12S,
+16S) and eukaryotes (5S, 5.8S, 28S, 18S).  It takes FASTA DNA sequence as input,
+and write GFF3 as output.  It uses the NHMMER tool that comes with HMMER 3.1 for
+HMM searching in RNA:DNA style.")
+   (license (list license:gpl3
+                  ;; The Rfam HMMs are under cc0, and the SILVA-derived HMMs are
+                  ;; academic-only.
+                  license:cc0
+                  (license:non-copyleft
+                   "file:///LICENSE.SILVA"
+                   "See LICENSE.SILVA in the distribution.")))))
+
+;;; Cannot be included in Guix proper as only a binary is distributed.
+(define-public tbl2asn
+  (package
+    (name "tbl2asn")
+    (version "25.0") ; The version can be found by running through "tbl2asn -".
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "ftp://ftp.ncbi.nih.gov/toolbox/ncbi_tools/converters"
+             "/by_program/tbl2asn/linux64.tbl2asn.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0n4fajcqpz235d23razs691l50njbsqn8amlis8fnarbhz1cd58g"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'unpack
+           (lambda* (#:key source #:allow-other-keys)
+             (copy-file source "tbl2asn.gz")
+             (system* "gunzip" "tbl2asn.gz")
+             (chmod "tbl2asn" #o555)
+             #t))
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check
+           (lambda* (#:key inputs #:allow-other-keys)
+             (let ((so (string-append
+                       (assoc-ref inputs "libc")
+                       "/lib/ld-"
+                       ,(package-version glibc)
+                       ".so")))
+               (display so)(display "\n")
+               (and
+                (zero? (system* "patchelf" "--set-interpreter" so "tbl2asn"))
+                (zero? (system* "./tbl2asn" "-"))))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (install-file
+              "tbl2asn"
+              (string-append (assoc-ref outputs "out") "/bin"))
+             #t)))))
+    (native-inputs
+     `(("patchelf" ,patchelf)))
+    ;; Binaries are available for other systems, but only x86_64 is packaged
+    ;; here.
+    (supported-systems '("x86_64-linux"))
+    (home-page "http://www.ncbi.nlm.nih.gov/genbank/tbl2asn2/")
+    (synopsis "Submission creator for GenBank")
+    (description
+     "Tbl2asn is a command-line program that automates the creation of sequence
+records for submission to GenBank.  It uses many of the same functions as Sequin
+but is driven generally by data files.  Tbl2asn generates .sqn files for
+submission to GenBank.  Additional manual editing is not required before
+submission.")
+    (license license:public-domain))) ; This may be incorrect as I cannot find
+                                      ; any direct license information.
+
+(define-public prokka
+  ;; There has been many commits since the last released version 1.11 so we
+  ;; package from git.
+  (let ((commit "460a152abb219d6e2b72f625a8547f2658f68fce"))
+    (package
+      (name "prokka")
+      (version (string-append "1.11-1." (string-take commit 7)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/tseemann/prokka.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "1jfk7w1jvzjq9qmhraxh4mdzjk3canqb41q4gpnray2lrn0mz4zj"))
+         (modules '((guix build utils)))
+         ;; Remove bundled code.
+         (snippet '(begin
+                     (delete-file-recursively "binaries")
+                     (delete-file-recursively "perl5")
+                     #t))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (replace 'build
+             (lambda _
+               (zero? (system* "bin/prokka" "--setupdb"))))
+           (replace 'check
+             (lambda* (#:key inputs #:allow-other-keys)
+               (zero? (system* "bin/prokka"
+                               "--noanno"
+                               "--outdir" "example-out"
+                               (assoc-ref inputs "example-genome")))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (path (getenv "PATH"))
+                      (perl5lib (getenv "PERL5LIB")))
+                 (copy-recursively "db" (string-append out "/db"))
+                 (copy-recursively "bin" (string-append out "/bin"))
+                 (for-each
+                  (lambda (prog)
+                    (let ((binary (string-append out "/" prog)))
+                      (wrap-program binary
+                        `("PERL5LIB" ":" prefix
+                          (,(string-append perl5lib ":" out
+                                           "/lib/perl5/site_perl"))))
+                      (wrap-program binary
+                        `("PATH" ":" prefix
+                          (,(string-append path ":" out "/bin")))))
+                    #t)
+                  (find-files "bin" ".*")))
+               #t)))))
+      (native-inputs
+       `(("example-genome"
+          ,(origin
+             (method url-fetch)
+             (uri "http://www.ebi.ac.uk/ena/data/view/CP002565&display=fasta")
+             (file-name (string-append "ena-genome-CP002565.fasta"))
+             (sha256
+              (base32
+               "0dv3m29kgyssjc96zbmb5khkrk7cy7a66bsjk2ricwc302g5hgfy"))))))
+      (inputs
+       `(("perl" ,perl)
+         ("bioperl" ,bioperl-minimal)
+         ("blast+" ,blast+)
+         ("hmmer" ,hmmer)
+         ("aragorn" ,aragorn)
+         ("prodigal" ,prodigal)
+         ("parallel" ,parallel)
+         ("infernal" ,infernal)
+         ("barrnap" ,barrnap)
+         ("minced" ,minced)
+         ("tbl2asn" ,tbl2asn)
+         ("grep" ,grep)
+         ("sed" ,sed)
+         ("less" ,less)
+         ("perl-time-piece" ,perl-time-piece)
+         ("perl-xml-simple" ,perl-xml-simple)
+         ("perl-digest-md5" ,perl-digest-md5)))
+      (home-page "http://www.vicbioinformatics.com/software.prokka.shtml")
+      (synopsis "Rapid prokaryotic genome annotation")
+      (description
+       "Prokka is a software tool for the rapid annotation of prokaryotic
+genomes.  It produces GFF3, GBK and SQN files that are ready for editing in
+Sequin and ultimately submitted to Genbank/DDJB/ENA. ")
+      (license (list license:gpl2
+                     ;; Available under various licenses.
+                     (license:non-copyleft
+                      "file://doc"
+                      "See license files in the doc directory."))))))
+
+(define-public perl-time-piece
+  (package
+    (name "perl-time-piece")
+    (version "1.31")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://cpan/authors/id/E/ES/ESAYM/Time-Piece-"
+             version
+             ".tar.gz"))
+       (sha256
+        (base32
+         "1fb7s5y9f3j80h2dfsgplmdcrhp96ccqs0qqabmckkkgvhj40205"))))
+    (build-system perl-build-system)
+    (home-page "http://search.cpan.org/dist/Time-Piece")
+    (synopsis "Object Oriented time objects")
+    (description "This module replaces the standard @code{localtime} and
+@code{gmtime} Perl functions with implementations that return objects.  It does
+so in a backwards compatible manner, so that using
+@code{localtime}/@code{gmtime} in the way documented in perlfunc will still
+return what you expect.")
+    (license (package-license perl))))
+
+(define-public perl-digest-md5
+  (package
+    (name "perl-digest-md5")
+    (version "2.55")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://cpan/authors/id/G/GA/GAAS/Digest-MD5-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "0g0fklbrm2krswc1xhp4iwn1dhqq71fqh2p5wm8xj9a4s6i9ic83"))))
+    (build-system perl-build-system)
+    (home-page "http://search.cpan.org/dist/Digest-MD5")
+    (synopsis "Perl interface to the MD5 algorithm")
+    (description "The @code{Digest::MD5} module allows you to use the RSA Data
+Security Inc. MD5 Message Digest algorithm from within Perl programs.  The
+algorithm takes as input a message of arbitrary length and produces as output a
+128-bit 'fingerprint' or 'message digest' of the input.")
+    (license (package-license perl))))
+
+(define-public python2-mgkit
+  (package
+    (name "python2-mgkit")
+    (version "0.2.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "mgkit" version))
+       (sha256
+        (base32
+         "1y7j4s1x59z6j0lfkd99psf44rrlkvyrmkli68fapbx7ankmxcdw"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2)) ; Ony Python 2 is supported.
+    (native-inputs
+     `(("python-nose" ,python2-nose)
+       ("python-yanc" ,python2-yanc)))
+    (inputs
+     `(("htseq" ,htseq)
+       ("python-enum34" ,python2-enum34)
+       ("python-numpy" ,python2-numpy)
+       ("python-pysam" ,python2-pysam)
+       ("python-scipy" ,python2-scipy)
+       ("python-setuptools" ,python2-setuptools)
+       ;("python-semiidbm" ,python2-semiidbm) ; TODO: package semiidbm.
+       ("python-pymongo" ,python2-pymongo)
+       ("python-rpy2" ,python2-rpy2)
+       ("python-matplotlib" ,python2-matplotlib)
+       ("python-msgpack" ,python2-msgpack)
+       ("python-pandas" ,python2-pandas)))
+    (home-page "https://bitbucket.org/setsuna80/mgkit/")
+    (synopsis "Metagenomics Framework")
+    (description "provide a series of useful modules and packages to make it
+easier to build custom pipelines for metagenomics or any kind of bioinformatics
+analysis.  It integrates other well known python libraries in bioinformatics,
+like HTSeq, pysam, numpy and scipy.")
+    (license license:gpl2+)))
+
+(define-public python-yanc
+  (package
+    (name "python-yanc")
+    (version "0.3.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "yanc" version))
+       (sha256
+        (base32
+         "0z35bkk9phs40lf5061k1plhjdl5fskm0dmdikrsqi1bjihnxp8w"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-nose" ,python-nose)))
+    (inputs
+     `(("python-setuptools" ,python-setuptools)))
+    (home-page "https://github.com/0compute/yanc")
+    (synopsis "Yet another nose colorer")
+    (description "YANC is a color output plugin for nose that plays nicely with
+other python packages.  To enable the plugin pass @code{--with-yanc} to
+@code{nosetests}.")
+    (license license:gpl3+)))
+
+(define-public python2-yanc
+  (package-with-python2 python-yanc))

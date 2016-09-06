@@ -992,3 +992,21 @@ sequences can then be aligned.")
      "")
     (license license:gpl3+))) ;fixme
 
+
+(define-public kraken ; only half-complete
+  (package
+    (name "kraken")
+    (version "0.10.5-beta")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/DerrickWood/kraken/archive/v"
+                                  version ".tar.gz"))
+              (sha256
+               (base32
+                "0bv6mwqg6imgyxga24xm1cb3mfs56zba485kxgmdiq6fv3vx9yhy"))))
+    (build-system gnu-build-system)
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:gpl3+))) ;fixme

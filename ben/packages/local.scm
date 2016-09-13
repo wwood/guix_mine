@@ -19,6 +19,7 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
+  #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages curl)
@@ -1215,11 +1216,8 @@ HMM searching in RNA:DNA style.")
          (replace 'check
            (lambda* (#:key inputs #:allow-other-keys)
              (let ((so (string-append
-                       (assoc-ref inputs "libc")
-                       "/lib/ld-"
-                       ,(package-version glibc)
-                       ".so")))
-               (display so)(display "\n")
+                        (assoc-ref inputs "libc")
+                        ,(glibc-dynamic-linker))))
                (and
                 (zero? (system* "patchelf" "--set-interpreter" so "tbl2asn"))
                 (zero? (system* "./tbl2asn" "-"))))))
@@ -1450,3 +1448,104 @@ other python packages.  To enable the plugin pass @code{--with-yanc} to
 
 (define-public python2-yanc
   (package-with-python2 python-yanc))
+
+(define-public crass
+  (package
+    (name "crass")
+    (version "1.0.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/ctSkennerton/crass/archive/v"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0c6rxajq3ajf9m42r7xapg8jfvgkhmfz5425wprg8sx1nz6bqy3h"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:configure-flags
+       (list (string-append
+              "--with-xerces=" (assoc-ref %build-inputs "xerces-c++"))
+             "--enable-rendering")
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'autogen
+           (lambda _
+             (and (zero? (system* "./autogen.sh"))
+                  (begin (substitute* "configure"
+                           (("/usr/bin/file") (which "file")))
+                         ;; See https://github.com/ctSkennerton/crass/pull/85
+                         (substitute* "src/test/Makefile.am"
+                           (("test_readholder.cpp") ""))
+                         #t)))))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)))
+    (inputs
+     `(("graphviz" ,graphviz)
+       ("xerces-c++" ,xerces-c++)
+       ("zlib" ,zlib)))
+    (home-page "http://bioinformatics.ninja/crass")
+    (synopsis "CRISPR assembler")
+    (description
+     "Crass searches through raw metagenomic DNA reads for @dfn{Clustered
+Regularly Interspersed Short Palindromic Repeats} (CRISPRs), structures which
+form part of the microbial immune system.  CRISPRs form a specific structure
+in genomic DNA, where repeating stretches of DNA (@dfn{direct repeats}) are
+separated by @dfn{spacer} sequences.  @code{crass} identifies reads which
+contain repeated K-mers that are of a specific length and are separated by a
+spacer sequence.  These possible direct repeats are curated internally to
+remove bad matches, and CRISPRs are output.")
+    ;; TODO: other licenses?
+    (license license:gpl3+)))
+
+(define-public xerces-c++
+  (package
+    (name "xerces-c++")
+    (version "3.1.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://apache/xerces/c/" (version-prefix version 1)
+             "/sources/xerces-c-" version ".tar.xz"))
+             (sha256
+              (base32
+               "0hb29c0smqlpxj0zdm09s983z5jx37szlliccnvgh0qq91wwqwwr"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("perl" ,perl)))
+    (home-page "http://xerces.apache.org/xerces-c/")
+    (synopsis "C++ XML parser")
+    (description
+     "Xerces-C++ is a validating XML parser written in a portable subset of
+C++.  Xerces-C++ makes it easy to give your application the ability to read
+and write XML data.  A shared library is provided for parsing, generating,
+manipulating, and validating XML documents using the DOM, SAX, and SAX2
+APIs.")
+    (license license:asl2.0)))
+
+(define-public r-pheatmap
+  (package
+   (name "r-pheatmap")
+   (version "1.0.8")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "pheatmap" version))
+     (sha256
+      (base32
+       "1ik0k69kb4n7xl3bkx4p09kw08ri93855zcsxq1c668171jqfiji"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-gtable" ,r-gtable)
+      ("r-rcolorbrewer" ,r-rcolorbrewer)
+      ("r-scales" ,r-scales)))
+   (home-page "http://cran.r-project.org/web/packages/pheatmap")
+   (synopsis "Pretty Heatmaps")
+   (description
+    "pheatmap is an R library offering an heatmap drawing method that offers
+more control over dimensions and appearance.")
+   (license license:gpl2+)))

@@ -19,6 +19,7 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
+  #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages curl)
@@ -77,121 +78,6 @@
   
   #:use-module (ace packages external)
   #:use-module (gnu packages bioinformatics))
-
-(define-public bamm ;  does not work
-  (package
-    (name "bamm")
-    (version "1.4.2")
-    (source (origin
-	      (method url-fetch)
-	      (uri (string-append
-		    "file:///tmp/bamm.tar.gz"))
-	      ;;"https://github.com/Ecogenomics/BamM/archive/v"
-	      ;;version ".tar.gz"))
-	      (file-name (string-append name "-" version ".tar.gz"))
-	      (sha256
-	       (base32
-		"1vdnc1r8z151h2r1bryl8ylqxggyah6hi84cvyfqhdkqsabjvcx4"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2 ;; no Python 3 support
-       #:phases
-       (modify-phases %standard-phases
-                      (replace 'build
-                               (lambda* (#:key inputs #:allow-other-keys)
-                                 (let ((htslib (assoc-ref inputs "htslib"))) ;;TODO: use guix
-                                   ;;htslib not the
-                                   ;;bundled one,
-                                   ;;currently bamm
-                                   ;;doesn't respect
-                                   ;;this
-                                   (substitute* "setup.py"
-                                                (("if 'sdist' not in sys.argv")
-                                                 "if False"))
-                                   
-                                   (chdir "c")
-                                   (system* "autoreconf" "--install")
-                                   (substitute* "configure"
-                                                (("/bin/sh") (which "bash")))
-                                   (substitute* "libcfu-0.03/configure"
-                                                (("/bin/sh") (which "bash")))
-                                   (substitute* "htslib-1.2.1/configure"
-                                                (("/bin/sh") (which "bash")))
-                                   (system* "bash" "configure")
-                                   (system* "make")
-                                   
-                                   (copy-file "libBamM.a" "../bamm/libBamM.a")
-                                   (chdir "..")
-                                   #t
-                                   )))
-                      (delete 'check)
-                      )))
-    (inputs
-     `(("bwa" ,bwa)
-       ("samtools-0.1" ,samtools-0.1)
-       ("htslib" ,htslib)
-       ("zlib" ,zlib)
-       ("python-numpy" ,python-numpy)))
-    (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)
-       ("python-nose" ,python2-nose)
-       ("python-setuptools" ,python2-setuptools)))
-    (home-page "http://ecogenomics.github.io/BamM/")
-    (synopsis "Metagenomics-focused BAM file manipulation")
-    (description
-     "BamM is a c library, wrapped in python, that parses BAM files. The code is
-intended to provide a faster, more stable interface to parsing BAM files than
-PySam, but doesn't implement all/any of PySam's features. Do you want all the
-links that join two contigs in a BAM? Do you need to get coverage? Would you
-like to just work out the insert size and orientation of some mapped reads? Then
-BamM is for you!")
-    (license license:lgpl3+)))
-
-(define-public seqtk ; waiting on licensing issues, but seems to work
-  (let ((commit "4feb6e81444ab6bc44139dd3a125068f81ae4ad8"))
-    (package
-      (name "seqtk")
-      (version (string-append "sgdp." commit))
-      (source (origin
-               (method git-fetch)
-               (uri (git-reference
-                     (url "https://github.com/lh3/seqtk.git")
-                     (commit commit)))
-               (sha256
-                (base32
-                 "0wdkz8chkinfm23cg95nrn797lv12n2wxglwb3s2kvf0iv3rrx01"))))
-      (build-system gnu-build-system)
-      (arguments
-       `(#:tests? #f
-         #:phases
-         (modify-phases %standard-phases
-                        (delete 'configure)
-                        (replace 'build
-                                 (lambda* _
-                                   (zero? (system* "make"))))
-                        (replace 'install
-                                 (lambda* (#:key outputs #:allow-other-keys)
-                                   (let ((bin (string-append
-                                               (assoc-ref outputs "out")
-                                               "/bin/")))
-                                     (mkdir-p bin)
-                                     (copy-file "seqtk" (string-append
-                                                         bin "seqtk"))
-                                     (copy-file "trimadap" (string-append
-                                                            bin "trimadap"))))))))
-      (native-inputs
-       `(("zlib" ,zlib)))
-      (home-page "https://github.com/lh3/seqtk")
-      (synopsis "Toolkit for processing sequences in FASTA/Q formats")
-      (description
-       "Seqtk is a fast and lightweight tool for processing sequences in
-the FASTA or FASTQ format.  It seamlessly parses both FASTA and FASTQ
-files which can also be optionally compressed by gzip.")
-      (license (license:non-copyleft
-                "file://src/LICENSE"
-                "See src/LICENSE in the distribution.")))))
 
 ;; (define-public jalview ;;untested, likely doesn't work
 ;;   (package
@@ -438,57 +324,128 @@ assemblies.")
     (license license:gpl2)))
 
 (define-public graftm
-  (package
-    (name "graftm")
-    (version "0.9.5-dev")
-    (source
-     (local-file "/home/ben/git/graftM" #:recursive? #t))
-     ;; (origin
-     ;;   (method url-fetch)
-     ;;   (uri (string-append
-     ;;         "https://pypi.python.org/packages/source/g/graftm/graftm-"
-     ;;         version
-     ;;         ".tar.gz"))
-     ;;   (sha256
-     ;;    (base32
-     ;;     "0wy4w2jvh6ip6ari0m55zvkyg3vnvsyn2l93n85d1d2xndbgns2v"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2 ; python-2 only
-       #:phases
-       (modify-phases %standard-phases
-         ;; current test in setup.py does not work so use nose to run tests
-         ;; instead for now.
-         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
-    (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
-    (inputs
-     `(("python-biopython" ,python2-biopython)
-       ("python-subprocess32" ,python2-subprocess32)
-       ("python-biom-format" ,python2-biom-format)
-       ("python-extern" ,python2-extern)
-       ("python-h5py" ,python2-h5py)
-       ("python-tempdir" ,python2-tempdir)))
-    (propagated-inputs
-     `(("orfm" ,orfm)
-       ("hmmer" ,hmmer)
-       ("diamond" ,diamond)
-       ("fxtract" ,fxtract)
-       ("fasttree" ,fasttree)
-       ("krona-tools" ,krona-tools)
-       ("pplacer" ,pplacer)
-       ("seqmagick" ,seqmagick)
-       ("taxtastic" ,taxtastic)
-       ("mafft" ,mafft)))
-    (home-page "http://geronimp.github.com/graftM")
-    (synopsis "Identify and classify metagenomic marker gene reads")
-    (description
-     "GraftM is a pipeline used for identifying and classifying marker gene
+  (let ((commit "c97241145ef5a9634618a4175cde7d382a25d38b"))
+    (package
+      (name "graftm")
+      (version (string-append "0.9.5-1." (string-take commit 7)))
+      
+      ;; (source
+      ;;  (local-file "/home/ben/git/graftM" #:recursive? #t))
+
+      ;; (origin
+      ;;   (method url-fetch)
+      ;;   (uri (string-append
+      ;;         "https://pypi.python.org/packages/source/g/graftm/graftm-"
+      ;;         version
+      ;;         ".tar.gz"))
+      ;;   (sha256
+      ;;    (base32
+      ;;     "0wy4w2jvh6ip6ari0m55zvkyg3vnvsyn2l93n85d1d2xndbgns2v"))))
+      
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/wwood/graftM.git")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "191yddgcx7f2wxgcdn7vxgrppilj3qc4anhy264c3pb2jg74rlkq"))))
+      
+      (build-system python-build-system)
+      (arguments
+       `(#:python ,python-2 ; python-2 only
+                  #:phases
+                  (modify-phases %standard-phases
+                    ;; current test in setup.py does not work so use nose to run tests
+                    ;; instead for now.
+                    (replace 'check
+                             (lambda _
+                               (setenv "TEMPDIR" ".") ; not sure if this is needed.
+                               ;; Some tests fail for strange reasons which seem likely to do with
+                               ;; being inside the chroot environment, rather than being actual
+                               ;; software problems.
+                               (delete-file "test/test_archive.py")
+                               (delete-file "test/test_external_program_suite.py")
+                               (delete-file "test/test_update.py")
+                               (setenv "PATH" (string-append "./bin:" (getenv "PATH")))
+                               (zero? (system* "nosetests" "-v"))))
+                    (add-after 'install 'wrap-programs
+                               (lambda* (#:key outputs #:allow-other-keys)
+                                 (let* ((out (assoc-ref outputs "out"))
+                                        (graftm (string-append out "/bin/graftM"))
+                                        (path (getenv "PATH"))
+                                        (pythonpath (getenv "PYTHONPATH")))
+                                   (wrap-program graftm `("PATH" ":" prefix (,path)))
+                                   (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
+                                 #t)))))
+      (native-inputs
+       `(("python-setuptools" ,python2-setuptools)
+         ("python-nose" ,python2-nose)))
+      (inputs
+       `(("python-biopython" ,python2-biopython)
+         ("python-subprocess32" ,python2-subprocess32)
+         ("python-biom-format" ,python2-biom-format)
+         ("python-extern" ,python2-extern)
+         ("python-h5py" ,python2-h5py)
+         ("python-tempdir" ,python2-tempdir)
+         ("python-dendropy" ,python2-dendropy)
+         ("orfm" ,orfm)
+         ("hmmer" ,hmmer)
+         ("diamond" ,diamond-0.7.9) ; Test data is made with an old diamond version.
+         ("fxtract" ,fxtract)
+         ("fasttree" ,fasttree)
+         ("krona-tools" ,krona-tools)
+         ("pplacer" ,pplacer)
+         ("seqmagick" ,seqmagick)
+         ("taxtastic" ,taxtastic)
+         ("mafft" ,mafft)))
+      (home-page "http://geronimp.github.com/graftM")
+      (synopsis "Identify and classify metagenomic marker gene reads")
+      (description
+       "GraftM is a pipeline used for identifying and classifying marker gene
 reads from large metagenomic shotgun sequence datasets.  It is able to find
 marker genes using hidden Markov models or sequence similarity search, and
 classify these reads by placement into phylogenetic trees")
-    (license license:gpl3+)))
+      (license license:gpl3+))))
+
+(define diamond-0.7.9
+  (package
+    (inherit diamond)
+    (name "diamond")
+    (version "0.7.9")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/bbuchfink/diamond/archive/v"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0hfkcfv9f76h5brbyw9fyvmc0l9cmbsxrcdqk0fa9xv82zj47p15"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:tests? #f  ;no "check" target
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'enter-source-dir
+                    (lambda _
+                      (chdir "src")
+                      #t))
+         (delete 'configure)
+         (replace 'install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let ((bin (string-append (assoc-ref outputs "out")
+                                              "/bin")))
+                      (mkdir-p bin)
+                      (copy-file "../bin/diamond"
+                                 (string-append bin "/diamond"))
+                      #t))))))
+    (native-inputs
+     `(("bc" ,bc)))
+    (inputs
+     `(("boost" ,boost)
+       ("zlib" ,zlib)))))
 
 (define-public python-tempdir
   (package
@@ -1233,11 +1190,8 @@ HMM searching in RNA:DNA style.")
          (replace 'check
            (lambda* (#:key inputs #:allow-other-keys)
              (let ((so (string-append
-                       (assoc-ref inputs "libc")
-                       "/lib/ld-"
-                       ,(package-version glibc)
-                       ".so")))
-               (display so)(display "\n")
+                        (assoc-ref inputs "libc")
+                        ,(glibc-dynamic-linker))))
                (and
                 (zero? (system* "patchelf" "--set-interpreter" so "tbl2asn"))
                 (zero? (system* "./tbl2asn" "-"))))))
@@ -1547,3 +1501,195 @@ combinatorial choices of parameters easier.")
 ;;        "Nestly is a collection of functions designed to make running software with
 ;; combinatorial choices of parameters easier.")
 ;;       (license license:expat))))
+
+(define-public crass
+  (package
+    (name "crass")
+    (version "1.0.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/ctSkennerton/crass/archive/v"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0c6rxajq3ajf9m42r7xapg8jfvgkhmfz5425wprg8sx1nz6bqy3h"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:configure-flags
+       (list (string-append
+              "--with-xerces=" (assoc-ref %build-inputs "xerces-c++"))
+             "--enable-rendering")
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'autogen
+           (lambda _
+             (and (zero? (system* "./autogen.sh"))
+                  (begin (substitute* "configure"
+                           (("/usr/bin/file") (which "file")))
+                         ;; See https://github.com/ctSkennerton/crass/pull/85
+                         (substitute* "src/test/Makefile.am"
+                           (("test_readholder.cpp") ""))
+                         #t)))))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)))
+    (inputs
+     `(("graphviz" ,graphviz)
+       ("xerces-c++" ,xerces-c++)
+       ("zlib" ,zlib)))
+    (home-page "http://bioinformatics.ninja/crass")
+    (synopsis "CRISPR assembler")
+    (description
+     "Crass searches through raw metagenomic DNA reads for @dfn{Clustered
+Regularly Interspersed Short Palindromic Repeats} (CRISPRs), structures which
+form part of the microbial immune system.  CRISPRs form a specific structure
+in genomic DNA, where repeating stretches of DNA (@dfn{direct repeats}) are
+separated by @dfn{spacer} sequences.  @code{crass} identifies reads which
+contain repeated K-mers that are of a specific length and are separated by a
+spacer sequence.  These possible direct repeats are curated internally to
+remove bad matches, and CRISPRs are output.")
+    ;; TODO: other licenses?
+    (license license:gpl3+)))
+
+(define-public xerces-c++
+  (package
+    (name "xerces-c++")
+    (version "3.1.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "mirror://apache/xerces/c/" (version-prefix version 1)
+             "/sources/xerces-c-" version ".tar.xz"))
+             (sha256
+              (base32
+               "0hb29c0smqlpxj0zdm09s983z5jx37szlliccnvgh0qq91wwqwwr"))))
+    (build-system gnu-build-system)
+    (native-inputs
+     `(("perl" ,perl)))
+    (home-page "http://xerces.apache.org/xerces-c/")
+    (synopsis "C++ XML parser")
+    (description
+     "Xerces-C++ is a validating XML parser written in a portable subset of
+C++.  Xerces-C++ makes it easy to give your application the ability to read
+and write XML data.  A shared library is provided for parsing, generating,
+manipulating, and validating XML documents using the DOM, SAX, and SAX2
+APIs.")
+    (license license:asl2.0)))
+
+(define-public r-pheatmap
+  (package
+   (name "r-pheatmap")
+   (version "1.0.8")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "pheatmap" version))
+     (sha256
+      (base32
+       "1ik0k69kb4n7xl3bkx4p09kw08ri93855zcsxq1c668171jqfiji"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-gtable" ,r-gtable)
+      ("r-rcolorbrewer" ,r-rcolorbrewer)
+      ("r-scales" ,r-scales)))
+   (home-page "http://cran.r-project.org/web/packages/pheatmap")
+   (synopsis "Pretty Heatmaps")
+   (description
+    "pheatmap is an R library offering an heatmap drawing method that offers
+more control over dimensions and appearance.")
+   (license license:gpl2+)))
+
+
+;; (define-public trinityrnaseq ; Does not work, due at least in part to the
+;;                              ; bundled software.
+;;   (package
+;;     (name "trinityrnaseq")
+;;     (version "2.2.0")
+;;     (source (origin
+;;               (method url-fetch)
+;;               (uri (string-append
+;;                     "https://github.com/trinityrnaseq/trinityrnaseq/archive/v"
+;;                     version ".tar.gz"))
+;;               (file-name (string-append name "-" version ".tar.gz"))
+;;               (sha256
+;;                (base32
+;;                 "17kcwizzmwfl0i0jdvz8zv7hx2fm909b6c6jgm282sn7dbjh6ipk"))))
+;;     (build-system gnu-build-system)
+;;     (arguments
+;;      `(#:parallel-build? #f ; for debugging, may not be required
+;;        #:test-target "test"
+;;        #:phases
+;;        (modify-phases %standard-phases
+;;          (delete 'configure))))
+;;     (inputs
+;;      `(("jre" ,icedtea)
+;;        ("bowtie" ,bowtie)
+;;        ("perl" ,perl)
+;;        ("zlib" ,zlib)
+;;        ("htslib" ,htslib)
+;;        ("jellyfish" ,jellyfish)
+;;        ("samtools" ,samtools)))
+;;     (home-page "")
+;;     (synopsis "")
+;;     (description
+;;      "")
+;;     (license license:expat)))
+
+(define-public singlem
+  (package
+    (name "singlem")
+    (version "0.6.1")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/wwood/singlem/archive/v"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0s4jqvy20pi18i8wpnickk0dgnlzfc3bv95y6lqkfym20qracff1"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2 ; python-2 only
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'build
+                  (lambda _ (zero? (system* "nosetests" "-v"))))
+         (add-after 'install 'wrap-programs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (graftm (string-append out "/bin/singlem"))
+                    (path (getenv "PATH"))
+                    (pythonpath (getenv "PYTHONPATH")))
+               (wrap-program graftm `("PATH" ":" prefix (,path)))
+               (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
+             #t)))))
+    (native-inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
+    (inputs
+     `(("graftm" ,graftm)
+       ("python-biopython" ,python2-biopython)
+       ("python-extern" ,python2-extern)
+       ("python-tempdir" ,python2-tempdir)
+       ("python-dendropy" ,python2-dendropy)
+       ("python-subprocess32" ,python2-subprocess32)
+       ("python-biom-format" ,python2-biom-format)
+       ("python-h5py" ,python2-h5py)
+       ("seqmagick" ,seqmagick)
+       ("blast+" ,blast+)
+       ("vsearch" ,vsearch)
+       ("krona-tools" ,krona-tools)
+       ("fxtract" ,fxtract)))
+    (home-page "http://github.com/wwood/singlem")
+    (synopsis "De-novo OTUs from shotgun metagenomes")
+    (description
+     "SingleM is a tool to find the abundances of discrete operational taxonomic
+units (OTUs) directly from shotgun metagenome data, without heavy reliance of
+reference sequence databases.  It is able to differentiate closely related
+species even if those species are from lineages new to science.")
+    (license license:gpl3+)))

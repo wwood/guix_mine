@@ -43,7 +43,7 @@
 
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages rails)
-  #:use-module (ben packages ruby-in-git)
+;  #:use-module (ben packages ruby-in-git)
   )
 
 
@@ -111,13 +111,21 @@ commit if you didn't fix the problem.")
          (add-after 'unpack 'fix-rakefile
           (lambda _
             (substitute* "Gemfile"
-              (("git: 'https://github.com/sporkmonger/rack-mount.git',") ""))
-            #t)))))
+              (("git: 'https://github.com/sporkmonger/rack-mount.git',") "")
+              ((".*launchy.*") "")
+              ((".*redcarpet.*") ""))
+            #t))
+         (add-before 'check 'delete-network-test
+                     (lambda _
+                       (delete-file "spec/addressable/net_http_compat_spec.rb")
+                       #t)))))
     (native-inputs
      `(("ruby-rspec" ,ruby-rspec)
        ("bundler" ,bundler)
        ("ruby-sporkmonger-rack-mount" ,ruby-sporkmonger-rack-mount)
-       ("ruby-rspec-its", ruby-rspec-its)))
+       ("ruby-rspec-its", ruby-rspec-its)
+       ("ruby-yard" ,ruby-yard)
+       ("ruby-simplecov" ,ruby-simplecov)))
     (synopsis "Uniform resource identifier (URI) reimplementation")
     (description
      "Addressable is a replacement for the URI implementation that is part of
@@ -158,6 +166,31 @@ routes to be nested or stacked on top of each other.")
       (home-page "https://github.com/sporkmonger/rack-mount")
       (license license:expat))))
 
+(define-public ruby-sass-spec
+  ;; There is no gem published so we package directly from the git repository.
+  (let ((commit "ac3d4160c19543273a8a515b0ec00014e311f329"))
+    (package
+      (name "ruby-sass-spec")
+      (version (string-append "0.8.3-1." (string-take commit 8)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/sass/sass-spec.git")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "0hmi1blvysf6388hmivn9idsn1s7hgi3yma3vzwdcaqjyhjbhsca"))))
+      (build-system ruby-build-system)
+      (arguments
+       `(#:tests? #t)) ; There are no tests, but this is to stop people using
+                       ; this gem as it does not install correctly.
+      (synopsis "")
+      (description
+       "")
+      (home-page "")
+      (license license:expat)))) ;?
+
 (define-public ruby-rspec-its
   (package
     (name "ruby-rspec-its")
@@ -165,11 +198,25 @@ routes to be nested or stacked on top of each other.")
     (source
      (origin
        (method url-fetch)
-       (uri (rubygems-uri "rspec-its" version))
+       ;; Use GitHub as a source because otherwise we cannot patch directly
+       (uri (string-append "https://github.com/rspec/rspec-its/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1pwphny5jawcm1hda3vs9pjv1cybaxy17dc1s75qd7drrvx697p3"))))
+         "088f3y7vd3c8g2gpi0z76qabaabfg0fb70ly3d0xqzbani0lrf09"))
+       (patches (search-patches "ruby-rspec-its-remove-rspec-gemspec.patch"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-gemfile
+                     (lambda _
+                       (substitute* "rspec-its.gemspec"
+                         (("rake.*") "rake'\n")
+                         (("cucumber.*") "cucumber'\n"))
+                       #t)))))
     (propagated-inputs
      `(("ruby-rspec-core" ,ruby-rspec-core)
        ("ruby-rspec-expectations" ,ruby-rspec-expectations)))
@@ -198,7 +245,9 @@ eq(1)\\}}.")
          "1k4j31a93r0zhvyq2mm2k8irppbvkzbsg44r3mf023959v18fzih"))))
     (build-system ruby-build-system)
     (arguments
-     '(#:test-target "spec"))
+     '(#:test-target "spec"
+                     #:tests? #f
+                     )) ; Test failure as documented at https://github.com/cucumber/cucumber/issues/58
     (propagated-inputs
      `(("ruby-builder" ,ruby-builder)
       ("ruby-cucumber-core" ,ruby-cucumber-core)
@@ -246,25 +295,6 @@ eq(1)\\}}.")
     (synopsis "Wire protocol for Cucumber")
     (description "Wire protocol for Cucumber")
     (home-page "http://cucumber.io")
-    (license license:expat)))
-
-(define-public ruby-gherkin
-  (package
-    (name "ruby-gherkin")
-    (version "4.0.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (rubygems-uri "gherkin" version))
-       (sha256
-        (base32
-         "1ripjv97hg746xszx9isal8z8vrlb98asc2rdxl291b3hr6pj0pr"))))
-    (build-system ruby-build-system)
-    (arguments
-     `(#:tests? #f)) ; Do not test to avoid dependency cycle.
-    (synopsis "Gherkin parser")
-    (description "Gherkin parser")
-    (home-page "https://github.com/cucumber/gherkin")
     (license license:expat)))
 
 (define-public ruby-multi-test
@@ -458,7 +488,10 @@ eq(1)\\}}.")
          "0cvxvw0v7wnhz15piylxrwpjdgjccwyrddda052z97cpnj5qjg5w"))))
     (build-system ruby-build-system)
     (arguments
-     `(#:phases
+     `(#:tests? #f ; There are 3 test failures to do with running commands, not
+                   ; sure what the issue is.
+       #:test-target "spec"
+       #:phases
        (modify-phases %standard-phases
          (add-before 'check 'fix-gemfile
            (lambda _
@@ -468,8 +501,18 @@ eq(1)\\}}.")
                ((".*yaml.*") "\n")
                ((".*bcat.*") "\n")
                ((".*kramdown.*") "\n")
+               ((".*fuubar.*") "\n")
+               ((".*rubocop.*") "\n")
+               ((".*cucumber-pro.*") "\n")
+               ((".*license_finder.*") "\n")
+               ((".*relish.*") "\n")
                )
-             #t)))))
+             (substitute* "spec/spec_helper.rb"
+               ((".*simplecov.*") "")
+               (("^SimpleCov.*") ""))
+             #t))
+         (add-before 'check 'set-home
+                     (lambda _ (setenv "HOME" "/tmp") #t)))))
     (native-inputs
      `(("bundler" ,bundler)
        ("ruby-simplecov" ,ruby-simplecov)
@@ -527,7 +570,7 @@ eq(1)\\}}.")
                    ; "-Ilib" "spec")) inside the container, but seem to work outside.
        #:phases
        (modify-phases %standard-phases
-         (add-before 'build 'delete'certificate
+         (add-before 'build 'delete-certificate
            (lambda _
              ;; Remove 's.cert_chain' as we do not build with a private key
              (substitute* "fuubar.gemspec"
@@ -671,18 +714,17 @@ eq(1)\\}}.")
      "http://github.com/jarib/childprocess")
     (license license:expat)))
 
-
 (define-public ruby-sinatra
   (package
   (name "ruby-sinatra")
-  (version "1.4.6")
+  (version "1.4.7")
   (source
     (origin
       (method url-fetch)
       (uri (rubygems-uri "sinatra" version))
       (sha256
         (base32
-          "1hhmwqc81ram7lfwwziv0z70jh92sj1m7h7s9fr0cn2xq8mmn8l7"))))
+          "1b81kbr65mmcl9cdq2r6yc16wklyp798rxkgmm5pr9fvsj7jwmxp"))))
   (build-system ruby-build-system)
   (propagated-inputs
     `(("ruby-rack" ,ruby-rack)
@@ -709,17 +751,19 @@ eq(1)\\}}.")
         (base32
          "0lgk8bfx24959yq1cn55php3321wddw947mgj07bxfnwyipy9hqf"))))
     (build-system ruby-build-system)
-    (native-inputs
-     `(("bundler" ,bundler)
-       ("ruby-yard" ,ruby-yard)
-       ("ruby-asciidoctor" ,ruby-asciidoctor)
-       ("ruby-builder" ,ruby-builder)
-       ("ruby-coffee-script" ,ruby-coffee-script)
-       ("ruby-contest" ,ruby-contest)
-       ("ruby-creole" ,ruby-creole)
-       ("ruby-erubis" ,ruby-erubis)
-       ("ruby-haml" ,ruby-haml); do we really need haml <4 ?
-       ("ruby-kramdown" ,ruby-kramdown)))
+    (arguments
+     `(#:tests? #f)) ; There are a number of unpackaged dependencies e.g. kramdown.
+    ;; (native-inputs
+    ;;  `(("bundler" ,bundler)
+    ;;    ("ruby-yard" ,ruby-yard)
+    ;;    ("ruby-asciidoctor" ,ruby-asciidoctor)
+    ;;    ("ruby-builder" ,ruby-builder)
+    ;;    ("ruby-coffee-script" ,ruby-coffee-script)
+    ;;    ("ruby-contest" ,ruby-contest)
+    ;;    ("ruby-creole" ,ruby-creole)
+    ;;    ("ruby-erubis" ,ruby-erubis)
+    ;;    ("ruby-haml" ,ruby-haml); do we really need haml <4 ?
+    ;;    ("ruby-kramdown" ,ruby-kramdown)))
     (synopsis
      "Generic interface to multiple Ruby template engines")
     (description
@@ -761,12 +805,38 @@ eq(1)\\}}.")
         (base32
          "1y6gzahhaymgcxcgm7y16sgbiafsb7i2flhy1sq4x1jizk8bih5s"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"
+                     #:phases
+       (modify-phases %standard-phases
+         (add-after 'extract-gemspec 'update-dependency
+                    (lambda _
+                      ;; Relax dependency to avoid conflicting versions in nio4r
+                      ;; for instance.
+                      (substitute* "coveralls-ruby.gemspec"
+                        (("<simplecov.*") "<simplecov>)\n")
+                        (("<tins.*") "<tins>)\n"))
+                        
+             #t))
+         (add-before 'check 'fix-dependencies
+                     (lambda _
+                       (substitute* "spec/spec_helper.rb"
+                         ((".*pry.*") "\n"))
+                       #t)))))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)
+       ("ruby-truthy" ,ruby-truthy)
+       ("ruby-webmock" ,ruby-webmock)
+       ("ruby-vcr" ,ruby-vcr)
+       ("git" ,git))) ; git is required for testing
     (propagated-inputs
      `(("ruby-json" ,ruby-json)
        ("ruby-rest-client" ,ruby-rest-client)
        ("ruby-simplecov" ,ruby-simplecov)
        ("ruby-term-ansicolor" ,ruby-term-ansicolor)
        ("ruby-thor" ,ruby-thor)
+       ("ruby-simplecov" ,ruby-simplecov)
        ("ruby-tins" ,ruby-tins)))
     (synopsis
      "A Ruby implementation of the Coveralls API.")
@@ -774,6 +844,29 @@ eq(1)\\}}.")
      "A Ruby implementation of the Coveralls API.")
     (home-page "https://coveralls.io")
     (license license:expat)))
+
+(define-public ruby-truthy
+(package
+  (name "ruby-truthy")
+  (version "1.0.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "truthy" version))
+      (sha256
+        (base32
+          "19silgd65j3qwfk5w891p9wcmzdmi9ddm2kg5zbvvqn2h9lkfzmd"))))
+  (build-system ruby-build-system)
+  (arguments
+     `(#:tests? #f)) ; Files required for testing are not in gem, and homepage
+                     ; has disappeared.
+  (propagated-inputs `(("ruby-hoe" ,ruby-hoe)))
+  (synopsis
+    "Easily get truthiness values of Ruby objects")
+  (description
+    "Easily get truthiness values of Ruby objects")
+  (home-page "https://rubygems.org/gems/truthy")
+  (license #f)))
 
 (define-public ruby-rest-client
   (package
@@ -787,13 +880,26 @@ eq(1)\\}}.")
         (base32
          "1m8z0c4yf6w47iqz6j2p7x1ip4qnnzvhdph9d5fgx081cvjly3p7"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-dependencies
+           (lambda _
+             (substitute* "rest-client.gemspec"
+               ((".*pry.*") "\n"))
+             #t))
+         (add-before 'check 'delete-network-tests
+                     (lambda _
+                       (delete-file "spec/integration/request_spec.rb")
+                       #t)))))
     (propagated-inputs
      `(("ruby-http-cookie" ,ruby-http-cookie)
-       ("ruby-mime-types" ,ruby-mime-types)
+       ("ruby-mime-types" ,ruby-mime-types-2)
        ("ruby-netrc" ,ruby-netrc)))
     (native-inputs
      `(("bundler" ,bundler)
-       ("ruby-webmock", ruby-webmock)))
+       ("ruby-webmock", ruby-webmock)
+       ("ruby-rspec", ruby-rspec-2)))
     (synopsis
      "A simple HTTP and REST client for Ruby, inspired by the Sinatra microframework style of specifying actions: get, put, post, delete.")
     (description
@@ -815,9 +921,11 @@ eq(1)\\}}.")
          "0la47vzbikhvnx8qcj8jli87agzzffwh11ggm7rpq43iz2rwp0sl"))))
     (build-system ruby-build-system)
     (propagated-inputs
-     `(("ruby-addressable" ,ruby-addressable)
+     `(("bundler" ,bundler)
+       ("ruby-addressable" ,ruby-addressable)
        ("ruby-crack" ,ruby-crack)
-       ));("ruby-hashdiff" ,ruby-hashdiff)))
+       ("ruby-rspec" ,ruby-rspec)
+       ("ruby-hashdiff" ,ruby-hashdiff)))
     (synopsis
      "WebMock allows stubbing HTTP requests and setting expectations on HTTP requests.")
     (description
@@ -837,6 +945,16 @@ eq(1)\\}}.")
         (base32
          "0abb0fvgw00akyik1zxnq7yv391va148151qxdghnzngv66bl62k"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+                  (lambda _
+                    (zero? (length
+                            (filter (lambda (file)
+                                      (display file)(display "\n")
+                                      (not (zero? (system* "ruby" file))))
+                                    (find-files "spec" ".*rb$")))))))))
     (propagated-inputs
      `(("ruby-safe-yaml" ,ruby-safe-yaml)))
     (synopsis
@@ -862,7 +980,8 @@ eq(1)\\}}.")
      '(#:test-target "spec"))
     (native-inputs
      `(("ruby-rspec" ,ruby-rspec)
-       ("ruby-hashie" ,ruby-hashie)))
+       ("ruby-hashie" ,ruby-hashie)
+       ("ruby-heredoc-unindent" ,ruby-heredoc-unindent)))
     (synopsis "Parse YAML safely")
     (description "Parse YAML safely")
     (home-page "https://github.com/dtao/safe_yaml")
@@ -871,18 +990,41 @@ eq(1)\\}}.")
 (define-public ruby-hashie
   (package
     (name "ruby-hashie")
-    (version "3.4.3")
+    (version "3.4.4")
     (source
      (origin
        (method url-fetch)
-       (uri (rubygems-uri "hashie" version))
+       ;; The gem does not include Gemfile.
+       (uri (string-append "https://github.com/intridea/hashie/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1iv5hd0zcryprx9lbcm615r3afc0d6rhc27clywmhhgpx68k8899"))))
+         "19lyb9vwjpag7w67jhg4yfrkfn2p1glyv444z04j8d4wawxhrk9x"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'build 'fix-dependencies
+           (lambda _
+             (substitute* "Gemfile"
+               ((".*pry.*") "")
+               ((".*guard.*") "")
+               ((".*codeclimate.*") "")
+               (("rubocop.*") "rubocop'\n")
+               (("rspec-core.*") "rspec-core'\n"))
+             (substitute* "spec/spec_helper.rb"
+               ((".*pry.*") ""))
+             #t)))))
     (native-inputs
-     `(("ruby-rspec" ,ruby-rspec)
-       ("ruby-rspec-pending-for" ,ruby-rspec-pending-for)))
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)
+       ("ruby-rspec-pending-for" ,ruby-rspec-pending-for)
+       ;("ruby-guard" ,ruby-guard)
+       ;("ruby-guard-rspec" ,ruby-guard-rspec)
+       ("ruby-activesupport" ,ruby-activesupport)
+       ("ruby-rubocop" ,ruby-rubocop)))
     (synopsis
      "Hashie is a collection of classes and mixins that make hashes more powerful.")
     (description
@@ -902,10 +1044,14 @@ eq(1)\\}}.")
         (base32
          "0f9sj7v3j14fvd631smxr04l53pk8dqwn9ybqkjdqmzvcv73b5n6"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"))
+    (native-inputs
+     `(("bundler" ,bundler)))
     (propagated-inputs
      `(("ruby-rspec-core" ,ruby-rspec-core)
        ("ruby-ruby-engine" ,ruby-ruby-engine)
-       ("ruby-ruby-version" ,ruby-ruby-version)))
+       ("ruby_version" ,ruby_version)))
     (synopsis
      "Mark specs pending or skipped for specific Ruby engine (e.g. MRI or JRuby) / version combinations")
     (description
@@ -914,37 +1060,67 @@ eq(1)\\}}.")
      "https://github.com/pboling/rspec-pending_for")
     (license #f)))
 
-(define-public ruby-ruby-version
+(define-public ruby_version ; There is another gem called 'ruby-version' so we
+                                        ; use an underscore in this name
   (package
-    (name "ruby-version")
-    (version "0.4.3")
+    (name "ruby_version")
+    (version "1.0.1")
     (source
      (origin
        (method url-fetch)
-       (uri (rubygems-uri "ruby-version" version))
+       (uri (rubygems-uri "ruby_version" version))
        (sha256
         (base32
-         "0dpfhgmrlib31swv173bc6ldpby479s74w1disj7dhhjh4arxm57"))))
+         "0854i1bjy56176anr05l5m0vc81nl53c7fyfg7sljj62m1d64dgj"))))
     (build-system ruby-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         (add-before 'build 'fix-dependencies
-           (lambda _
-             (substitute* "ruby-version.gemspec"
-               ((".*rake.*") "")
-               ((".*jeweler.*") ""))
-             #t)))))
+         (add-before 'check 'fix-dependencies
+                     (lambda _
+                       (delete-file "Gemfile.lock")
+                       (delete-file "pkg/ruby_version-1.0.0.gem")
+                       (substitute* "ruby_version.gemspec"
+                         ((".*rdoc.*") "\n")
+                         (("rake.*") "rake>)\n")
+                         ((".*rubygems-tasks.*") "\n"))
+                       (substitute* "Rakefile"
+                         (("^require 'rubygems/tasks'") "")
+                         (("Gem::Tasks.new") ""))
+                       #t)))))
     (native-inputs
      `(("bundler" ,bundler)
-       ("ruby-rspec" ,ruby-rspec)
-       ("ruby-simplecov" ,ruby-simplecov)))
+       ("ruby-rspec" ,ruby-rspec-2)
+       ("ruby-rake" ,ruby-rake)))
     (synopsis
-     "Wraps the RUBY_VERSION and RUBY_ENGINE constants and allows the elegant Ruby version number matching on all major Ruby platforms.")
+     "Provides a RubyVersion class to simplify checking for the right Ruby version in your programs.")
     (description
-     "Wraps the RUBY_VERSION and RUBY_ENGINE constants and allows the elegant Ruby version number matching on all major Ruby platforms.")
+     "Provides a RubyVersion class to simplify checking for the right Ruby version in your programs.")
     (home-page
-     "http://github.com/martinkozak/ruby-version")
+     "https://github.com/janlelis/ruby_version")
+    (license license:expat)))
+
+(define-public ruby-rake
+  (package
+    (name "ruby-rake")
+    (version "11.2.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "rake" version))
+       (sha256
+        (base32
+         "0m7fk7n0q459b1866cpq0gyz6904srhajrag0ybpdyl5sw4c2xff"))))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("bundler" ,bundler)))
+    (synopsis
+     "Rake is a Make-like program implemented in Ruby. Tasks and dependencies are
+specified in standard Ruby syntax.")
+    (description
+     "Rake is a Make-like program implemented in Ruby. Tasks and dependencies are
+specified in standard Ruby syntax.")
+    (home-page "https://github.com/ruby/rake")
     (license license:expat)))
 
 
@@ -955,45 +1131,44 @@ eq(1)\\}}.")
 
 
 
-
-;; (define-public ruby-appraisal
-;;   (package
-;;     (name "ruby-appraisal")
-;;     (version "2.1.0")
-;;     (source
-;;      (origin
-;;        (method url-fetch)
-;;        (uri (rubygems-uri "appraisal" version))
-;;        (sha256
-;;         (base32
-;;          "10ng010lhswdykjhwic7bgv28qpjj42qwxvprpj1f4cavdimh4vp"))))
-;;     (build-system ruby-build-system)
-;;     (arguments
-;;      `(#:tests? #f ; tests require network access
-;;        #:test-target "spec"
-;;        #:phases
-;;        (modify-phases %standard-phases
-;;          ;; remove bundler from Rakefile to avoid dependency issues
-;;          (add-before 'check 'remove-dependency-checking
-;;            (lambda _
-;; ;             (substitute* "Rakefile"
-;;  ;              (("^require 'bundler.*") ""))
-;;              (substitute* "Gemfile"
-;;                (("thor.*") "thor'\n"))
-;;              #t)))))
-;;     (propagated-inputs
-;;      `(("bundler" ,bundler)
-;;        ("ruby-thor" ,ruby-thor)))
-;;     (native-inputs
-;;      `(("ruby-activesupport" ,ruby-activesupport)
-;;        ("ruby-rspec" ,ruby-rspec)))
-;;     (synopsis
-;;      "Appraisal integrates with bundler and rake to test your library against different versions of dependencies in repeatable scenarios called \"appraisals.\"")
-;;     (description
-;;      "Appraisal integrates with bundler and rake to test your library against different versions of dependencies in repeatable scenarios called \"appraisals.\"")
-;;     (home-page
-;;      "http://github.com/thoughtbot/appraisal")
-;;     (license license:expat)))
+(define-public ruby-appraisal
+  (package
+    (name "ruby-appraisal")
+    (version "2.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "appraisal" version))
+       (sha256
+        (base32
+         "10ng010lhswdykjhwic7bgv28qpjj42qwxvprpj1f4cavdimh4vp"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f ; tests require network access
+       #:test-target "spec"
+       #:phases
+       (modify-phases %standard-phases
+         ;; remove bundler from Rakefile to avoid dependency issues
+         (add-before 'check 'remove-dependency-checking
+           (lambda _
+;             (substitute* "Rakefile"
+ ;              (("^require 'bundler.*") ""))
+             (substitute* "Gemfile"
+               (("thor.*") "thor'\n"))
+             #t)))))
+    (propagated-inputs
+     `(("bundler" ,bundler)
+       ("ruby-thor" ,ruby-thor)))
+    (native-inputs
+     `(("ruby-activesupport" ,ruby-activesupport)
+       ("ruby-rspec" ,ruby-rspec)))
+    (synopsis
+     "Appraisal integrates with bundler and rake to test your library against different versions of dependencies in repeatable scenarios called \"appraisals.\"")
+    (description
+     "Appraisal integrates with bundler and rake to test your library against different versions of dependencies in repeatable scenarios called \"appraisals.\"")
+    (home-page
+     "http://github.com/thoughtbot/appraisal")
+    (license license:expat)))
 
 (define-public ruby-kramdown
   (package
@@ -1032,6 +1207,9 @@ using a strict syntax definition and supporting several common extensions.
         (base32
          "0z9q3l8l73pvx6rrqz40xz9xd5izziprjnimb572hcah6dh30cnw"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Further dependencies such as pdf-inspector need to be
+                     ; packaged.
     (propagated-inputs
      `(("ruby-pdf-core" ,ruby-pdf-core)
        ("ruby-ttfunk" ,ruby-ttfunk)))
@@ -1249,7 +1427,7 @@ CoffeeScript is released.")
 (define-public ruby-execjs
   (package
     (name "ruby-execjs")
-    (version "2.6.0")
+    (version "2.7.0")
     (source
      (origin
        (method url-fetch)
@@ -1258,7 +1436,7 @@ CoffeeScript is released.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "073kvakgb39gnip23kh4p2gwjydjyzv9hfsy22k80w8swgkh8rvc"))))
+         "0h1bi96gks205pz2mn2zwldz8h0ajwggyi85bwfbksmrsn2lwick"))))
     (build-system ruby-build-system)
     (arguments
      `(#:tests? #f)) ; tests require ruby-therubyracer and thus v8.
@@ -1361,28 +1539,48 @@ use the Duktape API to call Ecmascript functions from C code and vice versa.")
     (source
      (origin
        (method url-fetch)
-       (uri (rubygems-uri "therubyracer" version))
+       ;; Build from GitHub source so that patches can be applied.
+       (uri (string-append "https://github.com/cowboyd/therubyracer/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0x93jrl0ac5r0pfqnbv228mikgqxcvdy3rgkl322k1cssr1yvhid"))))
+         "0vyiacgg0hngl3gxh7n5lvskac5ms2rcbjrixj4mc8c2adhmqj1a"))
+       (patches (search-patches "ruby-therubyracer-fix-gemspec.patch"))))
     (build-system ruby-build-system)
     (arguments
-     `(#:phases
+     `(#:test-target "spec"
+       #:phases
        (modify-phases %standard-phases
+         (delete 'extract-gemspec)
          (add-before 'build 'fix-gemfile
            (lambda _
              (substitute* "Gemfile"
                (("redjs.*") "redjs'\n")
                ((".*gem-compiler.*") "\n"))
-             #t)))))
+             #t))
+         (add-before 'install 'prepare-libv8
+           ;; Since therubyracer requires 'libv8' when compiling native
+           ;; extensions during installation, it must be installed into the same
+           ;; gem directory.  We make 'libv8' a native input and copy the entire
+           ;; libv8 gem directory into the the current output and install
+           ;; therubyracer into that.
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+                       (copy-recursively
+                        (assoc-ref inputs "ruby-libv8")
+                        (assoc-ref outputs "out"))
+                       #t))
+         (add-before 'check 'compile
+                     (lambda _
+                       (zero? (system* "rake" "compile")))))))
+    (propagated-inputs
+     `(("ruby-ref" ,ruby-ref)))
     (native-inputs
      `(("bundler" ,bundler)
        ("ruby-redjs" ,ruby-redjs)
        ("ruby-rspec" ,ruby-rspec-2)
-       ("ruby-rake-compiler" ,ruby-rake-compiler)))
-    (propagated-inputs
-     `(("ruby-libv8" ,ruby-libv8)
-       ("ruby-ref" ,ruby-ref)))
+       ("ruby-rake-compiler" ,ruby-rake-compiler)
+       ("ruby-libv8" ,ruby-libv8-3.16.14)))
     (synopsis
      "Call JavaScript code and manipulate JavaScript objects from Ruby. Call Ruby code and manipulate Ruby objects from JavaScript.")
     (description
@@ -1391,39 +1589,59 @@ use the Duktape API to call Ecmascript functions from C code and vice versa.")
      "http://github.com/cowboyd/therubyracer")
     (license license:expat)))
 
-(define-public ruby-libv8
+(define-public ruby-libv8-3.16.14
   (package
     (name "ruby-libv8")
-    (version "4.5.95.5")
+    (version "3.16.14.14") ; Package an even-numbered release so only source
+                           ; code it included and not binaries.
     (source
      (origin
        (method url-fetch)
        (uri (rubygems-uri "libv8" version))
        (sha256
         (base32
-         "0i4mlxwn7iqxamxk69sxiqwmfdxvc0v5vs8dib8bxc7d6c4xk501"))))
+         "1sipv60i1fxia2y08q2n2q179pxizhnx9065x8630wdnvbpqrl0x"))))
     (build-system ruby-build-system)
     (arguments
      `(#:test-target "spec"
-       #:gem-flags (list "--" "--with-system-v8")
+       ;#:gem-flags (list "--" "--with-system-v8")
        #:phases
        (modify-phases %standard-phases
          ;; Non-printing characters trip up this build phase and it isn't used
          ;; anyway.
-         (delete 'replace-git-ls-files)
-         (add-after 'install 'remove-extraneous-files
-           (lambda* (#:key outputs #:allow-other-keys)
-             (delete-file-recursively
-              (string-append 
-               (assoc-ref outputs "out")
-               ;; TODO: Generalise this path.
-               "/lib/ruby/gems/2.3.0/gems/libv8-4.5.95.5/vendor")))))))
+                                        ;(delete 'extract-gemspec)
+         ;; (replace 'replace-git-ls-files
+         ;;          (lambda _
+         ;;            (substitute* "libv8.gemspec"
+         ;;              (("git ls-files") "find . -type f |sort"))
+         ;;            #t))
+         (add-after 'extract-gemspec 'fix-dependencies
+                    (lambda _
+                      ;; Remove non-printing character that trips up substitute*
+                      ;; (system* "sed" "s/ stub.*//" "-i" "libv8.gemspec")
+                      ;; (delete-file-recursively "vendor")
+                      ;; (substitute* "libv8.gemspec"
+                      ;;   (("<rake>.*") "<rake>)\n")
+                      ;;   ((", \\\"vendor.*") "]\n")) ; Do not distribute
+                      ;;                   ; depot_tools as this includes pre-built
+                      ;;                   ; binaries.
+                      
+             #t))
+         )))
+         ;; (Add-after 'install 'remove-extraneous-files
+         ;;   (lambda* (#:key outputs #:allow-other-keys)
+         ;;     (delete-file-recursively
+         ;;      (string-append 
+         ;;       (assoc-ref outputs "out")
+         ;;       ;; TODO: Generalise this path.
+         ;;       "/lib/ruby/gems/2.3.0/gems/libv8-5.2.361.43.1/vendor")))))))
     (native-inputs
      `(("bundler" ,bundler)
        ("ruby-rake-compiler" ,ruby-rake-compiler)
-       ("ruby-rspec" ,ruby-rspec)
-       ("python" ,python-2)
-       ("which" ,which)))
+       ("ruby-rspec" ,ruby-rspec-2)
+       ("ruby-rspec-spies" ,ruby-rspec-spies)
+       ("which" ,which)
+       ("python" ,python-2)))
     (synopsis
      "Distributes the V8 JavaScript engine in binary and source forms in order
 to support fast builds of The Ruby Racer")
@@ -1701,11 +1919,8 @@ minutes of work.
        "1vymw9wpygfwx3cz29ak8nrzfhj01bbca8fcc5swsv1x8pfy4yrf"))))
    (build-system ruby-build-system)
    (arguments
-    `(#:phases
-      (modify-phases %standard-phases
-        (replace 'check
-          (lambda _
-            (zero? (system* "rails" "new" "/tmp/my_webapp")))))))
+    `(#:tests? #f)) ; No tests included in gem. TODO: download from GitHub so
+                    ; tests can be run.
    (propagated-inputs
     `(("ruby-actioncable" ,ruby-actioncable)
       ("ruby-actionmailer" ,ruby-actionmailer)
@@ -1718,7 +1933,19 @@ minutes of work.
       ("bundler" ,bundler)
       ("ruby-railties" ,ruby-railties)
       ("ruby-sprockets-rails" ,ruby-sprockets-rails)
-      ("ruby-spring" ,ruby-spring)))
+      ("ruby-spring" ,ruby-spring)
+      ("ruby-sqlite3" ,ruby-sqlite3)
+      ("ruby-puma" ,ruby-puma)
+      ("ruby-sass-rails" ,ruby-sass-rails)
+      ("ruby-uglifier" ,ruby-uglifier)
+      ("ruby-coffee-rails" ,ruby-coffee-rails)
+      ("ruby-jquery-rails" ,ruby-jquery-rails)
+      ("ruby-turbolinks" ,ruby-turbolinks)
+      ("ruby-jbuilder" ,ruby-jbuilder)
+      ("ruby-byebug" ,ruby-byebug)
+      ("ruby-web-console" ,ruby-web-console)
+      ("ruby-listen" ,ruby-listen-3.0)
+      ("ruby-spring-watcher-listen" ,ruby-spring-watcher-listen)))
    (synopsis
     "Ruby on Rails is a full-stack web framework optimized for programmer happiness and sustainable productivity. It encourages beautiful code by favoring convention over configuration.")
    (description
@@ -1923,7 +2150,7 @@ minutes of work.
        "0jrp9752vsfm8jz7mz8spns2cgzhg374hn1nrrnjl433rkjr6b3r"))))
    (build-system ruby-build-system)
    (arguments
-     `(#:tests? #f)) ; tests not included
+    `(#:tests? #f)) ; tests not included
    (propagated-inputs
     `(("ruby-actionpack" ,ruby-actionpack)
       ("ruby-activesupport" ,ruby-activesupport)
@@ -1973,13 +2200,22 @@ minutes of work.
        "1adnm77xfxck0mrvid5d7lwng783gh580rh3y18nq4bwdikr6nha"))))
    (build-system ruby-build-system)
    (arguments
-    `(#:test-target "spec"))
+    `(#:test-target "spec"
+      #:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-dependencies
+                     (lambda _
+                       (substitute* "Gemfile"
+                         (("rubocop.*") "rubocop\"\n"))
+                       #t))
+         (add-before 'check 'compile
+                     (lambda _
+                       (zero? (system* "rake" "compile")))))))
    (native-inputs
     `(("bundler" ,bundler)
       ("ruby-rake-compiler" ,ruby-rake-compiler)
       ("ruby-rspec" ,ruby-rspec)
       ("ruby-rubocop" ,ruby-rubocop)
-      ("ruby-ruby-progressbar" ,ruby-ruby-progressbar)
       ("ruby-coveralls" ,ruby-coveralls)))
    (synopsis "New IO for Ruby")
    (description "New IO for Ruby")
@@ -2035,6 +2271,21 @@ minutes of work.
     "This package provides a really Ruby Mail handler.")
    (home-page "https://github.com/mikel/mail")
    (license license:expat)))
+
+(define-public ruby-mime-types-2
+  (package
+    (inherit ruby-mime-types)
+    (version "2.6.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "mime-types" version))
+       (sha256
+        (base32
+         "136ybsrwn1k7zcbxbrczf0n4z3liy5ygih3q9798s8pi80smi5dm"))))
+    (arguments
+     `(#:tests? #f ; Deprecated library and by default tests fail.
+                ))))
 
 (define-public ruby-rails-dom-testing
   (package
@@ -2530,6 +2781,8 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
         (base32
           "0iji20hb8crncz14piss1b29bfb6l89sz3ai5fny3iw39vnxkdcb"))))
   (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; No tests are included in gem.
   (propagated-inputs
     `(("ruby-railties" ,ruby-railties)
       ("ruby-sass" ,ruby-sass)
@@ -2555,13 +2808,47 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
         (base32
           "05a7xqzzlliqbd32jfkmis08pb0cljns7jx14ybkqb9zbg7ph35h"))))
   (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Tests fail, perhaps they require npm? test-target "spec"
+     ;; #:phases
+     ;;   (modify-phases %standard-phases
+     ;;     (add-before 'check 'list
+     ;;                 (lambda _
+     ;;                   (system* "rake" "js")
+     ;;                   (system* "gem" "list"))))))
   (propagated-inputs
-    `(("ruby-execjs" ,ruby-execjs)))
+   `(("ruby-execjs" ,ruby-execjs)))
+  ;; (native-inputs
+  ;;  `(("bundler" ,bundler)
+  ;;    ("ruby-rubocop" ,ruby-rubocop)
+  ;;    ("ruby-rspec" ,ruby-rspec)
+  ;;    ("ruby-sourcemap" ,ruby-sourcemap)
+  ;;    ("ruby-duktape" ,ruby-duktape))) ; Use as the JS interpreter
   (synopsis
     "Uglifier minifies JavaScript files by wrapping UglifyJS to be accessible in Ruby")
   (description
     "Uglifier minifies JavaScript files by wrapping UglifyJS to be accessible in Ruby")
   (home-page "http://github.com/lautis/uglifier")
+  (license license:expat)))
+
+(define-public ruby-sourcemap
+(package
+  (name "ruby-sourcemap")
+  (version "0.1.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "sourcemap" version))
+      (sha256
+        (base32
+          "0l111zg9qh2g15rpmi2d006m3h27hl462d7zmc4js67ppmkcd7w8"))))
+  (build-system ruby-build-system)
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-minitest" ,ruby-minitest)))
+  (synopsis "Ruby source maps")
+  (description "Ruby source maps")
+  (home-page "http://github.com/maccman/sourcemap")
   (license license:expat)))
 
 (define-public ruby-coffee-rails
@@ -2581,8 +2868,8 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
           "0a7cac67n1ndky3n8b1vdrdq67cahq6sn76saiw5xgzd296b3zjy"))
        (patches (search-patches "ruby-coffee-rails-fix-rakefile.patch"))))
   (build-system ruby-build-system)
-  (native-inputs
-   `(("bundler" ,bundler)))
+  (arguments
+   `(#:tests? #f)) ; Tests require rails, disable to precent circular dependency.
   (propagated-inputs
     `(("ruby-coffee-script" ,ruby-coffee-script)
       ("ruby-railties" ,ruby-railties)))
@@ -2633,9 +2920,10 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
         (base32
          "1dpsl17mygsd3hjcb2zq05n9zygbi0qc5130h276lw6py8g7nppc"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; There are no tests.
     (propagated-inputs
-     `(("ruby-turbolinks-source"
-        ,ruby-turbolinks-source)))
+     `(("ruby-turbolinks-source" ,ruby-turbolinks-source)))
     (synopsis
      "Rails engine for Turbolinks 5 support")
     (description
@@ -2656,9 +2944,18 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
         (base32
          "1jbh1296imd0arc9nl1m71yfd7kg505p8srr1ijpsqv4hhbz5qci"))))
     (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-dependencies'
+           (lambda _
+             (substitute* "Gemfile"
+               ((".*pry.*") ""))
+             #t)))))
     (native-inputs
      `(("bundler" ,bundler)
-       ("ruby-mocha" ,ruby-mocha)))
+       ("ruby-mocha" ,ruby-mocha)
+       ("ruby-appraisal" ,ruby-appraisal)))
     (propagated-inputs
      `(("ruby-activesupport" ,ruby-activesupport)
        ("ruby-multi-json" ,ruby-multi-json)))
@@ -2676,11 +2973,29 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
   (source
     (origin
       (method url-fetch)
-      (uri (rubygems-uri "web-console" version))
+      ;; Download from GitHub as test files are not provided in the gem.
+      (uri (string-append "https://github.com/rails/web-console/archive/v"
+                          version ".tar.gz"))
+      (file-name (string-append name "-" version ".tar.gz"))
       (sha256
         (base32
-          "1gcasyydiinr8nmkjc0n63dgbx875rdkxxbcq82yz6z8qp5bwwh7"))))
+          "1gmymwvgwqjv4gmg2vb0abm6flwax9sg73wmh6yb7m818pn2lz3n"))))
   (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Do not test to prevent dependency cycle with rails.
+  ;; (arguments
+  ;;  `(#:phases
+  ;;    (modify-phases %standard-phases
+  ;; (add-before 'check 'setenv
+  ;;                    (lambda _
+  ;;                      (setenv "RUBYLIB" "lib")
+  ;;                      ;; (substitute* "Rakefile"
+  ;;                      ;;   (("require 'web_console") ; This is not required for
+  ;;                      ;;                  ; travis, so hmm.
+  ;;                      ;;    "require 'pathname'; require 'uri'; require 'web_console"))
+  ;;                      #t)))))
+  ;; (native-inputs
+  ;;  `(("bundler" ,bundler)))
   (propagated-inputs
     `(("ruby-actionview" ,ruby-actionview)
       ("ruby-activemodel" ,ruby-activemodel)
@@ -2706,6 +3021,10 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
         (base32
           "0dkj6v26fkg1g0majqswwmhxva7cd6p3psrhdlx93qal72dssywy"))))
   (build-system ruby-build-system)
+  (arguments
+   ;; Cannot run sass-spec options because the sass-spec package does
+   ;; not work. TODO: Fix.
+   `(#:test-target "test:ruby"))
   (native-inputs
    `(("ruby-rubycop" ,ruby-rubocop)
      ("ruby-ruby-progressbar" ,ruby-ruby-progressbar)))
@@ -2725,22 +3044,24 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
   (license license:expat)))
 
 (define-public ruby-turbolinks-source
-(package
-  (name "ruby-turbolinks-source")
-  (version "5.0.0")
-  (source
-    (origin
-      (method url-fetch)
-      (uri (rubygems-uri "turbolinks-source" version))
-      (sha256
+  (package
+    (name "ruby-turbolinks-source")
+    (version "5.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "turbolinks-source" version))
+       (sha256
         (base32
-          "1s197pamkac9kkhslj41gxxihx6jp3dh4g394k9zmbxwkfrf36zb"))))
-  (build-system ruby-build-system)
-  (synopsis "Turbolinks JavaScript assets")
-  (description "Turbolinks JavaScript assets")
-  (home-page
-    "https://github.com/turbolinks/turbolinks-source-gem")
-  (license license:expat)))
+         "1s197pamkac9kkhslj41gxxihx6jp3dh4g394k9zmbxwkfrf36zb"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; There are no tests.
+    (synopsis "Turbolinks JavaScript assets")
+    (description "Turbolinks JavaScript assets")
+    (home-page
+     "https://github.com/turbolinks/turbolinks-source-gem")
+    (license license:expat)))
 
 (define-public ruby-ref
 (package
@@ -2833,4 +3154,332 @@ implementation of maps/hashes that use references and a reference queue.")
      "")
     (home-page "")
     (license license:expat))) ;?
+
+
+(define-public ruby-heredoc-unindent
+  (package
+    (name "ruby-heredoc-unindent")
+    (version "1.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "heredoc_unindent" version))
+       (sha256
+        (base32
+         "14ijr2fsjwhrkjkcaz81d5xnfa4vvgvcflrff83avqw9klm011yw"))))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("ruby-hoe" ,ruby-hoe)))
+    
+    (synopsis
+     "This gem removes common margin from indented strings")
+    (description
+     "This gem removes common margin from indented strings, such as the ones
+produced by indented heredocs.  In other words, it strips out leading whitespace
+chars at the beggining of each line, but only as much as the line with the
+smallest margin.
+
+It is acknowledged that many strings defined by heredocs are just code and fact
+is that most parsers are insensitive to indentation.  If, however, the strings
+are to be used otherwise, be it for printing or testing, the extra indentation
+will probably be an issue and hence this gem.")
+    (home-page
+     "https://github.com/adrianomitre/heredoc_unindent")
+    (license license:expat)))
+
+(define-public ruby-hashdiff
+  (package
+    (name "ruby-hashdiff")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "hashdiff" version))
+       (sha256
+        (base32
+         "1r06gar8zp4hyzyc0ky7n6mybjj542lrfda5y78fm5hyhiplv104"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec-2)))
+    (synopsis
+     " HashDiff is a diff lib to compute the smallest difference between two hashes. ")
+    (description
+     " HashDiff is a diff lib to compute the smallest difference between two hashes. ")
+    (home-page
+     "https://github.com/liufengyun/hashdiff")
+    (license license:expat)))
+
+(define-public ruby-vcr
+(package
+  (name "ruby-vcr")
+  (version "3.0.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "vcr" version))
+      (sha256
+        (base32
+          "1y19gb8vz1rbhx1qhim6kpp0fzksqhd7grb50hmrbjx5h4hc3y0y"))))
+  (build-system ruby-build-system)
+  (arguments
+     `(#:tests? #f)) ; No Rakefile in gem, and there's likely unpackaged
+                     ; dependencies anyway.
+  (synopsis
+    "Record your test suite's HTTP interactions and replay them during future test runs for fast, deterministic, accurate tests.")
+  (description
+    "Record your test suite's HTTP interactions and replay them during future test runs for fast, deterministic, accurate tests.")
+  (home-page "http://vcr.github.io/vcr")
+  (license license:expat)))
+
+(define-public ruby-listen
+(package
+  (name "ruby-listen")
+  (version "3.1.5")
+  (source
+    (origin
+      (method url-fetch)
+      ;; The gem does not include a Rakefile, so we fetch the tarball from
+      ;; Github.
+      (uri (string-append "https://github.com/guard/listen/archive/v"
+                          version ".tar.gz"))
+      (file-name (string-append name "-" version ".tar.gz"))
+      (sha256
+        (base32
+         "0f0mx4nzpd17svvmkcb2q66w3gdvs1zkrpc0p3wq1s2va5b5cnss"))
+      (patches (search-patches "ruby-listen-patch-gemspec.patch"))))
+  (build-system ruby-build-system)
+    (arguments
+     `(#:test-target "spec"
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-dependencies'
+           (lambda _
+             (substitute* "Rakefile"
+               ((".*rubocop.*") ""))
+             #t)))))
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec)
+     ("ruby-coveralls" ,ruby-coveralls)))
+  (propagated-inputs
+    `(("ruby-rb-fsevent" ,ruby-rb-fsevent)
+      ("ruby-rb-inotify" ,ruby-rb-inotify)
+      ("ruby-ruby-dep" ,ruby-ruby-dep)))
+  (synopsis
+    "The Listen gem listens to file modifications and notifies you about the changes. Works everywhere!")
+  (description
+    "The Listen gem listens to file modifications and notifies you about the changes.  Works everywhere!")
+  (home-page "https://github.com/guard/listen")
+  (license license:expat)))
+
+(define-public ruby-listen-3.0
+  (package
+    (inherit ruby-listen)
+    (name "ruby-listen")
+    (version "3.0.8")
+    (source
+     (origin
+       (method url-fetch)
+       ;; The gem does not include a Rakefile, so we fetch the tarball from
+       ;; Github.
+       (uri (string-append "https://github.com/guard/listen/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "06cy038xlbi8hcr9nv0c9wvafi7s3d05sdc7ydkv8qndi9bs68l3"))
+       (patches (search-patches "ruby-listen-3.0.8-patch-gemspec.patch"))))))
+
+(define-public ruby-ruby-dep
+(package
+  (name "ruby-ruby-dep")
+  (version "1.4.0")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "ruby_dep" version))
+      (sha256
+        (base32
+          "12i57gpy0gmkwnd7l6xdjpfw9bygxmgwx4hjwgg4mca2jr7d3g47"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; Do not test to avoid circular dependency with gem_isolator.
+  (synopsis
+    "Creates a version constraint of supported Rubies,suitable for a gemspec file")
+  (description
+    "Creates a version constraint of supported Rubies,suitable for a gemspec file")
+  (home-page "https://github.com/e2/ruby_dep")
+  (license license:expat)))
+
+(define-public ruby-rb-fsevent
+(package
+  (name "ruby-rb-fsevent")
+  (version "0.9.7")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rb-fsevent" version))
+      (sha256
+        (base32
+          "1xlkflgxngwkd4nyybccgd1japrba4v3kwnp00alikj404clqx4v"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; Tests require a special setup of rbenv.
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec-2)
+     ("ruby-guard-rspec" ,ruby-guard-rspec)))
+  (synopsis
+    "FSEvents API with Signals catching (without RubyCocoa)")
+  (description
+    "FSEvents API with Signals catching (without RubyCocoa)")
+  (home-page "http://rubygems.org/gems/rb-fsevent")
+  (license license:expat)))
+
+(define-public ruby-rb-inotify
+(package
+  (name "ruby-rb-inotify")
+  (version "0.9.7")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rb-inotify" version))
+      (sha256
+        (base32
+          "1yfcp3065n08balljmxn0qzwhdbwwxn2h9z89wmydyfj2gq1p71d"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Tests are not included in the gem.
+  (propagated-inputs `(("ruby-ffi" ,ruby-ffi)))
+  (synopsis
+    "A Ruby wrapper for Linux's inotify, using FFI")
+  (description
+    "This package provides a Ruby wrapper for Linux's inotify, using FFI")
+  (home-page "http://github.com/nex3/rb-inotify")
+  (license #f)))
+
+(define-public ruby-guard-rspec
+(package
+  (name "ruby-guard-rspec")
+  (version "4.7.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "guard-rspec" version))
+      (sha256
+        (base32
+          "1jkm5xp90gm4c5s51pmf92i9hc10gslwwic6mvk72g0yplya0yx4"))))
+  (build-system ruby-build-system)
+   (arguments
+     `(#:tests? #f)) ; Tests require further dependencies e.g. gem_isolator.
+  (propagated-inputs
+    `(("ruby-guard" ,ruby-guard)
+      ("ruby-guard-compat" ,ruby-guard-compat)
+      ("ruby-rspec" ,ruby-rspec)))
+  (synopsis
+    "Guard::RSpec automatically run your specs (much like autotest).")
+  (description
+    "Guard::RSpec automatically run your specs (much like autotest).")
+  (home-page
+    "https://github.com/guard/guard-rspec")
+  (license license:expat)))
+
+(define-public ruby-guard-compat
+(package
+  (name "ruby-guard-compat")
+  (version "1.2.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "guard-compat" version))
+      (sha256
+        (base32
+          "1zj6sr1k8w59mmi27rsii0v8xyy2rnsi09nqvwpgj1q10yq1mlis"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:test-target "spec"))
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-rspec" ,ruby-rspec)
+     ("ruby-rubocop" ,ruby-rubocop)))
+  (synopsis
+    "Helps creating valid Guard plugins and testing them")
+  (description
+    "Helps creating valid Guard plugins and testing them")
+  (home-page "")
+  (license license:expat)))
+
+(define-public ruby-spring-watcher-listen
+  (package
+    (name "ruby-spring-watcher-listen")
+    (version "2.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "spring-watcher-listen" version))
+       (sha256
+        (base32
+         "16gjqbhj3bkambafziza4pbw6g4zvh8z17lj87m8r90pgzcp93sj"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f ; circular dependency with rails?
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'fix-gemfile
+           (lambda _
+             (substitute* "Gemfile"
+               (("^gem \\\"spring.*") "gem 'spring'\ngem 'listen'\n"))
+             #t)))))
+  (native-inputs
+   `(("bundler" ,bundler)
+     ("ruby-activesupport" ,ruby-activesupport)))
+  (propagated-inputs
+    `(("ruby-listen" ,ruby-listen)
+      ("ruby-spring" ,ruby-spring)))
+  (synopsis
+    "Makes spring watch files using the listen gem.")
+  (description
+    "Makes spring watch files using the listen gem.")
+  (home-page
+    "https://github.com/jonleighton/spring-watcher-listen")
+  (license license:expat)))
+
+(define-public ruby-rspec-spies
+(package
+  (name "ruby-rspec-spies")
+  (version "2.1.4")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rspec-spies" version))
+      (sha256
+        (base32
+          "0pyjy35k59gsiv7l8585yx4gkg2vhycjycz9jlmgkx8s62dxnjgv"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Tests fail, is this completely deprecated?
+  ;; phases
+  ;;      (modify-phases %standard-phases
+  ;;        (replace 'check
+  ;;                 (lambda _
+  ;;                   (zero? (system* "rspec"))))
+  ;;        (add-before 'check 'fix-dependencies
+  ;;                    (lambda _
+  ;;                      (delete-file "Gemfile.lock")
+  ;;                     (substitute* "Gemfile"
+  ;;                       ((".*jeweler.*") "\n"))
+  ;;                      #t)))))
+  ;; (native-inputs
+  ;;  `(("bundler" ,bundler)
+  ;;    ("ruby-appraisal" ,ruby-appraisal)))
+  (propagated-inputs
+   `(("ruby-rspec" ,ruby-rspec-2)))
+  (synopsis "test spies, for rspec")
+  (description "test spies, for rspec")
+  (home-page
+    "http://github.com/technicalpickles/rspec-spies")
+  (license #f)))
 

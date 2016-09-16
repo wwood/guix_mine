@@ -77,56 +77,56 @@
   #:use-module (gnu packages bioinformatics))
 
 
-
+;; Commmented out because gstreamer 0.10 is not present
 ;; This is a terrible package. It does not work inside a container, but does
 ;; seem to work outside, on Ubuntu 16.04 at least. It probably will not work on
 ;; other systems, and should be replaced with a package built properly from
 ;; source.
-(define-public r-studio-binary
-  (package
-    (name "r-studio-binary")
-    (version "0.99.903")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://download1.rstudio.org/rstudio-"
-                    version "-amd64-debian.tar.gz"))
-              (sha256
-               (base32
-                "044p9fr14s05nrmlxh860vz2h4qzn6jq2mlgnkidvnkan9pz7xhw"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (delete 'configure)
-         (delete 'build)
-         (delete 'check)
-         (add-before 'install 'patch-rpaths
-           ;; Some libraries are not available in base Ubuntu, so we modify the
-           ;; RPATH of some libraries
-           (lambda* (#:key inputs #:allow-other-keys)
-             (zero? (system*
-                     "patchelf" "--set-rpath"
-                     (string-append
-                      (assoc-ref inputs "libxslt") "/lib:"
-                      (assoc-ref inputs "gstreamer") "/lib")
-                     "bin/libQt5WebKit.so.5"))))
-         (replace 'install
-                  (lambda* (#:key outputs #:allow-other-keys)
-                    (copy-recursively "." (assoc-ref outputs "out"))
-                    #t))
-         (delete 'validate-runpath)
-         )))
-    (native-inputs
-     `(("patchelf" ,patchelf)))
-    (inputs
-     `(("libxslt" ,libxslt)
-       ("gstreamer" ,gstreamer-0.10)))
-    (home-page "")
-    (synopsis "")
-    (description
-     "")
-    (license license:agpl3)))
+;; (define-public r-studio-binary
+;;   (package
+;;     (name "r-studio-binary")
+;;     (version "0.99.903")
+;;     (source (origin
+;;               (method url-fetch)
+;;               (uri (string-append
+;;                     "https://download1.rstudio.org/rstudio-"
+;;                     version "-amd64-debian.tar.gz"))
+;;               (sha256
+;;                (base32
+;;                 "044p9fr14s05nrmlxh860vz2h4qzn6jq2mlgnkidvnkan9pz7xhw"))))
+;;     (build-system gnu-build-system)
+;;     (arguments
+;;      `(#:phases
+;;        (modify-phases %standard-phases
+;;          (delete 'configure)
+;;          (delete 'build)
+;;          (delete 'check)
+;;          (add-before 'install 'patch-rpaths
+;;            ;; Some libraries are not available in base Ubuntu, so we modify the
+;;            ;; RPATH of some libraries
+;;            (lambda* (#:key inputs #:allow-other-keys)
+;;              (zero? (system*
+;;                      "patchelf" "--set-rpath"
+;;                      (string-append
+;;                       (assoc-ref inputs "libxslt") "/lib:"
+;;                       (assoc-ref inputs "gstreamer") "/lib")
+;;                      "bin/libQt5WebKit.so.5"))))
+;;          (replace 'install
+;;                   (lambda* (#:key outputs #:allow-other-keys)
+;;                     (copy-recursively "." (assoc-ref outputs "out"))
+;;                     #t))
+;;          (delete 'validate-runpath)
+;;          )))
+;;     (native-inputs
+;;      `(("patchelf" ,patchelf)))
+;;     (inputs
+;;      `(("libxslt" ,libxslt)
+;;        ("gstreamer" ,gstreamer-0.10)))
+;;     (home-page "")
+;;     (synopsis "")
+;;     (description
+;;      "")
+;;     (license license:agpl3)))
 
 ;; (define-public gstreamer-0.10
 ;;   (package (inherit gstreamer)

@@ -920,7 +920,7 @@ the binning summary page.")
      `(("exonerate" ,exonerate)
        ("mafft" ,mafft)
        ("raxml" ,raxml)
-       ("bppsuite" ,bpp-suite)))
+       ("bppsuite" ,bppsuite)))
     (home-page "")
     (synopsis "Probabilistic multiple sequence alignment program")
     (description
@@ -1066,16 +1066,12 @@ application or a drop in replacement for MUMmer3.")
               (sha256
                (base32
                 "09q7cp8ccdyczdi5r7nbvis7fx7vs7fyijslh7bs6jcz5dwj3qs3"))))
->>>>>>> refs/remotes/origin/master
     (build-system gnu-build-system)
     (home-page "")
     (synopsis "")
     (description
      "")
-<<<<<<< HEAD
     (license license:gpl3+))) ;fixme
-=======
-    (license license:gpl3+))) ;?
 
 
 (define-public panphlan
@@ -1472,3 +1468,82 @@ other python packages.  To enable the plugin pass @code{--with-yanc} to
 
 (define-public python2-yanc
   (package-with-python2 python-yanc))
+
+(define-public python-nestly
+  (package
+   (name "python-nestly")
+   (version "0.6")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "nestly" version))
+     (sha256
+      (base32
+       "1wrgpnab1w1lm20jlk632rjhsnj6dcld5hidjn44l4kwlqgdr6i0"))))
+   (build-system python-build-system)
+   (inputs
+    `(("python-setuptools" ,python-setuptools)
+      ("python-mock" ,python-mock)))
+   (home-page "https://github.com/fhcrc/nestly")
+   (synopsis "Functions for running software with combinatorial parameter")
+   (description
+    "Nestly is a collection of functions designed to make running software with
+combinatorial choices of parameters easier.")
+   (license license:expat)))
+
+(define-public python2-nestly
+  (package-with-python2 python-nestly))
+
+
+;; Does not work because I do not have an example input sample.xml file, at
+;; least.
+;; (define-public proxigenomics
+;;   (let ((commit "921d3d0367b9981573aa023b1418f7a5a8316a4c"))
+;;     (package
+;;       (name "proxigenomics")
+;;       (version (string-append "0-1." commit))
+;;       (source (origin
+;;                (method git-fetch)
+;;                (uri (git-reference
+;;                      (url "https://github.com/koadman/proxigenomics.git")
+;;                      (commit commit)))
+;;                (sha256
+;;                 (base32
+;;                  "0wk69kbg4l1lk6x5zc0kh457ak8cnv4nbg5dzy7kfq227vgw6qnl"))))
+;;       (build-system python-build-system)
+;;       (arguments
+;;        `(#:python ,python-2
+;;          #:phases
+;;          (modify-phases %standard-phases
+;;                         (replace 'build
+;;                                  (lambda _
+;;                                    (chdir "simulation/pipeline")
+;;                                    (and
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_evo.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_wgs.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_hic.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f"
+;;                                                     "SConstruct_map.py")))))
+                        
+;;                   )))
+;;       (inputs
+;;        `(("python-setuptools" ,python2-setuptools)
+;;          ("bioython" ,python2-biopython)
+;;          ("python-scipy" ,python2-scipy)
+;;          ("python-numpy" ,python2-numpy)
+;;          ("python-pandas" ,python2-pandas)
+;;          ("python-networkx" ,python2-networkx)
+;;          ("python-pysam" ,python-pysam)
+;;          ("python-pyyaml" ,python2-pyyaml)
+;;          ("scons" ,scons)
+;;          ;; extras not listed in README
+;;          ("perl" ,perl)
+;;          ("python-nestly" ,python2-nestly) ; not in the python module list but
+;;                                         ; is in pip install code
+;;          ))
+;;       (home-page "https://github.com/fhcrc/nestly")
+;;       (synopsis "Functions for running software with combinatorial parameter")
+;;       (description
+;;        "Nestly is a collection of functions designed to make running software with
+;; combinatorial choices of parameters easier.")
+;;       (license license:expat))))

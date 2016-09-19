@@ -306,8 +306,8 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
          (delete 'configure)
          (replace 'build
            (lambda* (#:key outputs #:allow-other-keys)
-                    (setenv "PREFIX" (assoc-ref outputs "out"))
-                    (zero? (system* "sh" "spades_compile.sh"))))
+             (setenv "PREFIX" (assoc-ref outputs "out"))
+             (zero? (system* "sh" "spades_compile.sh"))))
          (delete 'install)
          (delete 'check)
          (add-after 'install 'post-install-check
@@ -324,7 +324,7 @@ assemblies.")
     (license license:gpl2)))
 
 (define-public graftm
-  (let ((commit "c97241145ef5a9634618a4175cde7d382a25d38b"))
+  (let ((commit "099c45afc85be3661fbbc6d33f91f3f037e11798"))
     (package
       (name "graftm")
       (version (string-append "0.9.5-1." (string-take commit 7)))
@@ -350,35 +350,32 @@ assemblies.")
                 (file-name (string-append name "-" version "-checkout"))
                 (sha256
                  (base32
-                  "191yddgcx7f2wxgcdn7vxgrppilj3qc4anhy264c3pb2jg74rlkq"))))
-      
+                  "1y40c2h9pdskkgr9526zakm9h9j874abr6jzln2437rppss11a63"))))
       (build-system python-build-system)
       (arguments
        `(#:python ,python-2 ; python-2 only
-                  #:phases
-                  (modify-phases %standard-phases
-                    ;; current test in setup.py does not work so use nose to run tests
-                    ;; instead for now.
-                    (replace 'check
-                             (lambda _
-                               (setenv "TEMPDIR" ".") ; not sure if this is needed.
-                               ;; Some tests fail for strange reasons which seem likely to do with
-                               ;; being inside the chroot environment, rather than being actual
-                               ;; software problems.
-                               (delete-file "test/test_archive.py")
-                               (delete-file "test/test_external_program_suite.py")
-                               (delete-file "test/test_update.py")
-                               (setenv "PATH" (string-append "./bin:" (getenv "PATH")))
-                               (zero? (system* "nosetests" "-v"))))
-                    (add-after 'install 'wrap-programs
-                               (lambda* (#:key outputs #:allow-other-keys)
-                                 (let* ((out (assoc-ref outputs "out"))
-                                        (graftm (string-append out "/bin/graftM"))
-                                        (path (getenv "PATH"))
-                                        (pythonpath (getenv "PYTHONPATH")))
-                                   (wrap-program graftm `("PATH" ":" prefix (,path)))
-                                   (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
-                                 #t)))))
+         #:phases
+         (modify-phases %standard-phases
+           ;; current test in setup.py does not work so use nose to run tests
+           ;; instead for now.
+           (replace 'check
+             (lambda _
+               ;(setenv "TEMPDIR" "/tmp") ; not sure if this is needed. 
+               (setenv "PATH" (string-append (getcwd) "/bin:" (getenv "PATH")))
+               ;(zero? (system* "python" "test/test_graft.py"))))
+               ;; Some tests fail for strange reasons which seem likely to do with
+               ;; being inside the chroot environment, rather than being actual
+               ;; software problems.
+               (delete-file "test/test_archive.py")
+               (delete-file "test/test_external_program_suite.py")
+               (zero? (system* "nosetests" "-vx"))))
+           (add-after 'install 'wrap-programs
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (graftm (string-append out "/bin/graftM"))
+                      (path (getenv "PATH")))
+                 (wrap-program graftm `("PATH" ":" prefix (,path))))
+               #t)))))
       (native-inputs
        `(("python-setuptools" ,python2-setuptools)
          ("python-nose" ,python2-nose)))
@@ -621,13 +618,13 @@ the description of the error.")
     (arguments
      ;; disable lua components as they don't appear to compile.  See
      ;; https://github.com/tjunier/newick_utils/issues/13
-     `(#:configure-flags '("--without-lua")
+     `(;#:configure-flags '("--without-lua")
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'autoconf
                     (lambda _ (zero? (system* "autoreconf" "-vif")))))))
     (inputs
-     `(;;("lua" ,lua-5.1)
+     `(("lua" ,lua-5.1)
        ("libxml2" ,libxml2)))
     ;; ("guile" ,guile-2.0))) ; TODO: get it to build the guile
                               ; editor. Currently fails to detect libguile.h
@@ -1545,31 +1542,51 @@ more control over dimensions and appearance.")
 (define-public singlem
   (package
     (name "singlem")
-    (version "0.6.1")
+    (version "0.6.2")
+    ;;(source
+    ;; (local-file "/home/ben/git/singlem_no_db" #:recursive? #t))
+    ;; (source
+    ;;  (local-file "/home/ben/git/singlem/dist/singlem-0.6.2.tar.gz"))
+
     (source (origin
               (method url-fetch)
               (uri (string-append
-                    "https://github.com/wwood/singlem/archive/v"
-                    version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
+                    "https://github.com/wwood/singlem/releases/download/v"
+                    version "/singlem-" version ".tar.gz"))
               (sha256
                (base32
-                "0s4jqvy20pi18i8wpnickk0dgnlzfc3bv95y6lqkfym20qracff1"))))
+                "1mng0196zvzx0s95z4vc1hyjpwizhxkjh2nbag5p9gm2a8jzv20h"))))
+    
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2 ; python-2 only
        #:phases
        (modify-phases %standard-phases
-         (replace 'build
-                  (lambda _ (zero? (system* "nosetests" "-v"))))
+         (add-after 'unpack 'remove-graftm-dependency
+           (lambda _
+             ;; GraftM 0.9.5 requires scikit-bio 0.2.2, which pulls in
+             ;; a bunch of dependencies.  Since there is no released
+             ;; version of GraftM after this, do not include it as a
+             ;; dependency.
+             (substitute* "setup.py"
+               (("'graftm >=.*") ""))
+             #t))
+         ;; (replace 'check
+         ;;          (lambda _
+         ;;            ;; (zero? (system* "bin/singlem" "--debug" "pipe" "--sequences"
+         ;;            ;;                 "bla.fasta" "--otu_table" "stdout"
+         ;;            ;;                 "--singlem_packages"
+         ;;            ;;                 "test/data/4.11.22seqs.gpkg.spkg"))
+         ;;            ;; (system* "cat" "stdout")
+         ;;            ;;(zero? (system* "python" "test/test_pipe.py" "Tests.test_fast_protein_package"))))
+         ;;            (zero? (system* "nosetests" "-v"))))
+         ;;            ;;#t))
          (add-after 'install 'wrap-programs
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
                     (graftm (string-append out "/bin/singlem"))
-                    (path (getenv "PATH"))
-                    (pythonpath (getenv "PYTHONPATH")))
-               (wrap-program graftm `("PATH" ":" prefix (,path)))
-               (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
+                    (path (getenv "PATH")))
+               (wrap-program graftm `("PATH" ":" prefix (,path))))
              #t)))))
     (native-inputs
      `(("python-setuptools" ,python2-setuptools)
@@ -1587,7 +1604,10 @@ more control over dimensions and appearance.")
        ("blast+" ,blast+)
        ("vsearch" ,vsearch)
        ("krona-tools" ,krona-tools)
-       ("fxtract" ,fxtract)))
+       ("fxtract" ,fxtract)
+       ("hmmer" ,hmmer)
+       ;; Diamond dbs are out of date.
+       ("diamond" ,diamond-0.7.9)))
     (home-page "http://github.com/wwood/singlem")
     (synopsis "De-novo OTUs from shotgun metagenomes")
     (description

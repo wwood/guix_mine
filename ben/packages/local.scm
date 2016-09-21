@@ -58,13 +58,12 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
-;  #:use-module (gnu packages qt)
   #:use-module (gnu packages ruby)
+  #:use-module (gnu packages shells)
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
   #:use-module (gnu packages texinfo)
-  #:use-module (gnu packages tcsh)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages valgrind)
@@ -1616,3 +1615,125 @@ units (OTUs) directly from shotgun metagenome data, without heavy reliance of
 reference sequence databases.  It is able to differentiate closely related
 species even if those species are from lineages new to science.")
     (license license:gpl3+)))
+
+(define-public proteinortho
+  (package
+    (name "proteinortho")
+    (version "5.15")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append
+            "http://www.bioinf.uni-leipzig.de/Software/proteinortho/proteinortho_v"
+            version "_src.tar.gz"))
+      (sha256
+       (base32
+        "05wacnnbx56avpcwhzlcf6b7s77swcpv3qnwz5sh1z54i51gg2ki"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ;debug
+       #:test-target "test"
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           ;; There is no configure script, so we modify the Makefile directly.
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "Makefile"
+               (("INSTALLDIR=.*")
+                (string-append "INSTALLDIR=" (assoc-ref outputs "out") "/bin")))
+             #t))
+         (add-before 'install 'make-install-directory
+           ;; The install directory is not created during 'make install'.
+           (lambda* (#:key outputs #:allow-other-keys)
+             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
+             #t))
+         (add-after 'install 'wrap-programs
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((blast (string-append (assoc-ref inputs "blast+") "/bin"))
+                    (out (assoc-ref outputs "out"))
+                    (binary (string-append out "/bin/proteinortho5.pl")))
+               (wrap-program binary `("PATH" ":" prefix (,blast))))
+             #t)))))
+    (inputs
+     `(("perl" ,perl)
+       ("python" ,python-2)
+       ("blast+" ,blast+)))
+    (home-page "http://www.bioinf.uni-leipzig.de/Software/proteinortho")
+    (synopsis "Detect orthologous genes within different species")
+    (description
+     "Proteinortho is a tool to detect orthologous genes within different
+species.  For doing so, it compares similarities of given gene sequences and
+clusters them to find significant groups.  The algorithm was designed to handle
+large-scale data and can be applied to hundreds of species at once.")
+    (license license:gpl2+))) ; According to
+                              ; http://www.bioinf.uni-leipzig.de/~marcus/software/proteinortho/
+                              ; only.
+
+(define-public r-picante
+  (package
+   (name "r-picante")
+   (version "1.6-2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "picante" version))
+     (sha256
+      (base32
+       "1zxpd8kh3ay6f3gdqkij1a6vnkr98dc1jib2r6br2kjyzshabcsd"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-ape" ,r-ape)
+      ("r-nlme" ,r-nlme)
+      ("r-vegan" ,r-vegan)))
+   (home-page
+    "http://cran.r-project.org/web/packages/picante")
+   (synopsis
+    "R tools for integrating phylogenies and ecology")
+   (description
+    "Phylocom integration, community analyses, null-models, traits and evolution in R")
+   (license license:gpl2+)))
+
+(define-public r-ape
+  (package
+   (name "r-ape")
+   (version "3.5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "ape" version))
+     (sha256
+      (base32
+       "1n2q6rw85yq2kkyjagz2p33wvms4gdhv268b1b294gc6lzimyi8h"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-lattice" ,r-lattice)
+      ("r-nlme" ,r-nlme)))
+   (home-page "http://ape-package.ird.fr/")
+   (synopsis
+    "Analyses of Phylogenetics and Evolution")
+   (description
+    "Functions for reading, writing, plotting, and manipulating phylogenetic trees, analyses of comparative data in a phylogenetic framework, ancestral character analyses, analyses of diversification and macroevolution, computing distances from allelic and nucleotide data, reading and writing nucleotide sequences as well as importing from BioConductor, and several tools such as Mantel's test, generalized skyline plots, graphical exploration of phylogenetic data (alex, trex, kronoviz), estimation of absolute evolutionary rates and clock-like trees using mean path lengths and penalized likelihood.  Phylogeny estimation can be done with the NJ, BIONJ, ME, MVR, SDM, and triangle methods, and several methods handling incomplete distance matrices (NJ*, BIONJ*, MVR*, and the corresponding triangle method).  Some functions call external applications (PhyML, Clustal, T-Coffee, Muscle) whose results are returned into R.")
+   (license license:gpl2+)))
+
+(define-public r-nlme
+  (package
+   (name "r-nlme")
+   (version "3.1-128")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "nlme" version))
+     (sha256
+      (base32
+       "0639jzy1zvs4x1g4fdsgl3r8nxifcyhpppcdxnqrhl49zpm2i0sr"))))
+   (build-system r-build-system)
+   (native-inputs
+    `(("gfortran" ,gfortran)))
+   (propagated-inputs
+    `(("r-lattice" ,r-lattice)))
+   (home-page "http://cran.r-project.org/web/packages/nlme")
+   (synopsis
+    "Linear and Nonlinear Mixed Effects Models")
+   (description
+    "Fit and compare Gaussian linear and nonlinear mixed-effects models.")
+   (license license:gpl2+)))

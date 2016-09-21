@@ -389,7 +389,7 @@ assemblies.")
          ("python-extern" ,python2-extern)
          ("python-h5py" ,python2-h5py)
          ("python-tempdir" ,python2-tempdir)
-         ("python-dendropy" ,python2-dendropy)
+         ("python-dendropy" ,python2-dendropy-untested)
          ("orfm" ,orfm)
          ("hmmer" ,hmmer)
          ("diamond" ,diamond-0.7.9) ; Test data is made with an old diamond version.

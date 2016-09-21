@@ -58,13 +58,12 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
-;  #:use-module (gnu packages qt)
   #:use-module (gnu packages ruby)
+  #:use-module (gnu packages shells)
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
   #:use-module (gnu packages texinfo)
-  #:use-module (gnu packages tcsh)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages valgrind)
@@ -306,8 +305,8 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
          (delete 'configure)
          (replace 'build
            (lambda* (#:key outputs #:allow-other-keys)
-                    (setenv "PREFIX" (assoc-ref outputs "out"))
-                    (zero? (system* "sh" "spades_compile.sh"))))
+             (setenv "PREFIX" (assoc-ref outputs "out"))
+             (zero? (system* "sh" "spades_compile.sh"))))
          (delete 'install)
          (delete 'check)
          (add-after 'install 'post-install-check
@@ -324,7 +323,7 @@ assemblies.")
     (license license:gpl2)))
 
 (define-public graftm
-  (let ((commit "c97241145ef5a9634618a4175cde7d382a25d38b"))
+  (let ((commit "099c45afc85be3661fbbc6d33f91f3f037e11798"))
     (package
       (name "graftm")
       (version (string-append "0.9.5-1." (string-take commit 7)))
@@ -350,35 +349,32 @@ assemblies.")
                 (file-name (string-append name "-" version "-checkout"))
                 (sha256
                  (base32
-                  "191yddgcx7f2wxgcdn7vxgrppilj3qc4anhy264c3pb2jg74rlkq"))))
-      
+                  "1y40c2h9pdskkgr9526zakm9h9j874abr6jzln2437rppss11a63"))))
       (build-system python-build-system)
       (arguments
        `(#:python ,python-2 ; python-2 only
-                  #:phases
-                  (modify-phases %standard-phases
-                    ;; current test in setup.py does not work so use nose to run tests
-                    ;; instead for now.
-                    (replace 'check
-                             (lambda _
-                               (setenv "TEMPDIR" ".") ; not sure if this is needed.
-                               ;; Some tests fail for strange reasons which seem likely to do with
-                               ;; being inside the chroot environment, rather than being actual
-                               ;; software problems.
-                               (delete-file "test/test_archive.py")
-                               (delete-file "test/test_external_program_suite.py")
-                               (delete-file "test/test_update.py")
-                               (setenv "PATH" (string-append "./bin:" (getenv "PATH")))
-                               (zero? (system* "nosetests" "-v"))))
-                    (add-after 'install 'wrap-programs
-                               (lambda* (#:key outputs #:allow-other-keys)
-                                 (let* ((out (assoc-ref outputs "out"))
-                                        (graftm (string-append out "/bin/graftM"))
-                                        (path (getenv "PATH"))
-                                        (pythonpath (getenv "PYTHONPATH")))
-                                   (wrap-program graftm `("PATH" ":" prefix (,path)))
-                                   (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
-                                 #t)))))
+         #:phases
+         (modify-phases %standard-phases
+           ;; current test in setup.py does not work so use nose to run tests
+           ;; instead for now.
+           (replace 'check
+             (lambda _
+               ;(setenv "TEMPDIR" "/tmp") ; not sure if this is needed. 
+               (setenv "PATH" (string-append (getcwd) "/bin:" (getenv "PATH")))
+               ;(zero? (system* "python" "test/test_graft.py"))))
+               ;; Some tests fail for strange reasons which seem likely to do with
+               ;; being inside the chroot environment, rather than being actual
+               ;; software problems.
+               (delete-file "test/test_archive.py")
+               (delete-file "test/test_external_program_suite.py")
+               (zero? (system* "nosetests" "-vx"))))
+           (add-after 'install 'wrap-programs
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (graftm (string-append out "/bin/graftM"))
+                      (path (getenv "PATH")))
+                 (wrap-program graftm `("PATH" ":" prefix (,path))))
+               #t)))))
       (native-inputs
        `(("python-setuptools" ,python2-setuptools)
          ("python-nose" ,python2-nose)))
@@ -621,13 +617,13 @@ the description of the error.")
     (arguments
      ;; disable lua components as they don't appear to compile.  See
      ;; https://github.com/tjunier/newick_utils/issues/13
-     `(#:configure-flags '("--without-lua")
+     `(;#:configure-flags '("--without-lua")
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'autoconf
                     (lambda _ (zero? (system* "autoreconf" "-vif")))))))
     (inputs
-     `(;;("lua" ,lua-5.1)
+     `(("lua" ,lua-5.1)
        ("libxml2" ,libxml2)))
     ;; ("guile" ,guile-2.0))) ; TODO: get it to build the guile
                               ; editor. Currently fails to detect libguile.h
@@ -1642,31 +1638,51 @@ more control over dimensions and appearance.")
 (define-public singlem
   (package
     (name "singlem")
-    (version "0.6.1")
+    (version "0.6.2")
+    ;;(source
+    ;; (local-file "/home/ben/git/singlem_no_db" #:recursive? #t))
+    ;; (source
+    ;;  (local-file "/home/ben/git/singlem/dist/singlem-0.6.2.tar.gz"))
+
     (source (origin
               (method url-fetch)
               (uri (string-append
-                    "https://github.com/wwood/singlem/archive/v"
-                    version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
+                    "https://github.com/wwood/singlem/releases/download/v"
+                    version "/singlem-" version ".tar.gz"))
               (sha256
                (base32
-                "0s4jqvy20pi18i8wpnickk0dgnlzfc3bv95y6lqkfym20qracff1"))))
+                "1mng0196zvzx0s95z4vc1hyjpwizhxkjh2nbag5p9gm2a8jzv20h"))))
+    
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2 ; python-2 only
        #:phases
        (modify-phases %standard-phases
-         (replace 'build
-                  (lambda _ (zero? (system* "nosetests" "-v"))))
+         (add-after 'unpack 'remove-graftm-dependency
+           (lambda _
+             ;; GraftM 0.9.5 requires scikit-bio 0.2.2, which pulls in
+             ;; a bunch of dependencies.  Since there is no released
+             ;; version of GraftM after this, do not include it as a
+             ;; dependency.
+             (substitute* "setup.py"
+               (("'graftm >=.*") ""))
+             #t))
+         ;; (replace 'check
+         ;;          (lambda _
+         ;;            ;; (zero? (system* "bin/singlem" "--debug" "pipe" "--sequences"
+         ;;            ;;                 "bla.fasta" "--otu_table" "stdout"
+         ;;            ;;                 "--singlem_packages"
+         ;;            ;;                 "test/data/4.11.22seqs.gpkg.spkg"))
+         ;;            ;; (system* "cat" "stdout")
+         ;;            ;;(zero? (system* "python" "test/test_pipe.py" "Tests.test_fast_protein_package"))))
+         ;;            (zero? (system* "nosetests" "-v"))))
+         ;;            ;;#t))
          (add-after 'install 'wrap-programs
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
                     (graftm (string-append out "/bin/singlem"))
-                    (path (getenv "PATH"))
-                    (pythonpath (getenv "PYTHONPATH")))
-               (wrap-program graftm `("PATH" ":" prefix (,path)))
-               (wrap-program graftm `("PYTHONPATH" ":" prefix (,pythonpath))))
+                    (path (getenv "PATH")))
+               (wrap-program graftm `("PATH" ":" prefix (,path))))
              #t)))))
     (native-inputs
      `(("python-setuptools" ,python2-setuptools)
@@ -1684,7 +1700,10 @@ more control over dimensions and appearance.")
        ("blast+" ,blast+)
        ("vsearch" ,vsearch)
        ("krona-tools" ,krona-tools)
-       ("fxtract" ,fxtract)))
+       ("fxtract" ,fxtract)
+       ("hmmer" ,hmmer)
+       ;; Diamond dbs are out of date.
+       ("diamond" ,diamond-0.7.9)))
     (home-page "http://github.com/wwood/singlem")
     (synopsis "De-novo OTUs from shotgun metagenomes")
     (description
@@ -1693,3 +1712,125 @@ units (OTUs) directly from shotgun metagenome data, without heavy reliance of
 reference sequence databases.  It is able to differentiate closely related
 species even if those species are from lineages new to science.")
     (license license:gpl3+)))
+
+(define-public proteinortho
+  (package
+    (name "proteinortho")
+    (version "5.15")
+    (source
+     (origin
+      (method url-fetch)
+      (uri (string-append
+            "http://www.bioinf.uni-leipzig.de/Software/proteinortho/proteinortho_v"
+            version "_src.tar.gz"))
+      (sha256
+       (base32
+        "05wacnnbx56avpcwhzlcf6b7s77swcpv3qnwz5sh1z54i51gg2ki"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ;debug
+       #:test-target "test"
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           ;; There is no configure script, so we modify the Makefile directly.
+           (lambda* (#:key outputs #:allow-other-keys)
+             (substitute* "Makefile"
+               (("INSTALLDIR=.*")
+                (string-append "INSTALLDIR=" (assoc-ref outputs "out") "/bin")))
+             #t))
+         (add-before 'install 'make-install-directory
+           ;; The install directory is not created during 'make install'.
+           (lambda* (#:key outputs #:allow-other-keys)
+             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
+             #t))
+         (add-after 'install 'wrap-programs
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((blast (string-append (assoc-ref inputs "blast+") "/bin"))
+                    (out (assoc-ref outputs "out"))
+                    (binary (string-append out "/bin/proteinortho5.pl")))
+               (wrap-program binary `("PATH" ":" prefix (,blast))))
+             #t)))))
+    (inputs
+     `(("perl" ,perl)
+       ("python" ,python-2)
+       ("blast+" ,blast+)))
+    (home-page "http://www.bioinf.uni-leipzig.de/Software/proteinortho")
+    (synopsis "Detect orthologous genes within different species")
+    (description
+     "Proteinortho is a tool to detect orthologous genes within different
+species.  For doing so, it compares similarities of given gene sequences and
+clusters them to find significant groups.  The algorithm was designed to handle
+large-scale data and can be applied to hundreds of species at once.")
+    (license license:gpl2+))) ; According to
+                              ; http://www.bioinf.uni-leipzig.de/~marcus/software/proteinortho/
+                              ; only.
+
+(define-public r-picante
+  (package
+   (name "r-picante")
+   (version "1.6-2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "picante" version))
+     (sha256
+      (base32
+       "1zxpd8kh3ay6f3gdqkij1a6vnkr98dc1jib2r6br2kjyzshabcsd"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-ape" ,r-ape)
+      ("r-nlme" ,r-nlme)
+      ("r-vegan" ,r-vegan)))
+   (home-page
+    "http://cran.r-project.org/web/packages/picante")
+   (synopsis
+    "R tools for integrating phylogenies and ecology")
+   (description
+    "Phylocom integration, community analyses, null-models, traits and evolution in R")
+   (license license:gpl2+)))
+
+(define-public r-ape
+  (package
+   (name "r-ape")
+   (version "3.5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "ape" version))
+     (sha256
+      (base32
+       "1n2q6rw85yq2kkyjagz2p33wvms4gdhv268b1b294gc6lzimyi8h"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-lattice" ,r-lattice)
+      ("r-nlme" ,r-nlme)))
+   (home-page "http://ape-package.ird.fr/")
+   (synopsis
+    "Analyses of Phylogenetics and Evolution")
+   (description
+    "Functions for reading, writing, plotting, and manipulating phylogenetic trees, analyses of comparative data in a phylogenetic framework, ancestral character analyses, analyses of diversification and macroevolution, computing distances from allelic and nucleotide data, reading and writing nucleotide sequences as well as importing from BioConductor, and several tools such as Mantel's test, generalized skyline plots, graphical exploration of phylogenetic data (alex, trex, kronoviz), estimation of absolute evolutionary rates and clock-like trees using mean path lengths and penalized likelihood.  Phylogeny estimation can be done with the NJ, BIONJ, ME, MVR, SDM, and triangle methods, and several methods handling incomplete distance matrices (NJ*, BIONJ*, MVR*, and the corresponding triangle method).  Some functions call external applications (PhyML, Clustal, T-Coffee, Muscle) whose results are returned into R.")
+   (license license:gpl2+)))
+
+(define-public r-nlme
+  (package
+   (name "r-nlme")
+   (version "3.1-128")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "nlme" version))
+     (sha256
+      (base32
+       "0639jzy1zvs4x1g4fdsgl3r8nxifcyhpppcdxnqrhl49zpm2i0sr"))))
+   (build-system r-build-system)
+   (native-inputs
+    `(("gfortran" ,gfortran)))
+   (propagated-inputs
+    `(("r-lattice" ,r-lattice)))
+   (home-page "http://cran.r-project.org/web/packages/nlme")
+   (synopsis
+    "Linear and Nonlinear Mixed Effects Models")
+   (description
+    "Fit and compare Gaussian linear and nonlinear mixed-effects models.")
+   (license license:gpl2+)))

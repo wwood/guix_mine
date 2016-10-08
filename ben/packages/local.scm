@@ -107,19 +107,6 @@
 ;; view 3D structures, and VARNA to display RNA secondary structure.")
 ;;    (license license:gpl3+))) ;; TODO: check what version of GPL
 
-(define-public python2-numexpr-1.4.1
-  (package
-    (inherit python2-numexpr)
-    (version "1.4.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append "https://pypi.python.org/packages/source/"
-                           "n/numexpr/numexpr-" version ".tar.gz"))
-       (sha256
-        (base32
-         "0yvjmrf72lmr9dfnyla21aa5ckakl3wrpy3w6152k62w5b7g3ki7"))))))
-
 (define-public mxscarna ; not free software (research only). Also fails to compile.
   (package
     (name "mxscarna")
@@ -321,279 +308,6 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 isolates and single-cell multiple displacement amplification (MDA) bacteria
 assemblies.")
     (license license:gpl2)))
-
-(define-public graftm
-  (let ((commit "099c45afc85be3661fbbc6d33f91f3f037e11798"))
-    (package
-      (name "graftm")
-      (version (string-append "0.9.5-1." (string-take commit 7)))
-      
-      ;; (source
-      ;;  (local-file "/home/ben/git/graftM" #:recursive? #t))
-
-      ;; (origin
-      ;;   (method url-fetch)
-      ;;   (uri (string-append
-      ;;         "https://pypi.python.org/packages/source/g/graftm/graftm-"
-      ;;         version
-      ;;         ".tar.gz"))
-      ;;   (sha256
-      ;;    (base32
-      ;;     "0wy4w2jvh6ip6ari0m55zvkyg3vnvsyn2l93n85d1d2xndbgns2v"))))
-      
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/wwood/graftM.git")
-                      (commit commit)))
-                (file-name (string-append name "-" version "-checkout"))
-                (sha256
-                 (base32
-                  "1y40c2h9pdskkgr9526zakm9h9j874abr6jzln2437rppss11a63"))))
-      (build-system python-build-system)
-      (arguments
-       `(#:python ,python-2 ; python-2 only
-         #:phases
-         (modify-phases %standard-phases
-           ;; current test in setup.py does not work so use nose to run tests
-           ;; instead for now.
-           (replace 'check
-             (lambda _
-               ;(setenv "TEMPDIR" "/tmp") ; not sure if this is needed. 
-               (setenv "PATH" (string-append (getcwd) "/bin:" (getenv "PATH")))
-               ;(zero? (system* "python" "test/test_graft.py"))))
-               ;; Some tests fail for strange reasons which seem likely to do with
-               ;; being inside the chroot environment, rather than being actual
-               ;; software problems.
-               (delete-file "test/test_archive.py")
-               (delete-file "test/test_external_program_suite.py")
-               (zero? (system* "nosetests" "-vx"))))
-           (add-after 'install 'wrap-programs
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out (assoc-ref outputs "out"))
-                      (graftm (string-append out "/bin/graftM"))
-                      (path (getenv "PATH")))
-                 (wrap-program graftm `("PATH" ":" prefix (,path))))
-               #t)))))
-      (native-inputs
-       `(("python-setuptools" ,python2-setuptools)
-         ("python-nose" ,python2-nose)))
-      (inputs
-       `(("python-biopython" ,python2-biopython)
-         ("python-subprocess32" ,python2-subprocess32)
-         ("python-biom-format" ,python2-biom-format)
-         ("python-extern" ,python2-extern)
-         ("python-h5py" ,python2-h5py)
-         ("python-tempdir" ,python2-tempdir)
-         ("python-dendropy" ,python2-dendropy)
-         ("orfm" ,orfm)
-         ("hmmer" ,hmmer)
-         ("diamond" ,diamond-0.7.9) ; Test data is made with an old diamond version.
-         ("fxtract" ,fxtract)
-         ("fasttree" ,fasttree)
-         ("krona-tools" ,krona-tools)
-         ("pplacer" ,pplacer)
-         ("seqmagick" ,seqmagick)
-         ("taxtastic" ,taxtastic)
-         ("mafft" ,mafft)))
-      (home-page "http://geronimp.github.com/graftM")
-      (synopsis "Identify and classify metagenomic marker gene reads")
-      (description
-       "GraftM is a pipeline used for identifying and classifying marker gene
-reads from large metagenomic shotgun sequence datasets.  It is able to find
-marker genes using hidden Markov models or sequence similarity search, and
-classify these reads by placement into phylogenetic trees")
-      (license license:gpl3+))))
-
-(define diamond-0.7.9
-  (package
-    (inherit diamond)
-    (name "diamond")
-    (version "0.7.9")
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://github.com/bbuchfink/diamond/archive/v"
-                    version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
-              (sha256
-               (base32
-                "0hfkcfv9f76h5brbyw9fyvmc0l9cmbsxrcdqk0fa9xv82zj47p15"))))
-    (build-system gnu-build-system)
-    (arguments
-     '(#:tests? #f  ;no "check" target
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'enter-source-dir
-                    (lambda _
-                      (chdir "src")
-                      #t))
-         (delete 'configure)
-         (replace 'install
-                  (lambda* (#:key outputs #:allow-other-keys)
-                    (let ((bin (string-append (assoc-ref outputs "out")
-                                              "/bin")))
-                      (mkdir-p bin)
-                      (copy-file "../bin/diamond"
-                                 (string-append bin "/diamond"))
-                      #t))))))
-    (native-inputs
-     `(("bc" ,bc)))
-    (inputs
-     `(("boost" ,boost)
-       ("zlib" ,zlib)))))
-
-(define-public python-tempdir
-  (package
-    (name "python-tempdir")
-    (version "0.7.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (pypi-uri "tempdir" version))
-       (sha256
-        (base32
-         "13msyyxqbicr111a294x7fsqbkl6a31fyrqflx3q7k547gnq15k8"))))
-    (build-system python-build-system)
-    (inputs
-     `(("python-setuptools" ,python-setuptools)))
-    (home-page
-     "https://bitbucket.org/another_thomas/tempdir")
-    (synopsis
-     "Tempdirs are temporary directories, based on tempfile.mkdtemp")
-    (description
-     "Tempdirs are temporary directories, based on tempfile.mkdtemp")
-    (license expat)
-    (properties `((python2-variant . ,(delay python2-pytest-cache))))))
-
-(define-public python2-tempdir
-  (package-with-python2 (strip-python2-variant python-tempdir)))
-
-(define-public taxtastic
-  (package
-    (name "taxtastic")
-    (version "0.5.4")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/t/taxtastic/taxtastic-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "1g7fgnl367njdsk2xify9qh20dy63xzamf6w3bi74isgbhykq00h"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2))
-    (propagated-inputs
-     `(("python-sqlalchemy" ,python2-sqlalchemy)
-       ("python-decorator" ,python2-decorator)
-       ("python-biopython" ,python2-biopython)
-       ("python-xlrd" ,python2-xlrd)))
-    (inputs
-     `(("python-setuptools" ,python2-setuptools)))
-    (home-page "https://github.com/fhcrc/taxtastic")
-    (synopsis
-     "Tools for taxonomic naming and annotation")
-    (description
-     "Tools for taxonomic naming and annotation")
-    (license license:gpl3)))
-
-(define-public python2-extern ; could be sent to the mailing list. Does it work
-                                        ; with python3 though? Probably, but
-                                        ; would need to test the software. Also,
-                                        ; does it run the tests at build time?
-  (package
-    (name "python2-extern")
-    (version "0.1.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/e/extern/extern-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "0fc5s17nsz9dzgknkn18j6ib4w1cqhxw7m3vqqq0xv9w89gvfyj2"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2
-       #:phases
-       (modify-phases %standard-phases
-         ;; current test in setup.py does not work as of 0.9.4,
-         ;; so use nose to run tests instead for now.
-         (replace 'check (lambda _ (zero? (system* "nosetests")))))))
-    (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
-    (home-page "https://github.com/wwood/extern")
-    (synopsis "Subprocess-related functions for ease of use")
-    (description "Extern is an opinionated version of Python's subprocess, making
-it more convenient to run shell commands from within Python code.  For instance,
-exceptions raised by an non-zero exit status include the STDOUT and STDERR in
-the description of the error.")
-    (license license:expat)))
-
-(define-public python-pytest-timeout
-  (package
-    (name "python-pytest-timeout")
-    (version "0.5")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://pypi.python.org/packages/source/p/pytest-timeout/pytest-timeout-"
-             version
-             ".tar.gz"))
-       (sha256
-        (base32
-         "0wq6h4w7wdpahlga8wv6zx1qj1ni4vpdycx4lq750hwb2l342ay4"))))
-    (build-system python-build-system)
-    (propagated-inputs
-     `(("python-pytest" ,python-pytest)))
-    (native-inputs
-     `(("python-setuptools" ,python-setuptools)))
-    (home-page
-     "http://bitbucket.org/pytest-dev/pytest-timeout/")
-    (synopsis
-     "py.test plugin to abort hanging tests")
-    (description
-     "py.test plugin to abort hanging tests")
-    (license license:expat)))
-
-(define-public python2-pytest-timeout
-  (package-with-python2 python-pytest-timeout))
- 
-(define-public python2-subprocess32
-  (package
-  (name "python-subprocess32")
-  (version "3.2.6")
-  (source
-    (origin
-      (method url-fetch)
-      (uri (string-append
-             "https://pypi.python.org/packages/source/s/subprocess32/subprocess32-"
-             version
-             ".tar.gz"))
-      (sha256
-        (base32
-          "1xi0qb9b70kgwa2ks4d4kkib7dmb9i30rl6zf9rpwb5ys9pd9x6x"))))
-  (build-system python-build-system)
-  (arguments
-   `(#:python ,python-2
-     #:tests? #f)) ; no check, and nosetests fails
-  (inputs
-    `(("python-setuptools" ,python2-setuptools)
-      ("python-nose" ,python2-nose)))
-  (home-page
-    "http://code.google.com/p/python-subprocess32/")
-  (synopsis
-    "Backport of the subprocess module from Python 3.2/3.3 for use on 2.x.")
-  (description
-    "Backport of the subprocess module from Python 3.2/3.3 for use on 2.x.")
-  (license license:psfl)))
 
 (define-public newick-utils ; seems to work for the C based tools, but appears
                             ; to be a dead project so I won't submit to guix
@@ -873,7 +587,7 @@ the binning summary page.")
      `(("exonerate" ,exonerate)
        ("mafft" ,mafft)
        ("raxml" ,raxml)
-       ("bppsuite" ,bpp-suite)))
+       ("bppsuite" ,bppsuite)))
     (home-page "")
     (synopsis "Probabilistic multiple sequence alignment program")
     (description
@@ -947,6 +661,24 @@ sequences can then be aligned.")
      "")
     (license license:gpl3+))) ;fixme
 
+(define-public kraken ; only half-complete
+  (package
+   (name "kraken")
+   (version "0.10.5-beta")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append "https://github.com/DerrickWood/kraken/archive/v"
+                                version ".tar.gz"))
+            (sha256
+             (base32
+              "0bv6mwqg6imgyxga24xm1cb3mfs56zba485kxgmdiq6fv3vx9yhy"))))
+   (build-system gnu-build-system)
+   (home-page "")
+   (synopsis "")
+   (description
+    "")
+   (license license:gpl3+))) ;fixme
+
 (define-public e-mem
   (package
     (name "e-mem")
@@ -1006,7 +738,7 @@ application or a drop in replacement for MUMmer3.")
     (synopsis "")
     (description
      "")
-    (license license:gpl3+))) ;?
+    (license license:gpl3+))) ;fixme
 
 
 (define-public panphlan
@@ -1401,6 +1133,85 @@ other python packages.  To enable the plugin pass @code{--with-yanc} to
 (define-public python2-yanc
   (package-with-python2 python-yanc))
 
+(define-public python-nestly
+  (package
+   (name "python-nestly")
+   (version "0.6")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "nestly" version))
+     (sha256
+      (base32
+       "1wrgpnab1w1lm20jlk632rjhsnj6dcld5hidjn44l4kwlqgdr6i0"))))
+   (build-system python-build-system)
+   (inputs
+    `(("python-setuptools" ,python-setuptools)
+      ("python-mock" ,python-mock)))
+   (home-page "https://github.com/fhcrc/nestly")
+   (synopsis "Functions for running software with combinatorial parameter")
+   (description
+    "Nestly is a collection of functions designed to make running software with
+combinatorial choices of parameters easier.")
+   (license license:expat)))
+
+(define-public python2-nestly
+  (package-with-python2 python-nestly))
+
+
+;; Does not work because I do not have an example input sample.xml file, at
+;; least.
+;; (define-public proxigenomics
+;;   (let ((commit "921d3d0367b9981573aa023b1418f7a5a8316a4c"))
+;;     (package
+;;       (name "proxigenomics")
+;;       (version (string-append "0-1." commit))
+;;       (source (origin
+;;                (method git-fetch)
+;;                (uri (git-reference
+;;                      (url "https://github.com/koadman/proxigenomics.git")
+;;                      (commit commit)))
+;;                (sha256
+;;                 (base32
+;;                  "0wk69kbg4l1lk6x5zc0kh457ak8cnv4nbg5dzy7kfq227vgw6qnl"))))
+;;       (build-system python-build-system)
+;;       (arguments
+;;        `(#:python ,python-2
+;;          #:phases
+;;          (modify-phases %standard-phases
+;;                         (replace 'build
+;;                                  (lambda _
+;;                                    (chdir "simulation/pipeline")
+;;                                    (and
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_evo.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_wgs.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_hic.py"))
+;;                                     (zero? (system* "scons" "-j" "4" "-f"
+;;                                                     "SConstruct_map.py")))))
+                        
+;;                   )))
+;;       (inputs
+;;        `(("python-setuptools" ,python2-setuptools)
+;;          ("bioython" ,python2-biopython)
+;;          ("python-scipy" ,python2-scipy)
+;;          ("python-numpy" ,python2-numpy)
+;;          ("python-pandas" ,python2-pandas)
+;;          ("python-networkx" ,python2-networkx)
+;;          ("python-pysam" ,python-pysam)
+;;          ("python-pyyaml" ,python2-pyyaml)
+;;          ("scons" ,scons)
+;;          ;; extras not listed in README
+;;          ("perl" ,perl)
+;;          ("python-nestly" ,python2-nestly) ; not in the python module list but
+;;                                         ; is in pip install code
+;;          ))
+;;       (home-page "https://github.com/fhcrc/nestly")
+;;       (synopsis "Functions for running software with combinatorial parameter")
+;;       (description
+;;        "Nestly is a collection of functions designed to make running software with
+;; combinatorial choices of parameters easier.")
+;;       (license license:expat))))
+
 (define-public crass
   (package
     (name "crass")
@@ -1537,84 +1348,6 @@ more control over dimensions and appearance.")
 ;;     (description
 ;;      "")
 ;;     (license license:expat)))
-
-(define-public singlem
-  (package
-    (name "singlem")
-    (version "0.6.2")
-    ;;(source
-    ;; (local-file "/home/ben/git/singlem_no_db" #:recursive? #t))
-    ;; (source
-    ;;  (local-file "/home/ben/git/singlem/dist/singlem-0.6.2.tar.gz"))
-
-    (source (origin
-              (method url-fetch)
-              (uri (string-append
-                    "https://github.com/wwood/singlem/releases/download/v"
-                    version "/singlem-" version ".tar.gz"))
-              (sha256
-               (base32
-                "1mng0196zvzx0s95z4vc1hyjpwizhxkjh2nbag5p9gm2a8jzv20h"))))
-    
-    (build-system python-build-system)
-    (arguments
-     `(#:python ,python-2 ; python-2 only
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'remove-graftm-dependency
-           (lambda _
-             ;; GraftM 0.9.5 requires scikit-bio 0.2.2, which pulls in
-             ;; a bunch of dependencies.  Since there is no released
-             ;; version of GraftM after this, do not include it as a
-             ;; dependency.
-             (substitute* "setup.py"
-               (("'graftm >=.*") ""))
-             #t))
-         ;; (replace 'check
-         ;;          (lambda _
-         ;;            ;; (zero? (system* "bin/singlem" "--debug" "pipe" "--sequences"
-         ;;            ;;                 "bla.fasta" "--otu_table" "stdout"
-         ;;            ;;                 "--singlem_packages"
-         ;;            ;;                 "test/data/4.11.22seqs.gpkg.spkg"))
-         ;;            ;; (system* "cat" "stdout")
-         ;;            ;;(zero? (system* "python" "test/test_pipe.py" "Tests.test_fast_protein_package"))))
-         ;;            (zero? (system* "nosetests" "-v"))))
-         ;;            ;;#t))
-         (add-after 'install 'wrap-programs
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out"))
-                    (graftm (string-append out "/bin/singlem"))
-                    (path (getenv "PATH")))
-               (wrap-program graftm `("PATH" ":" prefix (,path))))
-             #t)))))
-    (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
-    (inputs
-     `(("graftm" ,graftm)
-       ("python-biopython" ,python2-biopython)
-       ("python-extern" ,python2-extern)
-       ("python-tempdir" ,python2-tempdir)
-       ("python-dendropy" ,python2-dendropy)
-       ("python-subprocess32" ,python2-subprocess32)
-       ("python-biom-format" ,python2-biom-format)
-       ("python-h5py" ,python2-h5py)
-       ("seqmagick" ,seqmagick)
-       ("blast+" ,blast+)
-       ("vsearch" ,vsearch)
-       ("krona-tools" ,krona-tools)
-       ("fxtract" ,fxtract)
-       ("hmmer" ,hmmer)
-       ;; Diamond dbs are out of date.
-       ("diamond" ,diamond-0.7.9)))
-    (home-page "http://github.com/wwood/singlem")
-    (synopsis "De-novo OTUs from shotgun metagenomes")
-    (description
-     "SingleM is a tool to find the abundances of discrete operational taxonomic
-units (OTUs) directly from shotgun metagenome data, without heavy reliance of
-reference sequence databases.  It is able to differentiate closely related
-species even if those species are from lineages new to science.")
-    (license license:gpl3+)))
 
 (define-public proteinortho ; Does not work until Perl is compiled with
                             ; -Dusethreading, then it seems to.

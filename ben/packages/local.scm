@@ -1666,9 +1666,7 @@ species even if those species are from lineages new to science.")
 species.  For doing so, it compares similarities of given gene sequences and
 clusters them to find significant groups.  The algorithm was designed to handle
 large-scale data and can be applied to hundreds of species at once.")
-    (license license:gpl2+))) ; According to
-                              ; http://www.bioinf.uni-leipzig.de/~marcus/software/proteinortho/
-                              ; only.
+    (license license:gpl2+)))
 
 (define-public r-picante
   (package

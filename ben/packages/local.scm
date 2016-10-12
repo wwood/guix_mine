@@ -50,6 +50,7 @@
   #:use-module (gnu packages mpi)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages ocaml)
+  #:use-module (gnu packages openldap)
   #:use-module (gnu packages pulseaudio)
   #:use-module (gnu packages parallel)
   #:use-module (gnu packages pciutils)
@@ -1088,7 +1089,7 @@ algorithm takes as input a message of arbitrary length and produces as output a
     (native-inputs
      `(("python-nose" ,python2-nose)
        ("python-yanc" ,python2-yanc)))
-    (inputs
+    (propagated-inputs
      `(("htseq" ,htseq)
        ("python-enum34" ,python2-enum34)
        ("python-numpy" ,python2-numpy)
@@ -1123,7 +1124,7 @@ like HTSeq, pysam, numpy and scipy.")
     (build-system python-build-system)
     (native-inputs
      `(("python-nose" ,python-nose)))
-    (inputs
+    (propagated-inputs
      `(("python-setuptools" ,python-setuptools)))
     (home-page "https://github.com/0compute/yanc")
     (synopsis "Yet another nose colorer")
@@ -1555,3 +1556,68 @@ help a user to decide whether their sample has a known or novel K locus.")
                       (path (getenv "PATH")))
                  (wrap-program graftm `("PATH" ":" prefix (,path))))
                #t))))))))
+
+(define-public megahit
+  (package
+    (name "megahit")
+    (version "1.0.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/voutcn/megahit/archive/v"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "049c0p5k8vp08fgdn976x6n6025lip9c0mbv1zr6j771869f7p8n"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'check
+                  (lambda _
+                    (zero? (system* "./megahit" "-h"))))
+         (replace 'install ; No install target.
+                  (lambda* (#:key inputs outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (bin (string-append out "/bin")))
+                      (for-each (lambda (prog)
+                                  (install-file prog bin))
+                                '("megahit"
+                                  "megahit_asm_core"
+                                  "megahit_toolkit"
+                                  "megahit_sdbg_build")))
+                    #t)))))
+    (inputs
+     `(("zlib" ,zlib)
+       ("python" ,python-2)))
+    (home-page "")
+    (synopsis "Assembler for large and complex metagenomes")
+    (description "MEGAHIT is a single node assembler for large and complex
+metagenomics NGS reads, such as soil. It makes use of succinct de Bruijn
+graph (SdBG) to achieve low memory assembly.")
+    (license license:gpl3+)))
+
+(define-public nss-ldap
+  (package
+    (name "nss-ldap")
+    (version "265")
+    (source
+     (origin
+       (method url-fetch)
+       (uri "http://www.padl.com/download/nss_ldap.tgz")
+       (sha256
+        (base32
+         "1a16q9p97d2blrj0h6vl1xr7dg7i4s8x8namipr79mshby84vdbp"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:parallel-build? #f))
+    (native-inputs
+     `(("perl" ,perl)))
+    (inputs
+     `(("openldap" ,openldap)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:lgpl3+)) ;?
+  )

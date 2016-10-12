@@ -27,7 +27,7 @@
   #:use-module (gnu packages databases)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
-  #:use-module (gnu packages flex) 
+  #:use-module (gnu packages flex)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
@@ -35,6 +35,7 @@
   #:use-module (gnu packages gperf)
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
+  #:use-module (gnu packages graphviz)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
@@ -75,6 +76,7 @@
   #:use-module (gnu packages zip)
   #:use-module (ice-9 regex)
   
+  #:use-module (ace packages ace)
   #:use-module (ace packages external)
   #:use-module (gnu packages bioinformatics))
 
@@ -1520,3 +1522,36 @@ large-scale data and can be applied to hundreds of species at once.")
 assemblies.  Given a novel genome and a database of known K loci, Kaptive will
 help a user to decide whether their sample has a known or novel K locus.")
     (license license:gpl3))))
+
+(define-public graftm-stop-codons
+  (let ((commit "a64a2b7ed83e98546ac2c4e7b3218245ef84f852"))
+    (package
+      (inherit graftm)
+      (name "graftm-stop-codons")
+      (version (string-append "0.9.5-2." (string-take commit 7)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/wwood/graftM.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (patches (search-patches "graftm-with-stops.patch"))
+         (sha256
+          (base32
+           "0y2b90fh42xdjim29jzja611828yml0vnwv9h181wsdvw8yy82hh"))))
+      (arguments
+       `(#:python ,python-2 ; python-2 only
+         #:tests? #f
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'check
+             (lambda _
+               (zero? (system* "bin/graftM" "-h"))))
+           (add-after 'install 'wrap-programs
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (graftm (string-append out "/bin/graftM"))
+                      (path (getenv "PATH")))
+                 (wrap-program graftm `("PATH" ":" prefix (,path))))
+               #t))))))))

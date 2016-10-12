@@ -24,6 +24,7 @@
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages curl)
   #:use-module (gnu packages cups)
+  #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
@@ -39,6 +40,7 @@
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
+  #:use-module (gnu packages gsasl)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages java)
@@ -47,6 +49,7 @@
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
   #:use-module (gnu packages maths)
+  #:use-module (gnu packages mit-krb5)
   #:use-module (gnu packages mpi)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages ocaml)
@@ -1540,7 +1543,7 @@ help a user to decide whether their sample has a known or novel K locus.")
          (patches (search-patches "graftm-with-stops.patch"))
          (sha256
           (base32
-           "0y2b90fh42xdjim29jzja611828yml0vnwv9h181wsdvw8yy82hh"))))
+           "1y79v1rlf1j265ka9jlkr9padlb6y93y73sv2rn8lyxqj87yd6i2"))))
       (arguments
        `(#:python ,python-2 ; python-2 only
          #:tests? #f
@@ -1599,25 +1602,43 @@ graph (SdBG) to achieve low memory assembly.")
     (license license:gpl3+)))
 
 (define-public nss-ldap
-  (package
-    (name "nss-ldap")
-    (version "265")
-    (source
-     (origin
-       (method url-fetch)
-       (uri "http://www.padl.com/download/nss_ldap.tgz")
-       (sha256
-        (base32
-         "1a16q9p97d2blrj0h6vl1xr7dg7i4s8x8namipr79mshby84vdbp"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:parallel-build? #f))
-    (native-inputs
-     `(("perl" ,perl)))
-    (inputs
-     `(("openldap" ,openldap)))
-    (home-page "")
-    (synopsis "")
-    (description "")
-    (license license:lgpl3+)) ;?
-  )
+  (let ((commit "154730b5a2b58a4212e419b498476fcb5a60de7b"))
+    (package
+      (name "nss-ldap")
+      (version "265")
+      ;; (source
+      ;;  (origin
+      ;;    (method url-fetch)
+      ;;    (uri "http://www.padl.com/download/nss_ldap.tgz")
+      ;;    (sha256
+      ;;     (base32
+      ;;      "1a16q9p97d2blrj0h6vl1xr7dg7i4s8x8namipr79mshby84vdbp"))))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/PADL/nss_ldap.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "09907p4m483fdc9hks6gignl539wvqj3krqa5yiyrp6qiq45d8s4"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (lib (string-append out "/lib")))
+                 (install-file "nss_ldap.so" lib)))))))
+      (native-inputs
+       `(("perl" ,perl)))
+      (inputs
+       `(("openldap" ,openldap)
+         ("sasl" ,cyrus-sasl)
+         ("krb5.h" ,mit-krb5)))
+      (home-page "")
+      (synopsis "")
+      (description "")
+      (license license:lgpl2.0+))))

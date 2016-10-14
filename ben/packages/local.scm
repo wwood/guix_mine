@@ -1078,14 +1078,14 @@ algorithm takes as input a message of arbitrary length and produces as output a
 (define-public python2-mgkit
   (package
     (name "python2-mgkit")
-    (version "0.2.5")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "mgkit" version))
        (sha256
         (base32
-         "1y7j4s1x59z6j0lfkd99psf44rrlkvyrmkli68fapbx7ankmxcdw"))))
+         "1zbvx3l2270k3ffk915mscnh2dw83wmqad7djr3ajkprr9dqywq7"))))
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2)) ; Ony Python 2 is supported.
@@ -1537,13 +1537,13 @@ help a user to decide whether their sample has a known or novel K locus.")
        (origin
          (method git-fetch)
          (uri (git-reference
-               (url "https://github.com/wwood/graftM.git")
+               (url "https://github.com/geronimp/graftM.git")
                (commit commit)))
          (file-name (string-append name "-" version "-checkout"))
          (patches (search-patches "graftm-with-stops.patch"))
          (sha256
           (base32
-           "1y79v1rlf1j265ka9jlkr9padlb6y93y73sv2rn8lyxqj87yd6i2"))))
+           "0y2b90fh42xdjim29jzja611828yml0vnwv9h181wsdvw8yy82hh"))))
       (arguments
        `(#:python ,python-2 ; python-2 only
          #:tests? #f

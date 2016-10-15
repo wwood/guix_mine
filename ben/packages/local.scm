@@ -1642,3 +1642,51 @@ graph (SdBG) to achieve low memory assembly.")
       (synopsis "")
       (description "")
       (license license:lgpl2.0+))))
+
+(define-public sammy
+  (let ((commit "9b71994902440c02c9b4a5c1e459ff522170b58a"))
+    (package
+      (name "sammy")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/minillinim/sammy.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "1jlx25wgw8zrxvwjpq92v9p4nlhfi6jvbq81rb923j14r961f1zl"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'build)
+           (add-after 'unpack 'patch-pod2usage
+             (lambda* (#:key inputs #:allow-other-keys)
+               (substitute* "sammy.pl"
+                 (("pod2usage") (which "pod2usage")))
+               #t))
+           (replace 'check
+             (lambda _
+               (zero? (system* "./sammy.pl" "-r" "data/reference.fa" "-n" "3"))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (install-file "sammy.pl" bin)
+                 (wrap-program (string-append bin "/sammy.pl")
+                   `("PERL5LIB" ":" prefix
+                     (,(string-append (getenv "PERL5LIB") ":" out
+                                      "/lib/perl5/site_perl"))))
+                 #t))))))
+      (inputs
+       `(("perl" ,perl)
+         ("bioperl" ,bioperl-minimal)))
+      (home-page "https://github.com/minillinim/sammy")
+      (synopsis "Stupidly simple short read simulator")
+      (description "Sammy simulates error free paired DNA sequencing reads. It
+is useful for testing other software.")
+      (license license:gpl3+))))

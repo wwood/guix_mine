@@ -26,6 +26,7 @@
   #:use-module (gnu packages cups)
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
+  #:use-module (gnu packages datastructures)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
@@ -37,6 +38,7 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages graphviz)
+  #:use-module (gnu packages graphics)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
@@ -63,6 +65,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages statistics)
@@ -1690,3 +1693,153 @@ graph (SdBG) to achieve low memory assembly.")
       (description "Sammy simulates error free paired DNA sequencing reads. It
 is useful for testing other software.")
       (license license:gpl3+))))
+
+(define-public ruby-bio-cd-hit-report ; does not work, also a little odd that
+                                      ; the tar.gz from github is different to
+                                      ; the gem on rubygems. Probably best
+                                      ; solution would be to package jeweler.
+  (package
+    (name "ruby-bio-cd-hit-report")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/biorelated/bioruby-cd-hit-report/archive/v" version
+             ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1n3zz7sm2k1j4c6hhl5srap11dz9f0hybbvwq3kpn9sz6pr62g83"))
+       ;(patches (search-patches "ruby-cd-hit-report-fix-gemfile.patch"))
+       ))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-minitest" ,ruby-minitest)))
+    (propagated-inputs
+     `(("bioruby" ,bioruby)))
+    (synopsis
+     "A Ruby library for reading CD-HIT cluster reports")
+    (description
+     "This package provides a Ruby library for reading CD-HIT cluster reports")
+    (home-page
+     "http://github.com/georgeG/bioruby-cd-hit-report")
+    (license license:expat)))
+
+(define-public graph-tool ; does not seem to build, something amiss with boost_python. For some reason "-lboost_python -lpython2.7" is not included in the conf call
+  (let ((commit "6ad35ea35b2763c546ccd7521f08d3d04644ccc0"))
+  (package
+   (name "graph-tool")
+   (version "2.18")
+   (source
+    ;; (origin
+    ;;  (method url-fetch)
+    ;;  (uri (string-append "https://downloads.skewed.de/graph-tool/graph-tool-"
+    ;;                      version ".tar.bz2"))
+    ;;  (sha256
+    ;;   (base32
+    ;;    "1m641rqsrc57dcvhb0slpbp1llyn0y6dzbqm46hi7bkbggxjjj9w"))))
+                                        ; https://git.skewed.de/count0/graph-tool.git
+   (origin
+     (method git-fetch)
+     (uri (git-reference
+           (url "https://git.skewed.de/count0/graph-tool.git")
+           (commit commit)))
+     (file-name (string-append name "-" version "-checkout"))
+     (sha256
+      (base32
+       "03q6hgcmd6i92nimlls1r712612j46y1aifv3wrdq5jsf2aafd4a"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(;#:configure-flags '("LIBS=-lboost_python -lpython2.7")))
+      #:configure-flags '("--enable-openmp")
+      #:phases
+      (modify-phases %standard-phases
+        (add-before 'configure 'autogen
+                    (lambda _ (zero? (system* "./autogen.sh")))))))
+   (native-inputs
+    `(("gcc" ,gcc-5)))
+   (inputs
+    `(("python" ,python-2)
+      ("boost" ,boost)
+      ("expat" ,expat)
+      ("python2-scipy" ,python2-scipy)
+      ("python2-numpy" ,python2-numpy)
+      ("cgal" ,cgal)
+      ("sparsehash" ,sparsehash)
+      ("python2-pycairo" ,python2-pycairo)
+      ("python2-matplotlib" ,python2-matplotlib)
+      ("cairomm" ,cairomm)
+      ("autoconf"  ,autoconf)
+      ("automake"  ,automake)
+      ("libtool"  ,libtool))) ;g++ -std=gnu++14 -o conftest -Wall -Wextra -ftemplate-backtrace-limit=0  -DNDEBUG -ftemplate-depth-250 -Wno-deprecated -Wno-unknown-pragmas -O3 -fvisibility=default -fvisibility-inlines-hidden -Wno-unknown-pragmas  -I/gnu/store/vcx1n5nj4gr52xx5m6gvi7zrwngy06s3-python-2.7.11/include/python2.7     my.cpp -lexpat -lbz2 -lm -lboost_python -lpython2.7
+   (home-page "")
+   (synopsis "")
+   (description "")
+   (license license:lgpl2.0+)))) ;?
+
+(define-public bandage ; bundles the currently unpackaged ogdf, which bundles
+                       ; coin-or-clp, abacus, at least. Also, need to run tests,
+                       ; currently not built.
+  (package
+    (name "bandage")
+    (version "0.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/rrwick/Bandage/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "080q4kvjhbb7is29bdw93q6r0giza9iknr5wzrw6wv8ciajrb02c"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           (lambda* (#:key outputs #:allow-other-keys)
+             (for-each
+              (lambda (file)
+                (substitute* file
+                  (("target.path \\+= /usr/local/bin")
+                   (string-append "target.path += "
+                                  (assoc-ref outputs "out")
+                                  "/bin/"))
+                  (("unix:INCLUDEPATH \\+= /usr/include/")
+                   (string-append "unix:INCLUDEPATH += "
+                                  (assoc-ref outputs "out")
+                                  "/include/"))
+                  (("unix:LIBS \\+= -L/usr/lib")
+                   (string-append "unix:LIBS += -L"
+                                  (assoc-ref outputs "out")
+                                  "/lib/"))))
+              '("Bandage.pro" "BandageTests.pro"))
+             (zero? (system* "qmake" "Bandage.pro" ; PREFIX needed? or substitute* needed?
+                             (string-append "PREFIX=" (assoc-ref outputs "out"))))))))) ;"BandageTests.pro"
+    (inputs
+     `(("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+)))
+
+(define-public coin-or-clp
+  (package
+    (name "coin-or-clp")
+    (version "1.16.10")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://www.coin-or.org/download/source/Clp/Clp-"
+                           version ".tgz"))
+       (sha256
+        (base32
+         "1k9s5xnj9ww9x73hk179vqz0lq0rh520m2zv4g97kzfgmzr81n2w"))))
+    (build-system gnu-build-system)
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+)))

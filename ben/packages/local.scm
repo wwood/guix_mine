@@ -1601,7 +1601,8 @@ metagenomics NGS reads, such as soil. It makes use of succinct de Bruijn
 graph (SdBG) to achieve low memory assembly.")
     (license license:gpl3+)))
 
-(define-public nss-ldap
+(define-public nss-ldap ; This compiles but doesn't get around the LDAP-related
+                        ; issues as I'd hoped.
   (let ((commit "154730b5a2b58a4212e419b498476fcb5a60de7b"))
     (package
       (name "nss-ldap")
@@ -1627,7 +1628,8 @@ graph (SdBG) to achieve low memory assembly.")
       (arguments
        `(#:phases
          (modify-phases %standard-phases
-           (replace 'install
+           (replace 'install ; HACK: should rather patch the Makefile or install
+                             ; other things e.g. .h files.
              (lambda* (#:key outputs #:allow-other-keys)
                (let* ((out (assoc-ref outputs "out"))
                       (lib (string-append out "/lib")))
@@ -1642,3 +1644,37 @@ graph (SdBG) to achieve low memory assembly.")
       (synopsis "")
       (description "")
       (license license:lgpl2.0+))))
+
+(package
+  (name "r-wgcna")
+  (version "1.51")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (cran-uri "WGCNA" version))
+      (sha256
+        (base32
+          "0hzvnhw76vwg8bl8x368f0c5szpwb8323bmrb3bir93i5bmfjsxx"))))
+  (properties `((upstream-name . "WGCNA")))
+  (build-system r-build-system)
+  (propagated-inputs
+    `(("r-annotationdbi" ,r-annotationdbi)
+      ("r-doparallel" ,r-doparallel)
+      ("r-dynamictreecut" ,r-dynamictreecut)
+      ("r-fastcluster" ,r-fastcluster)
+      ("r-foreach" ,r-foreach)
+      ("r-go.db" ,r-go.db)
+      ("r-grdevices" ,r-grdevices)
+      ("r-hmisc" ,r-hmisc)
+      ("r-impute" ,r-impute)
+      ("r-matrixstats" ,r-matrixstats)
+      ("r-preprocesscore" ,r-preprocesscore)
+      ("r-survival" ,r-survival)
+      ("r-utils" ,r-utils)))
+  (home-page
+    "http://www.genetics.ucla.edu/labs/horvath/CoexpressionNetwork/Rpackages/WGCNA/")
+  (synopsis
+    "Weighted Correlation Network Analysis")
+  (description
+    "Functions necessary to perform Weighted Correlation Network Analysis on high-dimensional data.  Includes functions for rudimentary data cleaning, construction of correlation networks, module identification, summarization, and relating of variables and modules to sample traits.  Also includes a number of utility functions for data manipulation and visualization.")
+  (license license:gpl2+))

@@ -26,6 +26,7 @@
   #:use-module (gnu packages cups)
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
+  #:use-module (gnu packages datastructures)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
@@ -37,6 +38,7 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages graphviz)
+  #:use-module (gnu packages graphics)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
@@ -63,6 +65,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages statistics)
@@ -1078,14 +1081,14 @@ algorithm takes as input a message of arbitrary length and produces as output a
 (define-public python2-mgkit
   (package
     (name "python2-mgkit")
-    (version "0.2.5")
+    (version "0.3.0")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "mgkit" version))
        (sha256
         (base32
-         "1y7j4s1x59z6j0lfkd99psf44rrlkvyrmkli68fapbx7ankmxcdw"))))
+         "1zbvx3l2270k3ffk915mscnh2dw83wmqad7djr3ajkprr9dqywq7"))))
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2)) ; Ony Python 2 is supported.
@@ -1537,13 +1540,13 @@ help a user to decide whether their sample has a known or novel K locus.")
        (origin
          (method git-fetch)
          (uri (git-reference
-               (url "https://github.com/wwood/graftM.git")
+               (url "https://github.com/geronimp/graftM.git")
                (commit commit)))
          (file-name (string-append name "-" version "-checkout"))
          (patches (search-patches "graftm-with-stops.patch"))
          (sha256
           (base32
-           "1y79v1rlf1j265ka9jlkr9padlb6y93y73sv2rn8lyxqj87yd6i2"))))
+           "0y2b90fh42xdjim29jzja611828yml0vnwv9h181wsdvw8yy82hh"))))
       (arguments
        `(#:python ,python-2 ; python-2 only
          #:tests? #f
@@ -1645,19 +1648,20 @@ graph (SdBG) to achieve low memory assembly.")
       (description "")
       (license license:lgpl2.0+))))
 
-(package
-  (name "r-wgcna")
-  (version "1.51")
-  (source
+(define-public r-wgcna
+  (package
+   (name "r-wgcna")
+   (version "1.51")
+   (source
     (origin
-      (method url-fetch)
-      (uri (cran-uri "WGCNA" version))
-      (sha256
-        (base32
-          "0hzvnhw76vwg8bl8x368f0c5szpwb8323bmrb3bir93i5bmfjsxx"))))
-  (properties `((upstream-name . "WGCNA")))
-  (build-system r-build-system)
-  (propagated-inputs
+     (method url-fetch)
+     (uri (cran-uri "WGCNA" version))
+     (sha256
+      (base32
+       "0hzvnhw76vwg8bl8x368f0c5szpwb8323bmrb3bir93i5bmfjsxx"))))
+   (properties `((upstream-name . "WGCNA")))
+   (build-system r-build-system)
+   (propagated-inputs
     `(("r-annotationdbi" ,r-annotationdbi)
       ("r-doparallel" ,r-doparallel)
       ("r-dynamictreecut" ,r-dynamictreecut)
@@ -1671,10 +1675,209 @@ graph (SdBG) to achieve low memory assembly.")
       ("r-preprocesscore" ,r-preprocesscore)
       ("r-survival" ,r-survival)
       ("r-utils" ,r-utils)))
-  (home-page
+   (home-page
     "http://www.genetics.ucla.edu/labs/horvath/CoexpressionNetwork/Rpackages/WGCNA/")
-  (synopsis
+   (synopsis
     "Weighted Correlation Network Analysis")
-  (description
+   (description
     "Functions necessary to perform Weighted Correlation Network Analysis on high-dimensional data.  Includes functions for rudimentary data cleaning, construction of correlation networks, module identification, summarization, and relating of variables and modules to sample traits.  Also includes a number of utility functions for data manipulation and visualization.")
-  (license license:gpl2+))
+   (license license:gpl2+)))
+
+(define-public sammy
+  (let ((commit "9b71994902440c02c9b4a5c1e459ff522170b58a"))
+    (package
+      (name "sammy")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/minillinim/sammy.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "1jlx25wgw8zrxvwjpq92v9p4nlhfi6jvbq81rb923j14r961f1zl"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'build)
+           (add-after 'unpack 'patch-pod2usage
+             (lambda* (#:key inputs #:allow-other-keys)
+               (substitute* "sammy.pl"
+                 (("pod2usage") (which "pod2usage")))
+               #t))
+           (replace 'check
+             (lambda _
+               (zero? (system* "./sammy.pl" "-r" "data/reference.fa" "-n" "3"))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (install-file "sammy.pl" bin)
+                 (wrap-program (string-append bin "/sammy.pl")
+                   `("PERL5LIB" ":" prefix
+                     (,(string-append (getenv "PERL5LIB") ":" out
+                                      "/lib/perl5/site_perl"))))
+                 #t))))))
+      (inputs
+       `(("perl" ,perl)
+         ("bioperl" ,bioperl-minimal)))
+      (home-page "https://github.com/minillinim/sammy")
+      (synopsis "Stupidly simple short read simulator")
+      (description "Sammy simulates error free paired DNA sequencing reads. It
+is useful for testing other software.")
+      (license license:gpl3+))))
+
+(define-public ruby-bio-cd-hit-report ; does not work, also a little odd that
+                                      ; the tar.gz from github is different to
+                                      ; the gem on rubygems. Probably best
+                                      ; solution would be to package jeweler.
+  (package
+    (name "ruby-bio-cd-hit-report")
+    (version "0.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/biorelated/bioruby-cd-hit-report/archive/v" version
+             ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1n3zz7sm2k1j4c6hhl5srap11dz9f0hybbvwq3kpn9sz6pr62g83"))
+       ;(patches (search-patches "ruby-cd-hit-report-fix-gemfile.patch"))
+       ))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-minitest" ,ruby-minitest)))
+    (propagated-inputs
+     `(("bioruby" ,bioruby)))
+    (synopsis
+     "A Ruby library for reading CD-HIT cluster reports")
+    (description
+     "This package provides a Ruby library for reading CD-HIT cluster reports")
+    (home-page
+     "http://github.com/georgeG/bioruby-cd-hit-report")
+    (license license:expat)))
+
+(define-public graph-tool ; does not seem to build, something amiss with boost_python. For some reason "-lboost_python -lpython2.7" is not included in the conf call
+  (let ((commit "6ad35ea35b2763c546ccd7521f08d3d04644ccc0"))
+  (package
+   (name "graph-tool")
+   (version "2.18")
+   (source
+    ;; (origin
+    ;;  (method url-fetch)
+    ;;  (uri (string-append "https://downloads.skewed.de/graph-tool/graph-tool-"
+    ;;                      version ".tar.bz2"))
+    ;;  (sha256
+    ;;   (base32
+    ;;    "1m641rqsrc57dcvhb0slpbp1llyn0y6dzbqm46hi7bkbggxjjj9w"))))
+                                        ; https://git.skewed.de/count0/graph-tool.git
+   (origin
+     (method git-fetch)
+     (uri (git-reference
+           (url "https://git.skewed.de/count0/graph-tool.git")
+           (commit commit)))
+     (file-name (string-append name "-" version "-checkout"))
+     (sha256
+      (base32
+       "03q6hgcmd6i92nimlls1r712612j46y1aifv3wrdq5jsf2aafd4a"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(;#:configure-flags '("LIBS=-lboost_python -lpython2.7")))
+      #:configure-flags '("--enable-openmp")
+      #:phases
+      (modify-phases %standard-phases
+        (add-before 'configure 'autogen
+                    (lambda _ (zero? (system* "./autogen.sh")))))))
+   (native-inputs
+    `(("gcc" ,gcc-5)))
+   (inputs
+    `(("python" ,python-2)
+      ("boost" ,boost)
+      ("expat" ,expat)
+      ("python2-scipy" ,python2-scipy)
+      ("python2-numpy" ,python2-numpy)
+      ("cgal" ,cgal)
+      ("sparsehash" ,sparsehash)
+      ("python2-pycairo" ,python2-pycairo)
+      ("python2-matplotlib" ,python2-matplotlib)
+      ("cairomm" ,cairomm)
+      ("autoconf"  ,autoconf)
+      ("automake"  ,automake)
+      ("libtool"  ,libtool))) ;g++ -std=gnu++14 -o conftest -Wall -Wextra -ftemplate-backtrace-limit=0  -DNDEBUG -ftemplate-depth-250 -Wno-deprecated -Wno-unknown-pragmas -O3 -fvisibility=default -fvisibility-inlines-hidden -Wno-unknown-pragmas  -I/gnu/store/vcx1n5nj4gr52xx5m6gvi7zrwngy06s3-python-2.7.11/include/python2.7     my.cpp -lexpat -lbz2 -lm -lboost_python -lpython2.7
+   (home-page "")
+   (synopsis "")
+   (description "")
+   (license license:lgpl2.0+)))) ;?
+
+(define-public bandage ; bundles the currently unpackaged ogdf, which bundles
+                       ; coin-or-clp, abacus, at least. Also, need to run tests,
+                       ; currently not built.
+  (package
+    (name "bandage")
+    (version "0.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/rrwick/Bandage/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "080q4kvjhbb7is29bdw93q6r0giza9iknr5wzrw6wv8ciajrb02c"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+           (lambda* (#:key outputs #:allow-other-keys)
+             (for-each
+              (lambda (file)
+                (substitute* file
+                  (("target.path \\+= /usr/local/bin")
+                   (string-append "target.path += "
+                                  (assoc-ref outputs "out")
+                                  "/bin/"))
+                  (("unix:INCLUDEPATH \\+= /usr/include/")
+                   (string-append "unix:INCLUDEPATH += "
+                                  (assoc-ref outputs "out")
+                                  "/include/"))
+                  (("unix:LIBS \\+= -L/usr/lib")
+                   (string-append "unix:LIBS += -L"
+                                  (assoc-ref outputs "out")
+                                  "/lib/"))))
+              '("Bandage.pro" "BandageTests.pro"))
+             (zero? (system* "qmake" "Bandage.pro" ; PREFIX needed? or substitute* needed?
+                             (string-append "PREFIX=" (assoc-ref outputs "out"))))))))) ;"BandageTests.pro"
+    (inputs
+     `(("qtbase" ,qtbase)
+       ("qtsvg" ,qtsvg)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+)))
+
+(define-public coin-or-clp
+  (package
+    (name "coin-or-clp")
+    (version "1.16.10")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://www.coin-or.org/download/source/Clp/Clp-"
+                           version ".tgz"))
+       (sha256
+        (base32
+         "1k9s5xnj9ww9x73hk179vqz0lq0rh520m2zv4g97kzfgmzr81n2w"))))
+    (build-system gnu-build-system)
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+)))
+

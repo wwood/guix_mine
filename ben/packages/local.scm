@@ -1667,14 +1667,13 @@ graph (SdBG) to achieve low memory assembly.")
       ("r-dynamictreecut" ,r-dynamictreecut)
       ("r-fastcluster" ,r-fastcluster)
       ("r-foreach" ,r-foreach)
-      ("r-go.db" ,r-go.db)
-      ("r-grdevices" ,r-grdevices)
+      ("r-go-db" ,r-go-db)
       ("r-hmisc" ,r-hmisc)
       ("r-impute" ,r-impute)
       ("r-matrixstats" ,r-matrixstats)
       ("r-preprocesscore" ,r-preprocesscore)
-      ("r-survival" ,r-survival)
-      ("r-utils" ,r-utils)))
+      ;("r-survival" ,r-survival) ; Does guix really not have this?
+      ))
    (home-page
     "http://www.genetics.ucla.edu/labs/horvath/CoexpressionNetwork/Rpackages/WGCNA/")
    (synopsis
@@ -1682,6 +1681,65 @@ graph (SdBG) to achieve low memory assembly.")
    (description
     "Functions necessary to perform Weighted Correlation Network Analysis on high-dimensional data.  Includes functions for rudimentary data cleaning, construction of correlation networks, module identification, summarization, and relating of variables and modules to sample traits.  Also includes a number of utility functions for data manipulation and visualization.")
    (license license:gpl2+)))
+
+(define-public r-dynamictreecut
+  (package
+   (name "r-dynamictreecut")
+   (version "1.63-1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "dynamicTreeCut" version))
+     (sha256
+      (base32
+       "1fadbql7g5r2vvlkr89nlrjxwp4yx4xrdqmv077qvmnx9vv0f4w3"))))
+   (properties
+    `((upstream-name . "dynamicTreeCut")))
+   (build-system r-build-system)
+   (home-page
+    "http://www.genetics.ucla.edu/labs/horvath/CoexpressionNetwork/BranchCutting/")
+   (synopsis
+    "Methods for Detection of Clusters in Hierarchical Clustering Dendrograms")
+   (description
+    "Contains methods for detection of clusters in hierarchical clustering dendrograms.")
+   (license license:gpl2+)))
+
+(define-public r-fastcluster
+  (package
+   (name "r-fastcluster")
+   (version "1.1.21")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "fastcluster" version))
+     (sha256
+      (base32
+       "19bjid6nnraiv1dpkq7mhlm3cnnj4av5v3n1yd8hv9aj7v1miay6"))))
+   (build-system r-build-system)
+   (home-page
+    "http://danifold.net/fastcluster.html")
+   (synopsis
+    "Fast Hierarchical Clustering Routines for R and Python")
+   (description
+    "This is a two-in-one package which provides interfaces to both R and Python.  It implements fast hierarchical, agglomerative clustering routines.  Part of the functionality is designed as drop-in replacement for existing routines: linkage() in the SciPy package 'scipy.cluster.hierarchy', hclust() in R's 'stats' package, and the 'flashClust' package.  It provides the same functionality with the benefit of a much faster implementation.  Moreover, there are memory-saving routines for clustering of vector data, which go beyond what the existing packages provide.  For information on how to install the Python files, see the file INSTALL in the source distribution.")
+   (license #f))) ;?
+
+(define-public r-preprocesscore
+  (package
+    (name "r-preprocesscore")
+    (version "1.36.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "preprocessCore" version))
+       (sha256
+        (base32
+         "1n8y12q7145f385gm2k3c6y3vwvin7jlb47la4mnl7mar6pq9kmp"))))
+    (build-system r-build-system)
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
 
 (define-public sammy
   (let ((commit "9b71994902440c02c9b4a5c1e459ff522170b58a"))

@@ -1816,8 +1816,8 @@ is useful for testing other software.")
                                   (assoc-ref outputs "out")
                                   "/lib/"))))
               '("Bandage.pro" "BandageTests.pro"))
-             (zero? (system* "qmake" "Bandage.pro" ; PREFIX needed? or substitute* needed?
-                             (string-append "PREFIX=" (assoc-ref outputs "out"))))))))) ;"BandageTests.pro"
+             (zero? (system* "qmake" "Bandage.pro" "BandageTests.pro" ; PREFIX needed? or substitute* needed?
+                             ))))))) ;
     (inputs
      `(("qtbase" ,qtbase)
        ("qtsvg" ,qtsvg)))
@@ -1843,3 +1843,174 @@ is useful for testing other software.")
     (synopsis "")
     (description "")
     (license license:gpl3+)))
+
+
+(define-public irep ; Waiting on python-seaborn to compile after the core-updates merge.
+  (package
+    (name "irep")
+    (version "1.10")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/christophertbrown/iRep/archive/v"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "06ypzys3fml8h4qqn1g01ix9lbxa2fy3sc52avil6bjsx8x3656h"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (replace 'test
+           (lambda _
+             (and
+              (zero? (system* "bin/iRep.py" "-f" "sample_data/l_gasseri.fna" "-s"
+                              "sample_data/l_gasseri.fna-vs-l_gasseri_sample1-shrunk.sam"
+                              "sample_data/l_gasseri.fna-vs-l_gasseri_sample2-shrunk.sam"
+                              "-o" "test.iRep"))
+              (zero? (system* "bin/bPTR.py" "-f" "sample_data/l_gasseri.fna" "-s" 
+                              "sample_data/l_gasseri.fna-vs-l_gasseri_sample1-shrunk.sam"
+                              "sample_data/l_gasseri.fna-vs-l_gasseri_sample2-shrunk.sam"
+                              "-o" "test.bPTR.tsv" "-plot" "test.bPTR.pdf" "-m" "coverage"))
+              (zero? (system* "bin/gc_skew.py" "-f" "sample_data/l_gasseri.fna")))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (for-each (lambda (file)
+                         (install-file
+                          file
+                          (string-append (assoc-ref outputs "out") "/bin")))
+                       '("bPTR.py"
+                         "fasta.py"
+                         "gc_skew.py"
+                         "iRep.py"
+                         "mapped.py")))))))
+    (inputs
+     `(("python" ,python)
+       ("python-lmfit" ,python-lmfit)
+       ("python-numpy" ,python-numpy)
+       ("python-scipy" ,python-scipy)
+       ("python-pandas" ,python-pandas)
+       ("python-seaborn" ,python-seaborn)
+       ("python-matplotlib" ,python-matplotlib)))
+    (home-page "")
+    (synopsis
+     "")
+    (description
+     "")
+    (license license:gpl2+))) ;?
+
+(define-public python-lmfit
+  (package
+    (name "python-lmfit")
+    (version "0.9.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "lmfit" version))
+       (sha256
+        (base32
+         "0rv6pssvy564viphqsd0slx4532lh9a9lm97v6ym2glzxls3rg7f"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-numpy" ,python-numpy)
+       ("python-scipy" ,python-scipy)))
+    (home-page "http://lmfit.github.io/lmfit-py/")
+    (synopsis
+     "Least-Squares Minimization with Bounds and Constraints")
+    (description
+     "Least-Squares Minimization with Bounds and Constraints")
+    (license license:bsd-3)))
+
+(define-public musicc
+  (package
+    (name "musicc")
+    (version "1.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "MUSiCC" version))
+       (sha256
+        (base32
+         "1hbcl911acam2ys58abc5g590byfb0q8c4v61qfsxdr8nz4ma9li"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda _
+             (setenv "PYTHONPATH"
+                     (string-append ".:" (getenv "PYTHONPATH")))
+             (zero? (system* "python" "tests/test_musicc.py")))))))
+    (propagated-inputs
+     `(("python-numpy" ,python-numpy)
+       ("python-scipy" ,python-scipy)
+       ("python-scikit-learn" ,python-scikit-learn)
+       ("python-pandas" ,python-pandas)))
+    (home-page
+     "http://elbo.gs.washington.edu/software_musicc.html")
+    (synopsis "Marker gene-based framework for metagenomic normalization")
+    (description
+     "MUSiCC is a software package for normalizing and correcting gene abundance
+measurements derived from metagenomic shotgun sequencing.  For intra-sample gene
+normalization, it uses a set of genes that are universally present in a single
+copy in every organism to learn a normalizing factor for each sample.  For
+inter-sample gene correction, it uses a gene-specific model that was trained
+using data from the Human Microbiome Project to correct the abundances of the
+genes in the given data. MUSiCC takes as input a raw gene abundance file, and
+returns a normalized and corrected gene abundance file.")
+    (license license:bsd-3)))
+
+(define-public python-cogent
+  (package
+   (name "python-cogent")
+   (version "1.9")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "cogent" version))
+     (sha256
+      (base32
+       "056far6y9x39cdkbf1sm1xhd1pys96dlz1q7p7rf9zvk0a7cbn2p"))))
+   (build-system python-build-system)
+   (propagated-inputs
+    `(("python-matplotlib" ,python-matplotlib)
+      ("python-mpi4py" ,python-mpi4py)
+      ("python-pymysql" ,python-pymysql)
+      ("python-sqlalchemy" ,python-sqlalchemy)))
+   (home-page "http://github.com/pycogent/pycogent")
+   (synopsis "COmparative GENomics Toolkit")
+   (description "COmparative GENomics Toolkit")
+   (license license:gpl3)))
+
+(define-public python-mpi4py
+  (package
+   (name "python-mpi4py")
+   (version "2.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "mpi4py" version))
+     (sha256
+      (base32
+       "10fb01595rg17ycz08a23v24akm25d13srsy2rnixam7a5ca0hv5"))))
+   (build-system python-build-system)
+   (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+                      (replace 'check
+                               (lambda _
+                                 (setenv "PYTHONPATH" (string-append "build/lib.linux-x86_64-3.5/:" (getenv "PYTHONPATH")))
+                                 (zero? (system* "nosetests" "-v")))))))
+   (native-inputs
+    `(("python-nose" ,python-nose)))
+   (inputs
+    `(("openmpi" ,openmpi)))
+   (home-page
+    "https://bitbucket.org/mpi4py/mpi4py/")
+   (synopsis "MPI for Python")
+   (description "MPI for Python")
+   (license license:bsd-3)))

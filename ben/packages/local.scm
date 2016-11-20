@@ -2213,9 +2213,8 @@ returns a normalized and corrected gene abundance file.")
        ("ctags" ,exuberant-ctags) ; May also work with universal-ctags or
                                   ; emacs-ctags. 'univesal-ctags' probably
                                         ; preferred.
-       ("abi-dumper" ,abi-dumper)
-       ("findutils" ,findutils)))
-    (home-page "")
+       ("abi-dumper" ,abi-dumper)))
+    (home-page "https://lvc.github.io/abi-compliance-checker/")
     (synopsis "")
     (description "")
     (license license:gpl3+))) ;?
@@ -2257,9 +2256,7 @@ returns a normalized and corrected gene abundance file.")
     (inputs
      `(("perl" ,perl)
        ("elfutils" ,elfutils)
-       ("vtable-dumper" ,vtable-dumper)
-       ("findutils" ,findutils)
-       ("glibc" ,glibc)))
+       ("vtable-dumper" ,vtable-dumper)))
     (home-page "")
     (synopsis "")
     (description "")

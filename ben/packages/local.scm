@@ -2108,3 +2108,189 @@ returns a normalized and corrected gene abundance file.")
    (synopsis "MPI for Python")
    (description "MPI for Python")
    (license license:bsd-3)))
+
+(define-public exuberant-ctags
+  (package
+    (name "exuberant-ctags")
+    (version "5.8")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "mirror://sourceforge/ctags/ctags/"
+                           version "/ctags-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1iwrkrpdcmzbjmrv6b8169fvw6pq8v1307mipc5rx5myr9fv8i0f"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+                  ;; There are no tests, so run a sanity check.
+                  (lambda _ (zero? (system* "./ctags" "--help")))))))
+    (home-page "http://ctags.sourceforge.net/")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+))) ;?
+
+(define-public universal-ctags ; Does not build for reasons unknown.
+  ;; We package from a git commit because there are no releases.
+  (let ((commit "c033295094ad60af54695ea0ee7ee01aa86eacce"))
+    (package
+      (name "universal-ctags")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/universal-ctags/ctags.git")
+               (commit commit)))
+         (file-name (string-append name "-" version))
+         (sha256
+          (base32
+           "0b2b2pj4l9dwbklhlgyzcjc1zs632fa0x3kq87snaykwm9hiab3l"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (add-after 'unpack 'patch-files
+             (lambda _
+               (substitute* '("misc/budge" "misc/dist-test-cases")
+                 (("git ls-files") "find * | sort"))
+               #t))
+           (add-before 'configure 'autogen
+             (lambda _ (zero? (system* "autoreconf" "-i")))))))
+      (native-inputs
+       `(("autoconf" ,autoconf)
+         ("automake" ,automake)))
+      (home-page "http://ctags.sourceforge.net/")
+      (synopsis "")
+      (description "")
+      (license license:gpl3+)))) ;?
+
+(define-public abi-compliance-checker
+  (package
+    (name "abi-compliance-checker")
+    (version "1.99.25")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/lvc/abi-compliance-checker/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "103kic53y9061hskgm329kw7rwf04f985i0kmdamrgl9kkrjvn5n"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:make-flags (list (string-append
+                           "prefix=" (assoc-ref %outputs "out")))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (add-before 'install 'create-prefix-dir
+          (lambda* (#:key outputs #:allow-other-keys)
+            (mkdir-p (assoc-ref outputs "out"))
+            #t))
+         (delete 'check)
+         (add-after 'install 'post-install-check
+           (lambda* (#:key outputs #:allow-other-keys)
+             (zero? (system* (string-append (assoc-ref outputs "out")
+                                            "/bin/abi-compliance-checker")
+                             "-test"))))
+         (add-after 'install 'wrap-binary
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out    (assoc-ref outputs "out"))
+                    (binary (string-append out "/bin/abi-compliance-checker"))
+                    (path   (getenv "PATH")))
+               (wrap-program binary
+                 `("PATH" ":" prefix (,path)))
+               #t))))))
+    (inputs
+     `(("perl" ,perl)
+       ("ctags" ,exuberant-ctags) ; May also work with universal-ctags or
+                                  ; emacs-ctags. 'univesal-ctags' probably
+                                        ; preferred.
+       ("abi-dumper" ,abi-dumper)
+       ("findutils" ,findutils)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+))) ;?
+
+(define-public abi-dumper
+  (package
+    (name "abi-dumper")
+    (version "0.99.19")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/lvc/abi-dumper/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0a25bn03ahlyr5aygq4bgphn39mr0rwb1gg7v4ilb81rb1wkbg3b"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:make-flags (list (string-append "prefix=" (assoc-ref %outputs "out")))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (delete 'check)
+         (add-before 'install 'create-prefix-dir
+           (lambda* (#:key outputs #:allow-other-keys)
+             (mkdir-p (assoc-ref outputs "out"))
+             #t))
+         (add-after 'install 'wrap-binary
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out    (assoc-ref outputs "out"))
+                    (binary (string-append out "/bin/abi-dumper"))
+                    (path   (getenv "PATH")))
+               (wrap-program binary
+                 `("PATH" ":" prefix (,path)))
+               #t))))))
+    (inputs
+     `(("perl" ,perl)
+       ("elfutils" ,elfutils)
+       ("vtable-dumper" ,vtable-dumper)
+       ("findutils" ,findutils)
+       ("glibc" ,glibc)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+))) ;?
+
+(define-public vtable-dumper
+  (package
+    (name "vtable-dumper")
+    (version "1.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/lvc/vtable-dumper/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1lhzvp32big3wbdnv0z9ssv4djqa856dph3dyz2nz4q0d8dpi4v9"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests.
+       #:make-flags
+       (list "CC=gcc"
+             (string-append "prefix=" (assoc-ref %outputs "out")))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure))))
+    (inputs
+     `(("libelf" ,libelf)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3+))) ;?

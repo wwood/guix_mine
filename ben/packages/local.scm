@@ -2157,12 +2157,14 @@ returns a normalized and corrected gene abundance file.")
              (lambda _
                (substitute* '("misc/budge" "misc/dist-test-cases")
                  (("git ls-files") "find * | sort"))
-               #t))
+               (zero? (system* "autoreconf" "-vfi"))
+               ))
            (add-before 'configure 'autogen
              (lambda _ (zero? (system* "autoreconf" "-i")))))))
       (native-inputs
        `(("autoconf" ,autoconf)
-         ("automake" ,automake)))
+         ("automake" ,automake)
+         ("perl" ,perl)))
       (home-page "http://ctags.sourceforge.net/")
       (synopsis "")
       (description "")
@@ -2212,12 +2214,17 @@ returns a normalized and corrected gene abundance file.")
      `(("perl" ,perl)
        ("ctags" ,exuberant-ctags) ; May also work with universal-ctags or
                                   ; emacs-ctags. 'univesal-ctags' probably
-                                        ; preferred.
-       ("abi-dumper" ,abi-dumper)))
+                                  ; preferred.
+       ("abi-dumper" ,abi-dumper)
+       ("glibc" ,glibc-with-ldconfig/linux)))
     (home-page "https://lvc.github.io/abi-compliance-checker/")
-    (synopsis "")
-    (description "")
-    (license license:gpl3+))) ;?
+    (synopsis "Binary and source-level compatibility checker")
+    (description "The ABI Compliance Checker (ABICC) is a tool for checking
+backward binary and source-level compatibility of a C/C++ software library.
+The tool analyzes changes in API/ABI (ABI=API+compiler ABI) that may break
+binary compatibility and/or source compatibility: changes in calling stack,
+v-table changes, removed symbols, renamed fields, etc.")
+    (license (list license:gpl2+ license:lgpl2.0+))))
 
 (define-public abi-dumper
   (package
@@ -2291,3 +2298,20 @@ returns a normalized and corrected gene abundance file.")
     (synopsis "")
     (description "")
     (license license:gpl3+))) ;?
+
+(define-public glibc-with-ldconfig/linux
+  (package
+    (inherit glibc)
+    (name "glibc-with-ldconfig")
+    (version (package-version glibc))
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "mirror://gnu/glibc/glibc-"
+                                  version ".tar.xz"))
+              (sha256
+               (base32
+                "1lxmprg9gm73gvafxd503x70z32phwjzcy74i0adfi6ixzla7m4r"))
+              (patches (search-patches "glibc-ldd-x86_64.patch"
+                                       "glibc-versioned-locpath.patch"
+                                       "glibc-o-largefile.patch"))
+              ))))

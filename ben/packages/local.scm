@@ -753,10 +753,10 @@ application or a drop in replacement for MUMmer3.")
 (define-public panphlan
   ;; The newest release 1.2 is far out of date, so we package from a new
   ;; changeset.
-  (let ((changeset "e113395491e6e9d353aa157333659f60e98de168"))
+  (let ((changeset "62533244f44b5fc57cf93f624b97a57944d511e7"))
     (package
       (name "panphlan")
-      (version (string-append "1.2-1." (string-take changeset 7)))
+      (version (string-append "1.2-2." (string-take changeset 7)))
       (source (origin
                 (method url-fetch)
                 ;; Use the direct download rather than hg-download so that
@@ -767,7 +767,7 @@ application or a drop in replacement for MUMmer3.")
                 (file-name (string-append name "-" version ".zip"))
                 (sha256
                  (base32
-                  "0d51q5ls8igddwjf67cf0fw62aaxylm57s3c5lb98v3bn48p8xw0"))))
+                  "1bwhw52sj2w57zki45bg0w0kvzbw4c438l5a6k06iabyj76smy03"))))
       (build-system gnu-build-system)
       (arguments
        `(#:phases
@@ -2315,3 +2315,37 @@ v-table changes, removed symbols, renamed fields, etc.")
                                        "glibc-versioned-locpath.patch"
                                        "glibc-o-largefile.patch"))
               ))))
+
+(define-public desman
+  ;; There are no releases so we fetch via git.
+  (let ((commit "b81de503b78af856ac0ee451ecb4bed72f1249be"))
+    (package
+      (name "desman")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/chrisquince/DESMAN")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "04mz360parvd2xf7kr5j001m6892irrlxjp5b5rm4bf8piqgj14a"))))
+      (build-system python-build-system)
+      (arguments
+       `(#:python ,python-2)) ;; I guess from some headers of some script that
+                              ;; only python 2 is supported.
+      (inputs
+       `(("python-cython" ,python2-cython)
+         ("python-numpy" ,python2-numpy)
+         ("python-scipy" ,python2-scipy)
+         ("python-pandas" ,python2-pandas)
+         ("python-setuptools" ,python2-setuptools)
+         ("python-pytz", python2-pytz)
+         ("gsl" ,gsl)))
+      (home-page "https://github.com/chrisquince/DESMAN")
+      (synopsis "De novo extraction of strains from metagenomes")
+      (description
+       "DESMAN is a pipeline that facilities de novo extraction of both strain
+haplotypes and accessory genomes de novo from metagenome data.")
+      (license license:bsd-2))))

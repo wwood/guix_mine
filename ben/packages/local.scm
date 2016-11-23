@@ -82,7 +82,8 @@
   #:use-module (gnu packages xorg)
   #:use-module (gnu packages zip)
   #:use-module (ice-9 regex)
-  
+  #:use-module (srfi srfi-1)
+
   #:use-module (ace packages ace)
   #:use-module (ace packages external)
   #:use-module (gnu packages bioinformatics))
@@ -2322,19 +2323,33 @@ v-table changes, removed symbols, renamed fields, etc.")
     (package
       (name "desman")
       (version (string-append "0-1." (string-take commit 8)))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/chrisquince/DESMAN")
-                      (commit commit)))
-                (file-name (string-append name "-" version "-checkout"))
-                (sha256
-                 (base32
-                  "04mz360parvd2xf7kr5j001m6892irrlxjp5b5rm4bf8piqgj14a"))))
+      (source
+       (origin
+        (method git-fetch)
+        (uri (git-reference
+              (url "https://github.com/chrisquince/DESMAN")
+              (commit commit)))
+        (file-name (string-append name "-" version "-checkout"))
+        (patches
+         (search-patches "desman-make-desman-scripts-executable.patch"))
+        (sha256
+         (base32
+          "04mz360parvd2xf7kr5j001m6892irrlxjp5b5rm4bf8piqgj14a"))))
       (build-system python-build-system)
       (arguments
-       `(#:python ,python-2)) ;; I guess from some headers of some script that
-                              ;; only python 2 is supported.
+       `(#:python ,python-2
+         #:phases
+         (modify-phases %standard-phases
+           (add-after 'install 'copy-extra-scripts
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (for-each
+                  (lambda (file) (install-file file bin))
+                  (find-files "scripts" "."))
+                 (install-file "desman/Variant_Filter.py" bin)
+                 (install-file "desman/GeneAssign.py" bin)
+                 #t))))))
       (inputs
        `(("python-cython" ,python2-cython)
          ("python-numpy" ,python2-numpy)
@@ -2342,7 +2357,9 @@ v-table changes, removed symbols, renamed fields, etc.")
          ("python-pandas" ,python2-pandas)
          ("python-setuptools" ,python2-setuptools)
          ("python-pytz", python2-pytz)
-         ("gsl" ,gsl)))
+         ("gsl" ,gsl)
+         ("perl" ,perl)
+         ("r" ,r)))
       (home-page "https://github.com/chrisquince/DESMAN")
       (synopsis "De novo extraction of strains from metagenomes")
       (description

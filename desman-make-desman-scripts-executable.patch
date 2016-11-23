@@ -1,0 +1,24 @@
+diff --git a/desman/GeneAssign.py b/desman/GeneAssign.py
+old mode 100644
+new mode 100755
+index bbf3db0..a637d3f
+--- a/desman/GeneAssign.py
++++ b/desman/GeneAssign.py
+@@ -1,3 +1,5 @@
++#!/usr/bin/env python
++
+ import sys, getopt
+ import os
+ import pandas as p
+diff --git a/desman/Variant_Filter.py b/desman/Variant_Filter.py
+old mode 100644
+new mode 100755
+index b724434..09408e1
+--- a/desman/Variant_Filter.py
++++ b/desman/Variant_Filter.py
+@@ -1,3 +1,5 @@
++#!/usr/bin/env python
++
+ import sys, getopt
+ import os
+ import pandas as p

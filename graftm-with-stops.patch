@@ -1,0 +1,20 @@
+diff --git a/graftm/orfm.py b/graftm/orfm.py
+index 8ea531c..b81dd10 100644
+--- a/graftm/orfm.py
++++ b/graftm/orfm.py
+@@ -26,7 +26,7 @@ class OrfM:
+         if self.restrict_read_length:
+             orfm_arg_l = " -l %d" % self.restrict_read_length
+             
+-        cmd = 'orfm %s ' % orfm_arg_l
++        cmd = 'orfm -s %s ' % orfm_arg_l
+         if input_path:
+             cmd += input_path
+         logging.debug("OrfM command chunk: %s" % cmd)
+@@ -47,4 +47,4 @@ class ZcatOrfM(OrfM):
+         if input_path is None:
+             raise Exception("input_path required for ZcatOrfM")
+         original = OrfM.command_line(self, input_path=None)
+-        return "zcat '%s' | %s" % (input_path, original)
+\ No newline at end of file
++        return "zcat '%s' | %s" % (input_path, original)

@@ -815,6 +815,100 @@ pathogens makes it useful for culture-free infectious outbreak epidemiology and
 microbial population studies.")
       (license license:expat))))
 
+(define-public metaphlan ; Seems to work, but more beta testing required before
+                         ; submission to Guix proper.
+  (let ((changeset "c43e40a443ed"))
+    (package
+      (name "metaphlan")
+      (version "2.6.0")
+      (source (origin
+                (method url-fetch)
+                ;; Use the direct download rather than hg-download so that
+                ;; sub-repositories are not downloaded.
+                (uri (string-append
+                      "https://bitbucket.org/biobakery/metaphlan2/get/"
+                      (string-take changeset 12) ".zip"))
+                (file-name (string-append name "-" version ".zip"))
+                (sha256
+                 (base32
+                  "03k3z6di7bw8wpp59zbpvk7qc256wvzdrgx1fg5v089qk6lnh1cy"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'build)
+           (replace 'check
+             ;; There are no tests, so we run a quick sanity check.
+             (lambda _
+               (setenv "HOME" "/tmp")
+               (zero? (length (filter (lambda (file)
+                                        (not (zero? (system*
+                                                     (string-append "./" file)
+                                                     "-h"))))
+                                      (find-files "." ".*\\.py$"))))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out  (assoc-ref outputs "out"))
+                      (bin  (string-append out "/bin"))
+                      (path (getenv "PATH"))
+                      (pythonpath (getenv "PYTHONPATH"))
+                      (lib-files
+                       (list "which.py" "mixed_utils.py"
+                             "ooSubprocess.py"
+                             ;; TODO: sample2markers is a real script too, but
+                             ;; it cannot be both imported as a library and
+                             ;; wrapped as a script.
+                             "sample2markers.py")))
+                 (for-each (lambda (file)
+                             (display (string-append "doing " file "\n"))
+                             (install-file file bin)
+                             (wrap-program
+                              (string-append bin "/" (basename file))
+                              `("PATH" ":" prefix (,path)))
+                             (wrap-program
+                              (string-append bin "/" (basename file))
+                              `("PYTHONPATH" ":" prefix (,pythonpath))))
+                           (filter (lambda (file)
+                                     (let ((base (basename file)))
+                                       (zero? (length
+                                               (filter
+                                                (lambda (lib-file)
+                                                  (string= lib-file base))
+                                                lib-files)))))
+                                   (find-files "." ".*\\.py$")))
+                 (for-each (lambda (file)
+                             (let ((path (string-append "strainphlan_src/"
+                                                        file)))
+                               (chmod path #o444)
+                               (install-file path bin)))
+                           lib-files)
+                 (let ((db "db_v20")
+                       (share (string-append out "/share/metaphlan")))
+                   (mkdir-p share)
+                   (copy-recursively db (string-append share "/" db)))
+                 #t))))))
+      (native-inputs
+       `(("unzip" ,unzip)))
+      (inputs ;; TODO: include graphlan and hclust2 for scripts.
+       `(("python" ,python-2) ; Strainphlan has python2-specific print
+                              ; statements, at least.
+         ("bowtie" ,bowtie)
+         ("python-numpy" ,python2-numpy)
+         ("python-matplotlib" ,python2-matplotlib)
+         ("python-scipy" ,python2-scipy)
+         ("python-biom-format" ,python2-biom-format)
+         ("python-pandas" ,python2-pandas)
+         ("python-msgpack" ,python2-msgpack)
+         ("python-biopython" ,python2-biopython)
+         ("python-pytz" ,python2-pytz)
+         ("python-dendropy" ,python2-dendropy)
+         ("python-pysam" ,python2-pysam)))
+      (home-page "")
+      (synopsis "")
+      (description
+       "")
+      (license license:expat)))) ;?
 
 (define-public barrnap
   (package

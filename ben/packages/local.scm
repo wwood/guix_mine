@@ -2460,3 +2460,86 @@ v-table changes, removed symbols, renamed fields, etc.")
        "DESMAN is a pipeline that facilities de novo extraction of both strain
 haplotypes and accessory genomes de novo from metagenome data.")
       (license license:bsd-2))))
+
+(define-public soedinglab-pdbx ; potentially works, on the way to hh-suite
+  (let ((commit "7f71d9c56cd466d035013c9e029221c31f26cdbd"))
+    (package
+     (name "soedinglab-pdbx")
+     (version (string-append "0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url  "https://github.com/soedinglab/pdbx.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1xsg8z97wz82gmd2rbj1hi233s147m9g7cq3ax99nc6vgl5waxsl"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:tests? #f ; There are no tests.
+        #:phases
+        (modify-phases %standard-phases
+          (add-before 'configure 'setup-prefix
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (string-append (assoc-ref outputs "out"))))
+                (substitute* "CMakeLists.txt"
+                             (("SETUP_PY} install")
+                              (string-append
+                               "SETUP_PY} install --prefix " out)))
+                #t))))))
+     (inputs
+      `(("python" ,python)))
+     (home-page "")
+     (synopsis "")
+     (description "")
+     (license license:cc-by-sa3.0)))) ;? license is unclear
+
+(define-public hh-suite ; Need to package soedinglab-ffindex first
+  (package
+    (name "hh-suite")
+    (version "3.0-beta.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/soedinglab/hh-suite/archive/v"
+                           version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "012w0a7cv5fngfngcmgpijbl0k55jky6l2wm3scm4dd499g7gv6m"))))
+    (build-system cmake-build-system)
+    (inputs
+     `(("python" ,python)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:cc-by-sa3.0))) ;?
+
+(define-public soedinglab-ffindex ; https://github.com/soedinglab/ffindex_soedinglab/issues/2
+  ;; There are no releases so we package from git.
+  (let ((commit "e140236517faf634c637ab2bf2d3254e13a8bfac"))
+    (package
+      (name "soedinglab-ffindex")
+      (version (string-append "0.9.9-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url  "https://github.com/soedinglab/ffindex_soedinglab.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "0nl264ly7qx0idsjcw3k8pjz0v19kka8nfbgvxrgqfm8zcwzffkl"))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:tests? #f)) ; There are no tests.
+      (inputs
+       `(("openmpi" ,openmpi)))
+      (home-page "")
+      (synopsis "")
+      (description "")
+      (license license:cc-by-sa3.0))))
+

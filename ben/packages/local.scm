@@ -279,7 +279,7 @@ against a target (reference) genome.  SHRiMP2 was primarily developed to work
 with short reads produced by Next Generation Sequencing (NGS) machines.")
    (license license:expat)))
 
-(define-public spades ; there is bundled dependencies
+(define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
     (version "3.9.0")
@@ -323,11 +323,11 @@ assemblies.")
                             ; to be a dead project so I won't submit to guix
                             ; proper? Also need to test bindings to be a full
                             ; package definition. I don't use those though.
-  (let ((commit "acb33ebdf")
-        (revision "1"))
+  (let ((commit "da121155a977197cab9fbb15953ca1b40b11eb87")
+        (revision "2"))
     (package
       (name "newick-utils")
-      (version (string-append "1.6." revision "." commit))
+      (version (string-append "1.6." revision "." (string-take commit 8)))
       (source (origin
                 (method git-fetch)
                 (uri (git-reference
@@ -336,12 +336,13 @@ assemblies.")
                 (file-name (string-append name "-" version "-checkout"))
                 (sha256
                  (base32
-                  "1rg71ffj4swb23y80bkm5jyvkr6p2v38n28xkwqidinvlqpjacbx"))))
+                  "1hkw21rq1mwf7xp0rmbb2gqc0i6p11108m69i7mr7xcjl268pxnb"))))
     (build-system gnu-build-system)
     (arguments
      ;; disable lua components as they don't appear to compile.  See
      ;; https://github.com/tjunier/newick_utils/issues/13
      `(;#:configure-flags '("--without-lua")
+       #:parallel-build? #f
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'autoconf
@@ -472,14 +473,14 @@ iterative de Bruijn graph assembler for RNA-Seq data.")
                               "/bin/"))
               ;; remove ability to use settings file
               (("open\\(FILE, \"<\\$Bin\\\\/\\$SETTING_FILE\"\\);")
-               "open(FILE, \"/dev/null\");")
-              )
+               "open(FILE, \"/dev/null\");"))
             #t))
-         (replace 'build (lambda _ (list (chdir "src")
-                                         (system* "make")
-                                         (chdir ".."))
-                                 #t))
-         (delete 'check)
+         (replace 'build
+           (lambda _
+             (chdir "src")
+             (system* "make")
+             (chdir ".."))
+           #t))
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (string-append (assoc-ref outputs "out")))
@@ -494,11 +495,12 @@ iterative de Bruijn graph assembler for RNA-Seq data.")
                (install-file "bacar_marker.hmm" share)
                (for-each (lambda (file) (install-file file perl))
                          (find-files "." ".*pm")))))
-       (add-after 'install 'post-install-check
-         (lambda* (#:key outputs #:allow-other-keys)
-           (zero? (system* (string-append (assoc-ref outputs "out")
-                                          "/bin/run_MaxBin.pl"))))))))
-    ;; (propagated-inputs
+         (delete 'check)
+         (add-after 'install 'post-install-check
+           (lambda* (#:key outputs #:allow-other-keys)
+             (zero? (system* (string-append (assoc-ref outputs "out")
+                                            "/bin/run_MaxBin.pl")))))))
+    ;; (propagated-inputs ; Ricardo just posted a package for this, so soon ok?
     ;;  `(("r-gplots" ,r-gplots)))
     (inputs
      `(("fraggenescan" ,fraggenescan)
@@ -698,35 +700,35 @@ sequences can then be aligned.")
               (uri "http://www.csd.uwo.ca/%7Eilie/E-MEM/e-mem.zip")
               (sha256
                (base32
-                "0cj6lf601y82an1rs9qvryad2q70kzz2wgjrf3rpyyirvlzqzkyw"))))
+                "0cj6lf601y82an1rs9qvryad2q70kzz2wgjrf3rpyyirvlzqzkyw"))
+              (modules '((guix build utils)))
+              (snippet
+               '(begin
+                  ;; Remove extraneous directory
+                  (delete-file-recursively "../__MACOSX")
+                  #t))))
     (build-system gnu-build-system)
     (arguments
-     `(#:make-flags (list (string-append "BIN_DIR=" %output "/bin"))
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (delete 'configure)
-         (add-after 'unpack 'enter-source-directory
-           (lambda _ (chdir "../e-mem_2") #t))
-         (add-before 'build 'create-bin
-           (lambda* (#:key outputs #:allow-other-keys)
-             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
-             #t))
          (replace 'check
            (lambda* (#:key outputs #:allow-other-keys)
-             (symlink
-              (string-append (assoc-ref outputs "out") "/bin/e-mem")
-              "e-mem")
              (zero? (system* "./run_example"))))
-         (delete 'install))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin")))
+               (install-file "e-mem" bin)))))))
     (native-inputs
      `(("unzip" ,unzip)))
     (inputs
      `(("boost" ,boost)))
-    (home-page "http://www.csd.uwo.ca/%7Eilie/E-MEM/")
+    (home-page "http://www.csd.uwo.ca/~ilie/E-MEM/")
     (synopsis "Efficient computation of genomic maximal exact matches")
     (description
      "E-MEM is a C++/OpenMP program designed to efficiently compute @dfn{Maximal
-Exact Matches} MEMs between large genomes.  It can be used as a stand alone
+Exact Matches} (MEMs) between large genomes.  It can be used as a stand alone
 application or a drop in replacement for MUMmer3.")
     (license license:gpl3+)))
 
@@ -1394,30 +1396,6 @@ manipulating, and validating XML documents using the DOM, SAX, and SAX2
 APIs.")
     (license license:asl2.0)))
 
-(define-public r-pheatmap
-  (package
-   (name "r-pheatmap")
-   (version "1.0.8")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "pheatmap" version))
-     (sha256
-      (base32
-       "1ik0k69kb4n7xl3bkx4p09kw08ri93855zcsxq1c668171jqfiji"))))
-   (build-system r-build-system)
-   (propagated-inputs
-    `(("r-gtable" ,r-gtable)
-      ("r-rcolorbrewer" ,r-rcolorbrewer)
-      ("r-scales" ,r-scales)))
-   (home-page "http://cran.r-project.org/web/packages/pheatmap")
-   (synopsis "Pretty Heatmaps")
-   (description
-    "pheatmap is an R library offering an heatmap drawing method that offers
-more control over dimensions and appearance.")
-   (license license:gpl2+)))
-
-
 ;; (define-public trinityrnaseq ; Does not work, due at least in part to the
 ;;                              ; bundled software.
 ;;   (package
@@ -1453,58 +1431,6 @@ more control over dimensions and appearance.")
 ;;      "")
 ;;     (license license:expat)))
 
-(define-public proteinortho ; Does not work until Perl is compiled with
-                            ; -Dusethreading, then it seems to.
-  (package
-    (name "proteinortho")
-    (version "5.15")
-    (source
-     (origin
-      (method url-fetch)
-      (uri (string-append
-            "http://www.bioinf.uni-leipzig.de/Software/proteinortho/proteinortho_v"
-            version "_src.tar.gz"))
-      (sha256
-       (base32
-        "05wacnnbx56avpcwhzlcf6b7s77swcpv3qnwz5sh1z54i51gg2ki"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:tests? #f ;debug
-       #:test-target "test"
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'configure
-           ;; There is no configure script, so we modify the Makefile directly.
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "Makefile"
-               (("INSTALLDIR=.*")
-                (string-append "INSTALLDIR=" (assoc-ref outputs "out") "/bin")))
-             #t))
-         (add-before 'install 'make-install-directory
-           ;; The install directory is not created during 'make install'.
-           (lambda* (#:key outputs #:allow-other-keys)
-             (mkdir-p (string-append (assoc-ref outputs "out") "/bin"))
-             #t))
-         (add-after 'install 'wrap-programs
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((blast (string-append (assoc-ref inputs "blast+") "/bin"))
-                    (out (assoc-ref outputs "out"))
-                    (binary (string-append out "/bin/proteinortho5.pl")))
-               (wrap-program binary `("PATH" ":" prefix (,blast))))
-             #t)))))
-    (inputs
-     `(("perl" ,perl)
-       ("python" ,python-2)
-       ("blast+" ,blast+)))
-    (home-page "http://www.bioinf.uni-leipzig.de/Software/proteinortho")
-    (synopsis "Detect orthologous genes within different species")
-    (description
-     "Proteinortho is a tool to detect orthologous genes within different
-species.  For doing so, it compares similarities of given gene sequences and
-clusters them to find significant groups.  The algorithm was designed to handle
-large-scale data and can be applied to hundreds of species at once.")
-    (license license:gpl2+)))
-
 (define-public r-picante
   (package
    (name "r-picante")
@@ -1523,8 +1449,7 @@ large-scale data and can be applied to hundreds of species at once.")
       ("r-vegan" ,r-vegan)))
    (home-page
     "http://cran.r-project.org/web/packages/picante")
-   (synopsis
-    "R tools for integrating phylogenies and ecology")
+   (synopsis "tools for integrating phylogenies and ecology")
    (description
     "Phylocom integration, community analyses, null-models, traits and evolution in R")
    (license license:gpl2+)))
@@ -1568,8 +1493,7 @@ large-scale data and can be applied to hundreds of species at once.")
    (propagated-inputs
     `(("r-lattice" ,r-lattice)))
    (home-page "http://cran.r-project.org/web/packages/nlme")
-   (synopsis
-    "Linear and Nonlinear Mixed Effects Models")
+   (synopsis "Linear and nonlinear mixed effects m,odels")
    (description
     "Fit and compare Gaussian linear and nonlinear mixed-effects models.")
    (license license:gpl2+)))
@@ -2228,9 +2152,9 @@ returns a normalized and corrected gene abundance file.")
     (description "")
     (license license:gpl3+))) ;?
 
-(define-public universal-ctags ; Does not build for reasons unknown.
+(define-public universal-ctags ; Seems ok.
   ;; We package from a git commit because there are no releases.
-  (let ((commit "c033295094ad60af54695ea0ee7ee01aa86eacce"))
+  (let ((commit "2141d3114e2545eec4e981c81b2f60c243f3c9d1"))
     (package
       (name "universal-ctags")
       (version (string-append "0-1." (string-take commit 8)))
@@ -2243,7 +2167,7 @@ returns a normalized and corrected gene abundance file.")
          (file-name (string-append name "-" version))
          (sha256
           (base32
-           "0b2b2pj4l9dwbklhlgyzcjc1zs632fa0x3kq87snaykwm9hiab3l"))))
+           "05mdjc3l6qwnx6qv5y07kmxzbf3qy8awmmblpynj9kyy972nzsz0"))))
       (build-system gnu-build-system)
       (arguments
        `(#:phases
@@ -2252,18 +2176,29 @@ returns a normalized and corrected gene abundance file.")
              (lambda _
                (substitute* '("misc/budge" "misc/dist-test-cases")
                  (("git ls-files") "find * | sort"))
-               (zero? (system* "autoreconf" "-vfi"))
-               ))
+               (substitute* "misc/units"
+                 (("^SHELL=/bin/sh")
+                  (string-append "SHELL=" (which "sh"))))
+               (for-each (lambda (file)
+                           (chmod file #o666))
+                         (find-files "optlib"))))
            (add-before 'configure 'autogen
-             (lambda _ (zero? (system* "autoreconf" "-i")))))))
+             (lambda _ (zero? (system* "./autogen.sh")))))))
       (native-inputs
        `(("autoconf" ,autoconf)
          ("automake" ,automake)
-         ("perl" ,perl)))
-      (home-page "http://ctags.sourceforge.net/")
-      (synopsis "")
-      (description "")
-      (license license:gpl3+)))) ;?
+         ("pkg-config" ,pkg-config)
+         ("perl" ,perl)
+         ("python" ,python-wrapper)
+         ("python-docutils" ,python-docutils)))
+      (home-page "https://ctags.io/")
+      (synopsis "Generate tag files for source code")
+      (description "The ctags and etags programs generate an index (or \"tag\")
+file for a variety of language objects found in file(s).  This tag file allows
+these items to be quickly and easily located by a text editor or other utility.
+A \"tag\" signifies a language object for which an index entry is available, or
+alternatively the index entry created for that object).")
+      (license license:gpl2+))))
 
 (define-public abi-compliance-checker
   (package
@@ -2307,11 +2242,9 @@ returns a normalized and corrected gene abundance file.")
                #t))))))
     (inputs
      `(("perl" ,perl)
-       ("ctags" ,exuberant-ctags) ; May also work with universal-ctags or
-                                  ; emacs-ctags. 'univesal-ctags' probably
-                                  ; preferred.
+       ("ctags" ,universal-ctags)
        ("abi-dumper" ,abi-dumper)
-       ("glibc" ,glibc-with-ldconfig/linux)))
+       ("glibc" ,ldconfigx)))
     (home-page "https://lvc.github.io/abi-compliance-checker/")
     (synopsis "Binary and source-level compatibility checker")
     (description "The ABI Compliance Checker (ABICC) is a tool for checking
@@ -2321,7 +2254,7 @@ binary compatibility and/or source compatibility: changes in calling stack,
 v-table changes, removed symbols, renamed fields, etc.")
     (license (list license:gpl2+ license:lgpl2.0+))))
 
-(define-public abi-dumper
+(define-public abi-dumper ; Needs further testing e.g. in a container running the example code.
   (package
     (name "abi-dumper")
     (version "0.99.19")
@@ -2358,13 +2291,17 @@ v-table changes, removed symbols, renamed fields, etc.")
     (inputs
      `(("perl" ,perl)
        ("elfutils" ,elfutils)
-       ("vtable-dumper" ,vtable-dumper)))
-    (home-page "")
-    (synopsis "")
-    (description "")
-    (license license:gpl3+))) ;?
+       ("vtable-dumper" ,vtable-dumper)
+       ("ctags" ,universal-ctags)))
+    (home-page "https://github.com/lvc/abi-dumper")
+    (synopsis "Dump ABI of an ELF object containing DWARF debug info")
+    (description "ABI Dumper is a tool to dump ABI of an ELF object containing
+DWARF debug info.  The tool is intended to be used with ABI Compliance Checker
+tool for tracking ABI changes of a C/C++ library or kernel module.")
+    ;; License is LGPL or GPL.
+    (license (list license:lgpl2.1 license:gpl2))))
 
-(define-public vtable-dumper
+(define-public vtable-dumper ; testing required, but seems to work.
   (package
     (name "vtable-dumper")
     (version "1.2")
@@ -2389,10 +2326,14 @@ v-table changes, removed symbols, renamed fields, etc.")
          (delete 'configure))))
     (inputs
      `(("libelf" ,libelf)))
-    (home-page "")
-    (synopsis "")
-    (description "")
-    (license license:gpl3+))) ;?
+    (home-page "https://github.com/lvc/vtable-dumper")
+    (synopsis "List content of virtual tables in a C++ shared library")
+    (description "Vtable-Dumper is a tool to list content of virtual tables in a
+C++ shared library.  It is intended for developers of software libraries and
+maintainers of Linux distributions who are interested in ensuring backward
+binary compatibility.")
+    ;; License is LGPL or GPL.
+    (license (list license:lgpl2.1 license:gpl2))))
 
 (define-public glibc-with-ldconfig/linux
   (package

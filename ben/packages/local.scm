@@ -2496,7 +2496,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
      (description "")
      (license license:cc-by-sa3.0)))) ;? license is unclear
 
-(define-public hh-suite ; Need to package soedinglab-ffindex first
+(define-public hh-suite ; in progress, need to watch for -march=native too.
   (package
     (name "hh-suite")
     (version "3.0-beta.2")
@@ -2511,13 +2511,15 @@ haplotypes and accessory genomes de novo from metagenome data.")
          "012w0a7cv5fngfngcmgpijbl0k55jky6l2wm3scm4dd499g7gv6m"))))
     (build-system cmake-build-system)
     (inputs
-     `(("python" ,python)))
+     `(("python" ,python-wrapper)
+       ("soedinglab-pdbx" ,soedinglab-pdbx)
+       ("soedinglab-ffindex" ,soedinglab-ffindex)))
     (home-page "")
     (synopsis "")
     (description "")
     (license license:cc-by-sa3.0))) ;?
 
-(define-public soedinglab-ffindex ; https://github.com/soedinglab/ffindex_soedinglab/issues/2
+(define-public soedinglab-ffindex ; Seems to work
   ;; There are no releases so we package from git.
   (let ((commit "e140236517faf634c637ab2bf2d3254e13a8bfac"))
     (package
@@ -2535,7 +2537,11 @@ haplotypes and accessory genomes de novo from metagenome data.")
            "0nl264ly7qx0idsjcw3k8pjz0v19kka8nfbgvxrgqfm8zcwzffkl"))))
       (build-system cmake-build-system)
       (arguments
-       `(#:tests? #f)) ; There are no tests.
+       `(#:configure-flags (list (string-append
+                                  "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="
+                                  %output
+                                  "/bin"))
+         #:tests? #f)) ; There are no tests.
       (inputs
        `(("openmpi" ,openmpi)))
       (home-page "")
@@ -2543,3 +2549,72 @@ haplotypes and accessory genomes de novo from metagenome data.")
       (description "")
       (license license:cc-by-sa3.0))))
 
+(define-public ncbi-tools ; in progress
+  (package
+    (name "ncbi-tools")
+    (version "20160908")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "ftp://ftp.ncbi.nih.gov/toolbox/ncbi_tools/old/"
+                           version "/ncbi.tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1252s4fw41w5yalz9b50pvzvkiyjfcgy0isw1qgmg0v66bp49khz"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build
+                  (lambda _
+                    (chdir "..")
+                    (for-each (lambda (file) ; move phases
+                                (substitute* file
+                                  (("NCBI_MAKE_SHELL = .*")
+                                   (string-append
+                                    "NCBI_MAKE_SHELL = "
+                                    (which "sh")
+                                    "\n"))))
+                              (find-files "ncbi/platform" ".*mk"))
+                    (substitute* "ncbi/make/ln-if-absent"
+                      (("set path=\\(/usr/bin /bin\\)") ""))
+                    #f;(zero? (system* "ncbi/make/makedis.csh"))
+                    )))))
+    (native-inputs
+     `(("csh" ,tcsh)
+       ("pkg-config" ,pkg-config)
+       ("coreutils" ,coreutils)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:cc-by-sa3.0))) ;?
+
+(define-public fastahack ; in progress
+  ;; There are no releases so we package from git.
+  (let ((commit "bbc645f2f7966cb7b44446200c02627c3168b399"))
+    (package
+      (name "fastahack")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/ekg/fastahack.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "03q7mga9xx7c7rcipv1q808gi9wnxgxmdwq6kjmalphnnm002qc6"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:tests? #f ; There are no tests.
+         #:make-flags (list (string-append "PREFIX=" %output "/bin"))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure))))
+      (home-page "")
+      (synopsis "")
+      (description "")
+      (license license:cc-by-sa3.0)))) ;?

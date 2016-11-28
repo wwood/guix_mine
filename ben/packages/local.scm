@@ -66,6 +66,7 @@
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
   #:use-module (gnu packages qt)
+  #:use-module (gnu packages readline)
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages shells)
   #:use-module (gnu packages statistics)
@@ -357,7 +358,7 @@ assemblies.")
     (native-inputs
      `(("autoconf" ,autoconf)
        ("automake" ,automake)
-       ("libtool" ,libtool)
+       ;("libtool" ,libtool)
        ("flex" ,flex)
        ("bison" ,bison)))
     (synopsis "Programs for working with Newick-formatted phylogenetic trees")
@@ -704,7 +705,7 @@ sequences can then be aligned.")
               (modules '((guix build utils)))
               (snippet
                '(begin
-                  ;; Remove extraneous directory
+                  ;; Remove extraneous directory.
                   (delete-file-recursively "../__MACOSX")
                   #t))))
     (build-system gnu-build-system)
@@ -727,11 +728,10 @@ sequences can then be aligned.")
     (home-page "http://www.csd.uwo.ca/~ilie/E-MEM/")
     (synopsis "Efficient computation of genomic maximal exact matches")
     (description
-     "E-MEM is a C++/OpenMP program designed to efficiently compute @dfn{Maximal
-Exact Matches} (MEMs) between large genomes.  It can be used as a stand alone
-application or a drop in replacement for MUMmer3.")
+     "E-MEM is a C++/OpenMP program designed to efficiently compute
+@dfn{Maximal Exact Matches} (MEMs) between large genomes.  It can be used as a
+stand alone application or a drop in replacement for MUMmer3.")
     (license license:gpl3+)))
-
 
 (define-public glimmerhmm
   (package
@@ -1294,7 +1294,6 @@ combinatorial choices of parameters easier.")
 ;;                                     (zero? (system* "scons" "-j" "4" "-f" "SConstruct_hic.py"))
 ;;                                     (zero? (system* "scons" "-j" "4" "-f"
 ;;                                                     "SConstruct_map.py")))))
-                        
 ;;                   )))
 ;;       (inputs
 ;;        `(("python-setuptools" ,python2-setuptools)
@@ -2335,10 +2334,12 @@ binary compatibility.")
     ;; License is LGPL or GPL.
     (license (list license:lgpl2.1 license:gpl2))))
 
-(define-public glibc-with-ldconfig/linux
+;;; The glibc package does not install ldconfig, this package provides it for
+;;; packages which need it at runtime.
+(define-public ldconfig
   (package
     (inherit glibc)
-    (name "glibc-with-ldconfig")
+    (name "ldconfig")
     (version (package-version glibc))
     (source (origin
               (method url-fetch)
@@ -2347,10 +2348,16 @@ binary compatibility.")
               (sha256
                (base32
                 "1lxmprg9gm73gvafxd503x70z32phwjzcy74i0adfi6ixzla7m4r"))
-              (patches (search-patches "glibc-ldd-x86_64.patch"
-                                       "glibc-versioned-locpath.patch"
-                                       "glibc-o-largefile.patch"))
-              ))))
+              (patches (origin-patches (package-source glibc)))))
+    (arguments
+     (substitute-keyword-arguments (package-arguments glibc)
+       ((#:phases phases)
+        `(modify-phases ,phases
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let ((bin (string-append (assoc-ref outputs "out") "/bin")))
+                 (install-file "../build/elf/ldconfig" bin))
+               #t))))))))
 
 (define-public desman
   ;; There are no releases so we fetch via git.
@@ -2458,8 +2465,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
     (description "")
     (license license:cc-by-sa3.0))) ;?
 
-(define-public soedinglab-ffindex ; https://github.com/soedinglab/ffindex_soedinglab/issues/2
-  ;; There are no releases so we package from git.
+(define-public soedinglab-ffindex ; https://github.com/soedinglab/ffindex_soedinglab/issues/2 are no releases so we package from git.
   (let ((commit "e140236517faf634c637ab2bf2d3254e13a8bfac"))
     (package
       (name "soedinglab-ffindex")
@@ -2484,3 +2490,52 @@ haplotypes and accessory genomes de novo from metagenome data.")
       (description "")
       (license license:cc-by-sa3.0))))
 
+(define-public mothur ; Probably works, but haven't really tested it. Probably
+                      ; also requires packaging of uchime. This is bundled with
+                      ; mothur but is available at
+                      ; http://drive5.com/uchime/uchime_download.html.
+  (package
+    (name "mothur")
+    (version "1.38.1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/mothur/mothur/archive/v"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "15xzwn6d9520xfwwlyy5vpp9r5p5xvkwjf219ki87c3k98a9xhp0"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(;; There are no tests.  See
+       ;; https://github.com/mothur/mothur/issues/196
+       #:tests? #f
+       #:make-flags (list (string-append
+                           "BOOST_LIBRARY_PATH=\""
+                           (assoc-ref %build-inputs "boost")
+                           "/lib\"")
+                          (string-append
+                           "BOOST_INCLUDE_DIR=\""
+                           (assoc-ref %build-inputs "boost")
+                           "/include\"")
+                          (string-append
+                           "MOTHUR_FILES=\\\""
+                           (assoc-ref %outputs "out")
+                           "/share/mothur\\\""))
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'install
+         (lambda* (#:key outputs #:allow-other-keys)
+           (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+             (install-file "mothur" bin)))))))
+    (inputs
+     `(("boost" ,boost)
+       ("readline" ,readline)
+       ("zlib" ,zlib)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license license:gpl3)))

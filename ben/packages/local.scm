@@ -320,56 +320,6 @@ isolates and single-cell multiple displacement amplification (MDA) bacteria
 assemblies.")
     (license license:gpl2)))
 
-(define-public newick-utils ; seems to work for the C based tools, but appears
-                            ; to be a dead project so I won't submit to guix
-                            ; proper? Also need to test bindings to be a full
-                            ; package definition. I don't use those though.
-  (let ((commit "da121155a977197cab9fbb15953ca1b40b11eb87")
-        (revision "2"))
-    (package
-      (name "newick-utils")
-      (version (string-append "1.6." revision "." (string-take commit 8)))
-      (source (origin
-                (method git-fetch)
-                (uri (git-reference
-                      (url "https://github.com/tjunier/newick_utils.git")
-                      (commit commit)))
-                (file-name (string-append name "-" version "-checkout"))
-                (sha256
-                 (base32
-                  "1hkw21rq1mwf7xp0rmbb2gqc0i6p11108m69i7mr7xcjl268pxnb"))))
-    (build-system gnu-build-system)
-    (arguments
-     ;; disable lua components as they don't appear to compile.  See
-     ;; https://github.com/tjunier/newick_utils/issues/13
-     `(;#:configure-flags '("--without-lua")
-       #:parallel-build? #f
-       #:phases
-       (modify-phases %standard-phases
-         (add-after 'unpack 'autoconf
-                    (lambda _ (zero? (system* "autoreconf" "-vif")))))))
-    (inputs
-     `(("lua" ,lua-5.1)
-       ("libxml2" ,libxml2)))
-    ;; ("guile" ,guile-2.0))) ; TODO: get it to build the guile
-                              ; editor. Currently fails to detect libguile.h
-                              ; during configuration. Does this happen in
-                              ; Ubuntu also?
-    (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ;("libtool" ,libtool)
-       ("flex" ,flex)
-       ("bison" ,bison)))
-    (synopsis "Programs for working with Newick-formatted phylogenetic trees")
-    (description
-     "A suite of utilities for processing phylogenetic trees in Newick format.
-Functions include re-rooting, extracting subtrees, trimming, pruning,
-condensing, drawing (ASCII graphics or SVG).")
-    (home-page "https://github.com/tjunier/newick_utils")
-    (license license:bsd-3))))
-
-
 (define-public idba
   (package
     (name "idba")
@@ -1110,7 +1060,7 @@ submission.")
          ("infernal" ,infernal)
          ("barrnap" ,barrnap)
          ("minced" ,minced)
-         ("tbl2asn" ,tbl2asn)
+         ("tbl2asn" ,ncbi-tools)
          ("grep" ,grep)
          ("sed" ,sed)
          ("less" ,less)
@@ -2091,7 +2041,7 @@ returns a normalized and corrected gene abundance file.")
    (propagated-inputs
     `(("python-matplotlib" ,python-matplotlib)
       ("python-mpi4py" ,python-mpi4py)
-      ("python-pymysql" ,python-pymysql)
+;      ("python-pymysql" ,python-pymysql) ;TODO
       ("python-sqlalchemy" ,python-sqlalchemy)))
    (home-page "http://github.com/pycogent/pycogent")
    (synopsis "COmparative GENomics Toolkit")
@@ -2243,7 +2193,7 @@ alternatively the index entry created for that object).")
      `(("perl" ,perl)
        ("ctags" ,universal-ctags)
        ("abi-dumper" ,abi-dumper)
-       ("glibc" ,ldconfigx)))
+       ("glibc" ,ldconfig)))
     (home-page "https://lvc.github.io/abi-compliance-checker/")
     (synopsis "Binary and source-level compatibility checker")
     (description "The ABI Compliance Checker (ABICC) is a tool for checking
@@ -2444,7 +2394,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
      (description "")
      (license license:cc-by-sa3.0)))) ;? license is unclear
 
-(define-public hh-suite ; Need to package soedinglab-ffindex first
+(define-public hh-suite ; in progress, need to watch for -march=native too.
   (package
     (name "hh-suite")
     (version "3.0-beta.2")
@@ -2459,13 +2409,16 @@ haplotypes and accessory genomes de novo from metagenome data.")
          "012w0a7cv5fngfngcmgpijbl0k55jky6l2wm3scm4dd499g7gv6m"))))
     (build-system cmake-build-system)
     (inputs
-     `(("python" ,python)))
+     `(("python" ,python-wrapper)
+       ("soedinglab-pdbx" ,soedinglab-pdbx)
+       ("soedinglab-ffindex" ,soedinglab-ffindex)))
     (home-page "")
     (synopsis "")
     (description "")
     (license license:cc-by-sa3.0))) ;?
 
-(define-public soedinglab-ffindex ; https://github.com/soedinglab/ffindex_soedinglab/issues/2 are no releases so we package from git.
+(define-public soedinglab-ffindex ; Seems to work
+  ;; There are no releases so we package from git.
   (let ((commit "e140236517faf634c637ab2bf2d3254e13a8bfac"))
     (package
       (name "soedinglab-ffindex")
@@ -2482,7 +2435,11 @@ haplotypes and accessory genomes de novo from metagenome data.")
            "0nl264ly7qx0idsjcw3k8pjz0v19kka8nfbgvxrgqfm8zcwzffkl"))))
       (build-system cmake-build-system)
       (arguments
-       `(#:tests? #f)) ; There are no tests.
+       `(#:configure-flags (list (string-append
+                                  "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="
+                                  %output
+                                  "/bin"))
+         #:tests? #f)) ; There are no tests.
       (inputs
        `(("openmpi" ,openmpi)))
       (home-page "")
@@ -2539,3 +2496,480 @@ haplotypes and accessory genomes de novo from metagenome data.")
     (synopsis "")
     (description "")
     (license license:gpl3)))
+
+(define-public ncbi-tools ; in progress
+  (package
+    (name "ncbi-tools")
+    (version "20160908")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "ftp://ftp.ncbi.nih.gov/toolbox/ncbi_tools/old/"
+                           version "/ncbi.tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1252s4fw41w5yalz9b50pvzvkiyjfcgy0isw1qgmg0v66bp49khz"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests.
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-after 'unpack 'patch-sources
+            (lambda _
+              (for-each (lambda (file)
+                          (substitute* file
+                            (("NCBI_MAKE_SHELL = .*")
+                             (string-append
+                              "NCBI_MAKE_SHELL = "
+                              (which "sh")
+                              "\n"))))
+                        (find-files "platform" ".*mk"))
+              (substitute* "make/ln-if-absent"
+                (("set path=\\(/usr/bin /bin\\)") ""))
+              #t))
+         (replace 'build
+            (lambda _
+              (chdir "..")
+              (zero? (system* "ncbi/make/makedis.csh"))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin"))
+                    (man (string-append out "/share/man/man1")))
+               (for-each (lambda (file)
+                           (install-file
+                            (string-append "ncbi/build/" file) bin)
+                           (install-file
+                            (string-append "ncbi/doc/man/" file ".1") man))
+                         ;; XXX: TODO: Install and test other binaries.
+                         (list "tbl2asn"))
+               #t))))))
+    (native-inputs
+     `(("csh" ,tcsh)
+       ("pkg-config" ,pkg-config)
+       ("coreutils" ,coreutils)))
+    (home-page "https://www.ncbi.nlm.nih.gov/IEB/ToolBox/MainPage/index.html")
+    (synopsis "NCBI-related tools")
+    (description "The United States of America @dfn{National Center for
+Biotechnology Information} (NCBI) Software Development Toolkit is for the
+production and distribution of GenBank, Entrez, BLAST and related NCBI
+services.")
+    (license license:public-domain)))
+
+(define-public fastahack ; Seems to work, but I need to use it a bit more first.
+  ;; There are no releases so we package from git.
+  (let ((commit "bbc645f2f7966cb7b44446200c02627c3168b399"))
+    (package
+      (name "fastahack")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/ekg/fastahack.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "03q7mga9xx7c7rcipv1q808gi9wnxgxmdwq6kjmalphnnm002qc6"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:tests? #f ; There are no tests.
+         #:make-flags (list (string-append "PREFIX=" %output))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure))))
+      (home-page "")
+      (synopsis "")
+      (description "")
+      (license license:cc-by-sa3.0)))) ;?
+
+(define-public ocaml-sqlite3 ; These ocaml packages seem to work, but maybe not, haven't ever tested the install.
+  (package
+    (name "ocaml-sqlite3")
+    (version "4.0.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/mmottl/sqlite3-ocaml/releases/download/v"
+             version "/sqlite3-ocaml-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0sdjmp8shp02vpaj6vj13scm8klpq0iwrzaidvjxhhq7nymfj6wj"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (zero? (system* "./configure" "--enable-tests"))))
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("pkg-config" ,pkg-config)))
+    (inputs
+     `(("sqlite" ,sqlite)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-ounit
+  (package
+    (name "ocaml-ounit")
+    (version "2.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "http://forge.ocamlcore.org/frs/download.php/1258/ounit-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "118xsadrx84pif9vaq13hv4yh22w9kmr0ypvhrs0viir1jr0ajjd"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (zero? (system* "./configure" "--enable-tests"))))
+         (add-before 'install 'setup-install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (destdir (string-append out "/lib/ocaml")))
+                      (mkdir-p destdir)
+                      (setenv "OCAMLFIND_DESTDIR" destdir)
+                      (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                      #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("pkg-config" ,pkg-config)
+       ("libxml" ,libxml2)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-xmlm ; does not work
+  (package
+    (name "ocaml-xmlm")
+    (version "1.2.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "http://erratique.ch/software/xmlm/releases/xmlm-"
+             version ".tbz"))
+       (sha256
+        (base32
+         "1jywcrwn5z3gkgvicr004cxmdaqfmq8wh72f81jqz56iyn5024nh"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests, maybe?
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build
+                  (lambda _
+                    (zero? (system* "pkg/build"))))
+         (add-before 'install 'setup-install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (destdir (string-append out "/lib/ocaml")))
+                      (mkdir-p destdir)
+                      (setenv "OCAMLFIND_DESTDIR" destdir)
+                      (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                      #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-mcl ; does not work
+  (package
+    (name "ocaml-mcl")
+    (version "12-068oasis4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/fhcrc/mcl/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1l5jbhwjpsj38x8b9698hfpkv75h8hn3kj0gihjhn8ym2cwwv110"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests, maybe?
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda _
+                    (setenv "SHELL" (which "sh"))
+                    (substitute* "configure"
+                      (("SHELL = /bin/sh") (string-append "SHELL = "(which "sh"))))
+                    (and
+                     ;;(zero? (system* "./bootstrap"))
+                     (zero? (system* "autoconf"))
+                     (zero? (system* "ocaml" "setup.ml" "-configure")))))
+         (replace 'build
+                  (lambda _
+                    (zero? (system* "ocaml" "setup.ml" "-build"))))
+         (add-before 'install 'setup-install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (destdir (string-append out "/lib/ocaml")))
+                      (mkdir-p destdir)
+                      (setenv "OCAMLFIND_DESTDIR" destdir)
+                      (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                      #t))))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-batteries
+  (package
+    (name "ocaml-batteries")
+    (version "2.5.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://github.com/ocaml-batteries-team/batteries-included/archive/v"
+         version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1fbhafjdqarppp54nmzalng577s9wk1753qw11f449shwv4cydyl"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:parallel-tests? #f
+       #:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("ocaml-ounit" ,ocaml-ounit)
+       ("ocaml-qtest" ,ocaml-qtest)
+       ("ocaml-bisect" ,ocaml-bisect)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-qtest
+  (package
+    (name "ocaml-qtest")
+    (version "2.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://github.com/vincent-hugot/iTeML/archive/v"
+         version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1n7x5l6h4j44f75wzgzjsjkq349i4gj707w1hr7fx84igxxfr6vl"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There is a test directory but no 'make check' equivalent.
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml"))
+                              (bin (string-append out "/bin")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         (mkdir-p bin)
+                         (setenv "BIN" bin)
+                         #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("ocaml-ounit" ,ocaml-ounit)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public gsl-ocaml
+  (package
+    (name "gsl-ocaml")
+    (version "1.19.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://github.com/mmottl/gsl-ocaml/releases/download/v"
+         version"/gsl-ocaml-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0rjbng1540kn33c7dfhqga9hna71zkm1llq1yb1a0kivxna1b285"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (zero? (system* "./configure" "--enable-tests"))))
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         #t))))))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)))
+    (inputs
+     `(("gsl" ,gsl)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public camlzip
+  (package
+    (name "camlzip")
+    (version "1.06")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "http://forge.ocamlcore.org/frs/download.php/1616/camlzip-"
+         version ".tar.gz"))
+       (sha256
+        (base32
+         "0m6gyjw46w3qnhxfsyqyag42znl5lwargks7w7rfchr9jzwpff68"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         #t)))
+         (replace 'install
+                  (lambda _
+                    (zero? (system* "make" "install-findlib"))))
+         )))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)))
+    (inputs
+     `(("zlib" ,zlib)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?
+
+(define-public ocaml-bisect
+  (package
+    (name "ocaml-bisect")
+    (version "1.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "http://bisect.x9c.fr/distrib/bisect-"
+         version ".tar.gz"))
+       (sha256
+        (base32
+         "0figr4jl1alzyjkmsz3s5bpsiqydmfcdsgz1nkwy089ayb05rj0r"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:test-target "test" ; need to configure to run the tests
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda _ (zero? (system* "./configure"))))
+         (add-before 'build 'patch-makefile
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (substitute* "Makefile"
+                         (("^OCAMLBUILD=.*") "OCAMLBUILD=ocamlbuild\n")
+                         (("^OCAMLBUILD_ENV=.*") "OCAMLBUILD_ENV=WARNINGS=$(WARNINGS)\n")
+                         )))
+         (replace 'build
+                  (lambda _ (zero? (system* "make" "all"))))
+         (add-before 'install 'setup-install
+                     (lambda* (#:key outputs #:allow-other-keys)
+                       (let* ((out (assoc-ref outputs "out"))
+                              (destdir (string-append out "/lib/ocaml")))
+                         (mkdir-p destdir)
+                         (setenv "OCAMLFIND_DESTDIR" destdir)
+                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         #t)))
+         )))
+    (native-inputs
+     `(("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("which" ,which)
+       ("camlp4" ,camlp4)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:x11))) ;?

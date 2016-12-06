@@ -1886,8 +1886,20 @@ is useful for testing other software.")
      `(("qtbase" ,qtbase)
        ("qtsvg" ,qtsvg)))
     (home-page "")
-    (synopsis "")
-    (description "")
+    (synopsis "Navigating de novo assembly graphs")
+    (description "Bandage is a GUI program that allows users to interact with
+the assembly graphs made by de novo assemblers such as Velvet, SPAdes, MEGAHIT
+and others.
+
+De novo assembly graphs contain not only assembled contigs but also the
+connections between those contigs, which were previously not easily accessible.
+Bandage visualises assembly graphs, with connections, using graph layout
+algorithms. Nodes in the drawn graph, which represent contigs, can be
+automatically labelled with their ID, length or depth. Users can interact with
+the graph by moving, labelling and colouring nodes.  Sequence information can
+also be extracted directly from the graph viewer.  By displaying connections
+between contigs, Bandage opens up new possibilities for analysing and improving
+de novo assemblies that are not possible by looking at contigs alone.")
     (license license:gpl3+)))
 
 (define-public coin-or-clp

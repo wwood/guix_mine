@@ -1879,7 +1879,8 @@ is useful for testing other software.")
                                   (assoc-ref outputs "out")
                                   "/lib/"))))
               '("Bandage.pro" "BandageTests.pro"))
-             (zero? (system* "qmake" "Bandage.pro" "BandageTests.pro" ; PREFIX needed? or substitute* needed?
+             ; TODO: if BandageTests.pro is uncommented below, the Bandage executable itself is not built. But without it there is no tests.
+             (zero? (system* "qmake" "Bandage.pro" ;"BandageTests.pro" ; PREFIX needed? or substitute* needed?
                              ))))))) ;
     (inputs
      `(("qtbase" ,qtbase)

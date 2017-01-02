@@ -8,6 +8,7 @@
   #:use-module (guix gexp)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system cmake)
+  #:use-module (guix build-system ocaml)
   #:use-module (guix build-system perl)
   #:use-module (guix build-system python)
   #:use-module (guix build-system ruby)
@@ -77,11 +78,13 @@
   #:use-module (gnu packages tls)
   #:use-module (gnu packages valgrind)
   #:use-module (gnu packages vim)
+  #:use-module (gnu packages version-control)
   #:use-module (gnu packages web)
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg)
   #:use-module (gnu packages zip)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
 
@@ -2599,46 +2602,37 @@ services.")
       (description "")
       (license license:cc-by-sa3.0)))) ;?
 
-(define-public ocaml-sqlite3 ; These ocaml packages seem to work, but maybe not, haven't ever tested the install.
-  (package
-    (name "ocaml-sqlite3")
-    (version "4.0.6")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/mmottl/sqlite3-ocaml/releases/download/v"
-             version "/sqlite3-ocaml-" version ".tar.gz"))
-       (sha256
-        (base32
-         "0sdjmp8shp02vpaj6vj13scm8klpq0iwrzaidvjxhhq7nymfj6wj"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:test-target "test" ; need to configure to run the tests
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'configure
-                  (lambda* (#:key outputs #:allow-other-keys)
-                    (zero? (system* "./configure" "--enable-tests"))))
-         (add-before 'install 'setup-install
-                     (lambda* (#:key outputs #:allow-other-keys)
-                       (let* ((out (assoc-ref outputs "out"))
-                              (destdir (string-append out "/lib/ocaml")))
-                         (mkdir-p destdir)
-                         (setenv "OCAMLFIND_DESTDIR" destdir)
-                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
-                         #t))))))
-    (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)
-       ("pkg-config" ,pkg-config)))
-    (inputs
-     `(("sqlite" ,sqlite)))
-    (home-page "")
-    (synopsis "")
-    (description
-     "")
-    (license license:x11))) ;?
+;; (define-public ruby-builder-2.2 ; dummy package for messing around
+;;   (package
+;;     (name "ruby-builder-2.2")
+;;     (version "3.2.2")
+;;     (source (origin
+;;               (method url-fetch)
+;;               (uri (rubygems-uri "builder" version))
+;;               (sha256
+;;                (base32
+;;                 "14fii7ab8qszrvsvhz6z2z3i4dw0h41a62fjr2h1j8m41vbrmyv2"))))
+;;     (build-system ruby-build-system)
+;;     (arguments
+;;      `(#:ruby ,ruby-2.2
+;;        #:phases
+;;        (modify-phases %standard-phases
+;;          (add-after 'unpack 'do-not-use-rvm
+;;                     (lambda _
+;;                       (substitute* "rakelib/tags.rake"
+;;                         (("RVM_GEMDIR = .*") "RVM_GEMDIR = 'no-rvm-please'\n"))
+;;                       #t)))))
+;;     (synopsis "Ruby library to create structured data")
+;;     (description "Builder provides a number of builder objects that make it
+;; easy to create structured data.  Currently the following builder objects are
+;; supported: XML Markup and XML Events.")
+;;     (home-page "https://github.com/jimweirich/builder")
+;;     (license license:expat)))
+
+
+
+
+
 
 (define-public ocaml-ounit
   (package
@@ -2653,7 +2647,7 @@ services.")
        (sha256
         (base32
          "118xsadrx84pif9vaq13hv4yh22w9kmr0ypvhrs0viir1jr0ajjd"))))
-    (build-system gnu-build-system)
+    (build-system ocaml-build-system)
     (arguments
      `(#:test-target "test" ; need to configure to run the tests
        #:phases
@@ -2669,16 +2663,20 @@ services.")
                       (setenv "OCAMLFIND_DESTDIR" destdir)
                       (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
                       #t))))))
+    (inputs
+     `(("libxml" ,libxml2)))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)
-       ("pkg-config" ,pkg-config)
-       ("libxml" ,libxml2)))
+     `(("ocaml-findlib" ,ocaml-findlib)
+       ("pkg-config" ,pkg-config)))
     (home-page "")
     (synopsis "")
     (description
      "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-ounit))))
     (license license:x11))) ;?
+
+(define-public ocaml4.01.0-ounit
+  (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-ounit)))
 
 (define-public ocaml-xmlm ; does not work
   (package
@@ -2719,56 +2717,88 @@ services.")
      "")
     (license license:x11))) ;?
 
-(define-public ocaml-mcl ; does not work
-  (package
-    (name "ocaml-mcl")
-    (version "12-068oasis4")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (string-append
-             "https://github.com/fhcrc/mcl/archive/"
-             version ".tar.gz"))
-       (file-name (string-append name "-" version ".tar.gz"))
-       (sha256
-        (base32
-         "1l5jbhwjpsj38x8b9698hfpkv75h8hn3kj0gihjhn8ym2cwwv110"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:tests? #f ; There are no tests, maybe?
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'configure
-                  (lambda _
-                    (setenv "SHELL" (which "sh"))
-                    (substitute* "configure"
-                      (("SHELL = /bin/sh") (string-append "SHELL = "(which "sh"))))
-                    (and
-                     ;;(zero? (system* "./bootstrap"))
-                     (zero? (system* "autoconf"))
-                     (zero? (system* "ocaml" "setup.ml" "-configure")))))
-         (replace 'build
-                  (lambda _
-                    (zero? (system* "ocaml" "setup.ml" "-build"))))
-         (add-before 'install 'setup-install
-                  (lambda* (#:key outputs #:allow-other-keys)
-                    (let* ((out (assoc-ref outputs "out"))
-                           (destdir (string-append out "/lib/ocaml")))
-                      (mkdir-p destdir)
-                      (setenv "OCAMLFIND_DESTDIR" destdir)
-                      (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
-                      #t))))))
-    (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)
-       ("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)))
-    (home-page "")
-    (synopsis "")
-    (description
-     "")
-    (license license:x11))) ;?
+;; (define-public ocaml-mcl ; only installs binaries, so is there any point of being ocaml specific?
+;;   (package
+;;     (name "ocaml-mcl")
+;;     (version "12-068oasis4")
+;;     (source
+;;      (origin
+;;        (method url-fetch)
+;;        (uri (string-append
+;;              "https://github.com/fhcrc/mcl/archive/"
+;;              version ".tar.gz"))
+;;        (file-name (string-append name "-" version ".tar.gz"))
+;;        (sha256
+;;         (base32
+;;          "1l5jbhwjpsj38x8b9698hfpkv75h8hn3kj0gihjhn8ym2cwwv110"))))
+;;     (build-system gnu-build-system)
+;;     (arguments
+;;      `(#:tests? #f ; There are no tests, maybe?
+;;        #:phases
+;;        (modify-phases %standard-phases
+;;          (replace 'configure
+;;                   (lambda* (#:key outputs #:allow-other-keys)
+;;                     (setenv "SHELL" (which "sh"))
+;;                     (setenv "CONFIG-SHELL" (which "sh"))
+;;                     (substitute* "configure"
+;;                       (("SHELL = /bin/sh") (string-append "SHELL = "(which "sh"))))
+;;                     (substitute* "setup.ml"
+;;                       (("LDFLAGS=-fPIC") (string-append "LDFLAGS=-fPIC\"; \"SHELL=" (which "sh"))))
+;;                     (and
+;;                                         ;(zero? (system* "./bootstrap"))
+;;                      ;(zero? (system* "autoconf"))
+
+;;                      (zero? (system* "ocaml" "setup.ml" "-configure" "--prefix" (assoc-ref outputs "out")))
+;;                      (begin (substitute* '("src/gryphon/Makefile"
+;;                                            "src/shmx/Makefile"
+;;                                            "src/alien/oxygen/src/Makefile"
+;;                                            "src/alien/oxygen/Makefile"
+;;                                            "src/alien/oxygen/doc/Makefile"
+;;                                            "src/alien/Makefile"
+;;                                            "src/impala/Makefile"
+;;                                            "src/Makefile"
+;;                                            "src/shcl/Makefile"
+;;                                            "src/mcl/Makefile"
+;;                                            "src/shmcx/Makefile"
+;;                                            "src/shmcl/Makefile"
+;;                                            "src/clew/Makefile"
+;;                                            "src/shmcxquery/Makefile"
+;;                                            "img/Makefile"
+;;                                            "graphs/Makefile"
+;;                                            "testing/stream/Makefile"
+;;                                            "testing/Makefile"
+;;                                            "testing/blast/Makefile"
+;;                                            "testing/setops/Makefile"
+;;                                            "Makefile"
+;;                                            "doc/Makefile"
+;;                                            "util/Makefile"
+;;                                            "include/Makefile"
+;;                                            "scripts/Makefile"
+;;                                            )
+;;                               (("prefix = /usr/local") (string-append "prefix = " (assoc-ref outputs "out"))))
+;;                             #t))))
+;;          (replace 'build
+;;                   (lambda _
+;;                     (zero? (system* "ocaml" "setup.ml" "-build"))))
+;;          (add-before 'install 'setup-install
+;;                   (lambda* (#:key outputs #:allow-other-keys)
+;;                     (let* ((out (assoc-ref outputs "out"))
+;;                            (destdir (string-append out "/lib/ocaml")))
+;;                       (mkdir-p destdir)
+;;                       (setenv "OCAMLFIND_DESTDIR" destdir)
+;;                       (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+;;                       #t))))))
+;;     (native-inputs
+;;      `(("autoconf" ,autoconf)
+;;        ("automake" ,automake)
+;;        ("libtool" ,libtool)
+;;        ("ocaml" ,ocaml)
+;;        ("ocaml-findlib" ,ocaml-findlib)))
+;;     (home-page "")
+;;     (synopsis "")
+;;     (description
+;;      "")
+;;     (license license:x11))) ;?
 
 (define-public ocaml-batteries
   (package
@@ -2788,7 +2818,7 @@ services.")
     (build-system gnu-build-system)
     (arguments
      `(#:parallel-tests? #f
-       #:test-target "test" ; need to configure to run the tests
+       #:test-target "test"
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
@@ -2798,19 +2828,22 @@ services.")
                               (destdir (string-append out "/lib/ocaml")))
                          (mkdir-p destdir)
                          (setenv "OCAMLFIND_DESTDIR" destdir)
-                         (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                         ;(setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
                          #t))))))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)
+     `(("ocaml-findlib" ,ocaml-findlib)
        ("ocaml-ounit" ,ocaml-ounit)
        ("ocaml-qtest" ,ocaml-qtest)
-       ("ocaml-bisect" ,ocaml-bisect)))
+       ("ocaml-bisect" ,ocaml-bisect))) ;native?
     (home-page "")
     (synopsis "")
     (description
      "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-batteries))))
     (license license:x11))) ;?
+
+(define-public ocaml4.01.0-batteries
+  (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-batteries)))
 
 (define-public ocaml-qtest
   (package
@@ -2827,7 +2860,7 @@ services.")
        (sha256
         (base32
          "1n7x5l6h4j44f75wzgzjsjkq349i4gj707w1hr7fx84igxxfr6vl"))))
-    (build-system gnu-build-system)
+    (build-system ocaml-build-system)
     (arguments
      `(#:tests? #f ; There is a test directory but no 'make check' equivalent.
        #:phases
@@ -2845,14 +2878,17 @@ services.")
                          (setenv "BIN" bin)
                          #t))))))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)
+     `(("ocaml-findlib" ,ocaml-findlib)
        ("ocaml-ounit" ,ocaml-ounit)))
     (home-page "")
     (synopsis "")
     (description
      "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-qtest))))
     (license license:x11))) ;?
+
+(define-public ocaml4.01.0-qtest
+  (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-qtest)))
 
 (define-public gsl-ocaml
   (package
@@ -2885,8 +2921,7 @@ services.")
                          (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
                          #t))))))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)))
+     `(("ocaml-findlib" ,ocaml-findlib)))
     (inputs
      `(("gsl" ,gsl)))
     (home-page "")
@@ -2952,21 +2987,27 @@ services.")
        (sha256
         (base32
          "0figr4jl1alzyjkmsz3s5bpsiqydmfcdsgz1nkwy089ayb05rj0r"))))
-    (build-system gnu-build-system)
+    (build-system ocaml-build-system)
     (arguments
-     `(#:test-target "test" ; need to configure to run the tests
+     `(#:tests? #f ;TODO
+       #:test-target "test" ; need to configure to run the tests
        #:phases
        (modify-phases %standard-phases
          (replace 'configure
                   (lambda _ (zero? (system* "./configure"))))
          (add-before 'build 'patch-makefile
-                     (lambda* (#:key outputs #:allow-other-keys)
+                     (lambda* (#:key inputs outputs #:allow-other-keys)
                        (substitute* "Makefile"
                          (("^OCAMLBUILD=.*") "OCAMLBUILD=ocamlbuild\n")
                          (("^OCAMLBUILD_ENV=.*") "OCAMLBUILD_ENV=WARNINGS=$(WARNINGS)\n")
-                         )))
+                         (("^OCAMLBUILD_FLAGS=-classic-display -no-links")
+                          (string-append
+                           "OCAMLBUILD_FLAGS=-classic-display -no-links -cflags '-I "
+                           (assoc-ref inputs "camlp4") "/lib/camlp4'")))
+                       #t))
          (replace 'build
-                  (lambda _ (zero? (system* "make" "all"))))
+                  (lambda* (#:key inputs #:allow-other-keys)
+                    (zero? (system* "make" "all"))))
          (add-before 'install 'setup-install
                      (lambda* (#:key outputs #:allow-other-keys)
                        (let* ((out (assoc-ref outputs "out"))
@@ -2977,12 +3018,650 @@ services.")
                          #t)))
          )))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib)
+     `(("ocaml-findlib" ,ocaml-findlib)
        ("which" ,which)
        ("camlp4" ,camlp4)))
     (home-page "")
     (synopsis "")
     (description
      "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-bisect))))
     (license license:x11))) ;?
+
+(define-public ocaml4.01.0-bisect
+  (let ((base (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-bisect))))
+    (package
+      (inherit base)
+      (arguments
+       `(#:ocaml ,ocaml-4.01.0
+         #:tests? #f ;TODO
+         #:test-target "test" ; need to configure to run the tests
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'configure
+                    (lambda _ (zero? (system* "./configure"))))
+           (add-before 'build 'patch-makefile
+                       (lambda _
+                         (substitute* "Makefile"
+                           (("^OCAMLBUILD_ENV=.*") "OCAMLBUILD_ENV=WARNINGS=$(WARNINGS)\n"))
+                         #t))
+           (replace 'build
+                    (lambda* (#:key inputs #:allow-other-keys)
+                      (zero? (system* "make" "all"))))
+           (add-before 'install 'setup-install
+                       (lambda* (#:key outputs #:allow-other-keys)
+                         (let* ((out (assoc-ref outputs "out"))
+                                (destdir (string-append out "/lib/ocaml")))
+                           (mkdir-p destdir)
+                           (setenv "OCAMLFIND_DESTDIR" destdir)
+                           (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                           #t))))))
+      (native-inputs
+       `(("ocaml-findlib" ,ocaml4.01.0-findlib)
+         ("which" ,which))))))
+
+(define-public pplacer-from-source
+  (package
+    (name "pplacer-from-source")
+    (version "1.1.alpha19")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/matsen/pplacer/archive/v"
+                           version ".tar.gz"))
+       (sha256
+        (base32 "0z1lnd2s8sh6kpzg106wzbh2szw7h0hvq8syd5a6wv4rmyyz6x0f"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (add-after 'unpack 'fix-makefile
+                    (lambda _
+                      (substitute* "Makefile"
+                        (("DESCRIPT:=pplacer-.*") "DESCRIPT:=pplacer-test\n")) ;fixme
+                      #t)))))
+    (inputs
+     `(("zlib" ,zlib)
+       ("ocaml" ,ocaml-4.01.0)
+       ("ocaml-findlib" ,ocaml-findlib)
+       ("gsl" ,gsl)
+       ("ocaml4.01.0-batteries" ,ocaml-batteries)))
+    (synopsis "")
+    (description
+     "")
+    (home-page "")
+    (license license:gpl3)))
+
+(define-public finishm
+  (package
+    (name "finishm")
+    (version "0.0.9")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "finishm" version))
+       (sha256
+        (base32 "0jprmh5y78gm1swk26r40r8cnc0s9rizqhgbafxnnarl1nn3v1dw"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Tests probably don't pass.
+    (propagated-inputs
+     `(("ruby-bio" ,bioruby)
+       ("ruby-bio-ipcress" ,ruby-bio-ipcress)
+       ("ruby-bio-logger" ,ruby-bio-logger)
+       ("ruby-bio-velvet" ,ruby-bio-velvet)
+       ("ruby-bio-velvet-underground"
+        ,ruby-bio-velvet-underground)
+       ("ruby-ds" ,ruby-ds)
+       ("ruby-hopcsv" ,ruby-hopcsv)
+       ("ruby-progressbar" ,ruby-progressbar)
+       ("ruby-pry" ,ruby-pry)
+       ("ruby-graphviz" ,ruby-graphviz)
+       ("ruby-yargraph" ,ruby-yargraph)))
+    (inputs
+     `(("zlib" ,zlib)))
+    (synopsis "Tools for microbial genome assembly improvement")
+    (description
+     "De-novo assemblies generally only provide draft genomes. FinishM is aimed
+at improving these draft assemblies.")
+    (home-page "http://github.com/wwood/finishm")
+    (license license:gpl3+)))
+
+(define-public ruby-yargraph
+  (package
+    (name "ruby-yargraph")
+    (version "0.0.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "yargraph" version))
+       (sha256
+        (base32
+         "1nr8qcfi52phs491b3frrh2npkj4sr2mm5jbkyk4b2v233kx6ax3"))))
+    (build-system ruby-build-system)
+    (propagated-inputs `(("ruby-ds" ,ruby-ds)))
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'patch-gemfile
+                     (lambda _
+                       (substitute* "Gemfile"
+                         ((".*jeweler.*") ""))
+                       #t))
+         (replace 'check
+                  (lambda _ (zero? (system* "rspec" "spec/yargraph_spec.rb"))))
+         )))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)))
+    (synopsis
+     "Pure Ruby graph algorithms, particularly e.g. Hamiltonian cycles")
+    (description
+     "Pure Ruby graph algorithms, particularly e.g.  Hamiltonian cycles")
+    (home-page "http://github.com/wwood/yargraph")
+    (license license:expat)))
+
+(define-public ruby-bio-ipcress
+  (package
+    (name "ruby-bio-ipcress")
+    (version "0.0.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "bio-ipcress" version))
+       (sha256
+        (base32
+         "1lfmnqbdwaiwhzackjl4vdnwdb1x4wjfmn79ki8czqxsj1ra5bwq"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'build 'patch-gemfile
+                     (lambda _
+                       (substitute* ".gemspec"
+                         ((".*rdoc.*") ""))
+                       #t))
+         (replace 'check
+                  (lambda _ (zero? (system* "rspec")))))))
+    (propagated-inputs
+     `(("ruby-bio" ,bioruby)))
+    (native-inputs
+     `(("ruby-rspec" ,ruby-rspec)))
+    (synopsis
+     "a programmatic interface to the iPCRess in-silico PCR software. iPCRess is part of the exonerate suite.")
+    (description
+     "a programmatic interface to the iPCRess in-silico PCR software.  iPCRess is part of the exonerate suite.")
+    (home-page
+     "http://github.com/wwood/bioruby-ipcress")
+    (license #f)))
+
+(define-public ruby-graphviz
+  (package
+    (name "ruby-graphviz")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "graphviz" version))
+       (sha256
+        (base32
+         "1hh2jmg4v6n3ggc5i44bfl1j1fg968j9grk57mf02fy1yxs67w3c"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check (lambda _ (zero? (system* "rspec")))))))
+    (inputs
+     `(("graphviz" ,graphviz))) ; Need to propagate?
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)))
+    (synopsis
+     "\t\tGraphviz is a graph visualisation system. This gem is a lightweight interface for generating graphs with Graphviz.
+")
+    (description
+     "\t\tGraphviz is a graph visualisation system.  This gem is a lightweight interface for generating graphs with Graphviz.
+")
+    (home-page "")
+    (license license:expat)))
+
+(define-public ruby-bio-velvet
+  (package
+    (name "ruby-bio-velvet")
+    (version "0.6.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "bio-velvet" version))
+       (sha256
+        (base32
+         "0q05r43g6pgwl6pcaih1ikd86apzzmb3icp7grqrmn9akaprb69i"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Tests require velvet.
+    (propagated-inputs
+     `(("ruby-bio-commandeer" ,ruby-bio-commandeer)
+       ("ruby-bio-logger" ,ruby-bio-logger)
+       ("ruby-files" ,ruby-files)
+       ("ruby-hopcsv" ,ruby-hopcsv)
+       ("ruby-parallel" ,ruby-parallel)
+       ("ruby-systemu" ,ruby-systemu)))
+    (synopsis
+     "Parser to work with some file formats used in the velvet DNA assembler")
+    (description
+     "Parser to work with some file formats used in the velvet DNA assembler")
+    (home-page
+     "http://github.com/wwood/bioruby-velvet")
+    (license license:expat)))
+
+(define-public ruby-bio-velvet-underground
+  (package
+    (name "ruby-bio-velvet-underground")
+    (version "0.3.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "bio-velvet_underground" version))
+       (sha256
+        (base32
+         "1wfpq76n91701pca34iqgvxh2nqxjsa51356v10q0c78crm5pn8z"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Tests probably need to be run after installation.
+       ;; #:phases
+       ;; (modify-phases %standard-phases
+       ;;   (add-before 'build 'remove-unnecessary-dependencies
+       ;;               (lambda _
+       ;;                 (substitute* "Gemfile"
+       ;;                   ((".*pry.*") "")
+       ;;                   ((".*shoulda.*") "")
+       ;;                   ((".*yard.*") "")
+       ;;                   ((".*simplecov.*") "")
+       ;;                   ((".*jeweler.*") ""))
+       ;;                 #t))
+       ;;   (replace 'check (lambda _ (zero? (system* "rspec")))))))
+    (propagated-inputs
+     `(("ruby-bio-logger" ,ruby-bio-logger)
+       ("ruby-bio-velvet" ,ruby-bio-velvet)
+       ("ruby-ffi" ,ruby-ffi)))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec-2)
+       ("bioruby" ,bioruby)
+       ("ruby-pry" ,ruby-pry)))
+    (inputs
+     `(("zlib" ,zlib)))
+    (synopsis
+     "Bindings to some internals of the velvet assembler.")
+    (description
+     "Bindings to some internals of the velvet assembler.")
+    (home-page
+     "http://github.com/wwood/bioruby-velvet_underground")
+    (license license:gpl3)))
+
+(define-public ruby-hopcsv
+  (package
+    (name "ruby-hopcsv")
+    (version "0.4.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "hopcsv" version))
+       (sha256
+        (base32
+         "1cq8wkx95jr25kamab3gghw4vrxm0vd66l5a61jv7yrw7rnbgwyg"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Has a circular dependency with itself, run after install?
+    (native-inputs
+     `(("ruby-echoe" ,ruby-echoe)))
+    (synopsis
+     "A pure-C CSV parser for HOPSA. Based on Ccsv project. Works fast and efficient. Based on ccsv by Evan Weaver")
+    (description
+     "This package provides a pure-C CSV parser for HOPSA.  Based on Ccsv project.  Works fast and efficient.  Based on ccsv by Evan Weaver")
+    (home-page "http://github.com/zhum/hopcsv")
+    (license #f)))
+
+(define-public ruby-progressbar
+  (package
+    (name "ruby-progressbar")
+    (version "1.8.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "progressbar" version))
+       (sha256
+        (base32
+         "15zs2a18v5z28y6bxzrljbd8dcpkf86qw4k62vcchjzqlhklsfai"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; Requires rspectacular
+       ;;#:phases
+       ;; (modify-phases %standard-phases
+    ;;      (replace 'check
+    ;;               (lambda _ (zero? (system* "rspec")))))))
+    ;; (native-inputs
+    ;;  `(("bundler" ,bundler)
+    ;;    ("ruby-rspectacular" ,ruby-rspectacular)))
+    (synopsis
+     "Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby.
+The output can be customized with a flexible formatting system including:
+percentage, bars of various formats, elapsed time and estimated time remaining.
+")
+    (description
+     "Ruby/ProgressBar is an extremely flexible text progress bar library for Ruby.
+The output can be customized with a flexible formatting system including:
+percentage, bars of various formats, elapsed time and estimated time remaining.
+")
+    (home-page
+     "https://github.com/jfelchner/ruby-progressbar")
+    (license license:expat)))
+
+(define-public ruby-files
+(package
+  (name "ruby-files")
+  (version "0.3.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "files" version))
+      (sha256
+        (base32
+          "0csfvyf6kqgzcd8fq55x0z8ljbgxp9g9f5d9n6gpd4kcjypfvx1a"))))
+  (build-system ruby-build-system)
+  (arguments
+     `(#:tests? #f)) ; Tests require wrong, which requires other gems.
+  ;; (native-inputs
+  ;;  `(("bundler" ,bundler)
+  ;;    ("ruby-wrong" ,ruby-wrong)))
+  (synopsis
+    "Ever want to create a whole bunch of files at once? Like when you're writing tests for a tool that processes files? The Files gem lets you cleanly specify those files and their contents inside your test code, instead of forcing you to create a fixture directory and check it in to your repo. It puts them in a temporary directory and cleans up when your test is done.")
+  (description
+    "Ever want to create a whole bunch of files at once? Like when you're writing tests for a tool that processes files? The Files gem lets you cleanly specify those files and their contents inside your test code, instead of forcing you to create a fixture directory and check it in to your repo.  It puts them in a temporary directory and cleans up when your test is done.")
+  (home-page "")
+  (license #f)))
+
+(define-public ruby-parallel
+  (package
+    (name "ruby-parallel")
+    (version "1.10.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/grosser/parallel/archive/v"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "0lm57mamx4w6aksw0r64517bmffjnw8cp3kpd4gmv3lshy3rmzrk"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f ; Requires activerecord, meh
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'replace-git-ls-files
+                  (lambda _
+                    (substitute* "parallel.gemspec"
+                      (("`git ls-files lib MIT-LICENSE.txt`") "`find lib MIT-LICENSE.txt -type f |sort`"))
+                    #t))
+         (add-before 'check 'prepare-check
+                     (lambda _
+                       (delete-file "Gemfile.lock")
+                       (substitute* '("Gemfile" "Rakefile")
+                         ((".*bump.*") ""))
+                       #t)))))
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rspec" ,ruby-rspec)))
+    (synopsis
+     "Run any kind of code in parallel processes")
+    (description
+     "Run any kind of code in parallel processes")
+    (home-page "https://github.com/grosser/parallel")
+    (license license:expat)))
+
+(define-public ruby-echoe
+  (package
+    (name "ruby-echoe")
+    (version "4.6.6")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "echoe" version))
+       (sha256
+        (base32
+         "09a2349hywv0dn1499m48ypsgk36bhjfg2rfbwbkhn9mj8s205bh"))))
+    (build-system ruby-build-system)
+    (arguments
+     `(#:tests? #f)) ; There are no tests.
+    (propagated-inputs
+     `(("ruby-allison" ,ruby-allison)
+       ;("ruby-rake" ,ruby-rake)
+       ;("ruby-rdoc" ,ruby-rdoc)
+       ;("ruby-rubyforge" ,ruby-rubyforge)
+       ))
+    (synopsis
+     "A Rubygems packaging tool that provides Rake tasks for documentation, extension compiling, testing, and deployment.")
+    (description
+     "This package provides a Rubygems packaging tool that provides Rake tasks for documentation, extension compiling, testing, and deployment.")
+    (home-page
+     "http://fauna.github.com/fauna/echoe/")
+    (license #f)))
+
+(define-public ruby-allison
+(package
+  (name "ruby-allison")
+  (version "2.0.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "allison" version))
+      (sha256
+        (base32
+          "1dcbffr23zxq2g3k7d468x864bp7y2galdzpajngaqm578vng4fk"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; There are no tests.
+  (native-inputs
+   `(("ruby-rspec" ,ruby-rspec)))
+  (synopsis "A modern, pretty RDoc template.")
+  (description
+    "This package provides a modern, pretty RDoc template.")
+  (home-page
+    "http://blog.evanweaver.com/pages/code#allison")
+  (license #f)))
+
+
+
+;; (define-public ruby-rubyforge
+;; (package
+;;   (name "ruby-rubyforge")
+;;   (version "2.0.4")
+;;   (source
+;;     (origin
+;;       (method url-fetch)
+;;       (uri (rubygems-uri "rubyforge" version))
+;;       (sha256
+;;         (base32
+;;           "1wdaa4nzy39yzy848fa1rybi72qlyf9vhi1ra9wpx9rpi810fwh1"))))
+;;   (build-system ruby-build-system)
+;;   (propagated-inputs
+;;    `(("ruby-json-pure" ,ruby-json-pure)))
+;;   (native-inputs
+;;    `(("ruby-hoe" ,ruby-hoe)))
+;;   (synopsis
+;;     "A script which automates a limited set of rubyforge operations.
+
+;; * Run 'rubyforge help' for complete usage.
+;; * Setup: For first time users AND upgrades to 0.4.0:
+;;   * rubyforge setup (deletes your username and password, so run sparingly!)
+;;   * edit ~/.rubyforge/user-config.yml
+;;   * rubyforge config
+;; * For all rubyforge upgrades, run 'rubyforge config' to ensure you have latest.")
+;;   (description
+;;     "This package provides a script which automates a limited set of rubyforge operations.
+
+;; * Run 'rubyforge help' for complete usage.
+;; * Setup: For first time users AND upgrades to 0.4.0:
+;;   * rubyforge setup (deletes your username and password, so run sparingly!)
+;;   * edit ~/.rubyforge/user-config.yml
+;;   * rubyforge config
+;; * For all rubyforge upgrades, run 'rubyforge config' to ensure you have latest.")
+;;   (home-page
+;;     "http://codeforpeople.rubyforge.org/rubyforge/")
+;;   (license #f)))
+
+
+
+
+(define-public bam-readcount ; Does not work because unbundling samtools caused it to fail
+  (let ((commit "dea4199722053a179bc64919e81ee43d61bf2aa8"))
+    (package
+     (name "bam-readcount")
+     (version "0.8.0")
+     (source
+      (origin
+       (method url-fetch)
+       ;; (uri (string-append "https://github.com/genome/bam-readcount/archive/v"
+       ;;                     version ".tar.gz"))
+       ;; (file-name (string-append name "-" version ".tar.gz"))
+       ;; (sha256
+       ;;  (base32
+       ;;   "0px6gq63bfzjlqzg294vcgk4nlppd0al9v2pd96v5gy6wdcdakag"))
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/genome/bam-readcount.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (patches (search-patches "bam-readcount-remove-bundled.patch"))
+       (sha256
+        (base32
+         "1k5gr4ij9p943980348iy5piakgvxj2n8f4ywha3xdlnjh6s2nms"))
+       (modules '((guix build utils)))
+       (snippet
+        `(begin
+           ;; Delete bundled libraries.
+           (for-each (lambda (file)
+                       (delete-file-recursively file)
+                       #t)
+                     '("vendor/boost-1.55-bamrc.tar.gz"
+                       "vendor/samtools0.1.19.patch"
+                       "vendor/samtools-0.1.19.tar.gz"
+                       "vendor/zlib-1.2.8.tar.gz"))
+           #t))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:out-of-source? #t
+        #:parallel-build? #f
+        ;; #:configure-flags
+        ;; (list (string-append "-DCMAKE_PREFIX_PATH="
+        ;;                      (assoc-ref %build-inputs "samtools"))
+        ;;       (string-append "-DSAMTOOLS_ROOT="
+        ;;                      (assoc-ref %build-inputs "samtools"))
+        ;;       )
+        #:phases
+        (modify-phases %standard-phases
+          (add-after 'unpack 'patch-samtools-cmake
+                     (lambda* (#:key inputs #:allow-other-keys)
+                         (substitute* "build-common/cmake/FindSamtools.cmake"
+                           (("set\\(SAMTOOLS_SEARCH_DIRS")
+                            (string-append "set(SAMTOOLS_SEARCH_DIRS\n    "
+                                           (assoc-ref inputs "samtools")
+                                           "/lib"))))))
+        ))
+     (native-inputs
+      `(("git" ,git)
+        ("perl" ,perl)
+        ("python" ,python-2)))
+     (inputs
+      `(("zlib" ,zlib)
+        ("ncurses" ,ncurses)
+        ("gcc", gcc-5)
+        ("samtools" ,samtools-0.1)
+        ("pkg-config" ,pkg-config)
+        ("boost" ,boost)))
+     (home-page "")
+     (synopsis "")
+     (description
+      "")
+     (license license:expat))))
+
+(define-public meld ; does not work with --pure
+  (package
+    (name "meld")
+    (version "3.16.4")
+    (source (origin
+             (method url-fetch)
+             (uri (string-append "mirror://gnome/sources/" name "/"
+                                 (version-major+minor version)  "/"
+                                 name "-" version ".tar.xz"))
+             (sha256
+              (base32
+               "0rwflfkfnb9ydnk4k591x0il29d4dvz95cjs2f279blx64lgki4k"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'build 'setup
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((out (assoc-ref outputs "out")))
+               (substitute* "meld/conf.py"
+                 (("melddir = os.path.dirname\\(sys.executable\\)")
+                  (string-append "melddir = '" out "'"))))))
+         (delete 'check)
+         (add-after 'install 'post-install-check
+           ;; Running the tests before installation breaks installation so that
+           ;; the 'meld' executable croaks, so we run the tests after
+           ;; installation.
+           (lambda _
+             (setenv "HOME" "/tmp")
+             (setenv "PYTHONPATH"
+                     (string-append "build/lib:" (getenv "PYTHONPATH")))
+             (zero? (system* "py.test" "-v"))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (gsettings
+                     (string-append out "/share/gsettings-schemas"))
+                    (gi-typelib-path (getenv "GI_TYPELIB_PATH")))
+               (and (zero? (system*
+                            "python"
+                            "setup.py"
+                            "--no-update-icon-cache"
+                            "--no-compile-schemas"
+                            "install"
+                            "--prefix"
+                            out))
+                    (begin
+                      (mkdir-p gsettings)
+                      ;(rename-file
+                      ; (string-append out "/share/glib-2.0")
+                      ; (string-append gsettings "/meld"))
+                      (wrap-program (string-append out "/bin/meld")
+                        `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path)))
+                      #t))))))))
+    (propagated-inputs
+     `(("gtk+" ,gtk+)
+       ("glib:out" ,glib "out")
+       ("gtksourceview" ,gtksourceview)))
+    (inputs
+     `(("python2-pygobject" ,python2-pygobject)("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("python2-pycairo" ,python2-pycairo)))
+    (native-inputs
+     `(("intltool" ,intltool)
+       ("itstool" ,itstool)
+       ("glib:bin" ,glib "bin")
+       ("python2-pytest" ,python2-pytest)
+       ("python2-pytest-mock" ,python2-pytest-mock)))
+    (home-page "http://meldmerge.org/")
+    (synopsis "Visual diff and merge tool")
+    (description
+     "Meld is a visual diff and merge tool targeted at developers.  Meld helps
+you compare files, directories, and version controlled projects.  It provides
+two- and three-way comparison of both files and directories, and has support for
+many popular version control systems.")
+    ;; Files under meld/vc are licensed under BSD-2.
+    (license (list license:gpl2+ license:bsd-2))))

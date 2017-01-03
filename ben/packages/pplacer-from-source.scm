@@ -149,7 +149,7 @@
        (sha256
         (base32
          "1jywcrwn5z3gkgvicr004cxmdaqfmq8wh72f81jqz56iyn5024nh"))))
-    (build-system gnu-build-system)
+    (build-system ocaml-build-system)
     (arguments
      `(#:tests? #f ; There are no tests, maybe?
        #:phases
@@ -157,7 +157,7 @@
          (delete 'configure)
          (replace 'build
                   (lambda _
-                    (zero? (system* "pkg/build"))))
+                    (zero? (system* "pkg/build" "true"))))
          (add-before 'install 'setup-install
                   (lambda* (#:key outputs #:allow-other-keys)
                     (let* ((out (assoc-ref outputs "out"))
@@ -165,7 +165,23 @@
                       (mkdir-p destdir)
                       (setenv "OCAMLFIND_DESTDIR" destdir)
                       (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
-                      #t))))))
+                      #t)))
+         (replace 'install
+                  (lambda _
+                    ;(system* "ls" "_build/**/*")
+                    (zero? (system* "ocamlfind" "install" "xmlm"
+                                    ;; List of files was compiled from _build/pkg/META.
+                                    "_build/pkg/META"
+                                    "_build/src/xmlm.a"
+                                    "_build/src/xmlm.annot"
+                                    "_build/src/xmlm.cma"
+                                    "_build/src/xmlm.cmi"
+                                    "_build/src/xmlm.cmt"
+                                    "_build/src/xmlm.cmx"
+                                    "_build/src/xmlm.cmxa"
+                                    "_build/src/xmlm.cmxs"
+                                    "_build/src/xmlm.mli"))
+                    )))))
     (native-inputs
      `(("ocaml" ,ocaml)
        ("ocaml-findlib" ,ocaml-findlib)))
@@ -173,90 +189,101 @@
     (synopsis "")
     (description
      "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-xmlm))))
     (license license:x11))) ;?
 
-;; (define-public ocaml-mcl ; only installs binaries, so is there any point of being ocaml specific?
-;;   (package
-;;     (name "ocaml-mcl")
-;;     (version "12-068oasis4")
-;;     (source
-;;      (origin
-;;        (method url-fetch)
-;;        (uri (string-append
-;;              "https://github.com/fhcrc/mcl/archive/"
-;;              version ".tar.gz"))
-;;        (file-name (string-append name "-" version ".tar.gz"))
-;;        (sha256
-;;         (base32
-;;          "1l5jbhwjpsj38x8b9698hfpkv75h8hn3kj0gihjhn8ym2cwwv110"))))
-;;     (build-system gnu-build-system)
-;;     (arguments
-;;      `(#:tests? #f ; There are no tests, maybe?
-;;        #:phases
-;;        (modify-phases %standard-phases
-;;          (replace 'configure
-;;                   (lambda* (#:key outputs #:allow-other-keys)
-;;                     (setenv "SHELL" (which "sh"))
-;;                     (setenv "CONFIG-SHELL" (which "sh"))
-;;                     (substitute* "configure"
-;;                       (("SHELL = /bin/sh") (string-append "SHELL = "(which "sh"))))
-;;                     (substitute* "setup.ml"
-;;                       (("LDFLAGS=-fPIC") (string-append "LDFLAGS=-fPIC\"; \"SHELL=" (which "sh"))))
-;;                     (and
-;;                                         ;(zero? (system* "./bootstrap"))
-;;                      ;(zero? (system* "autoconf"))
+(define-public ocaml4.01.0-xmlm
+  (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-xmlm)))
 
-;;                      (zero? (system* "ocaml" "setup.ml" "-configure" "--prefix" (assoc-ref outputs "out")))
-;;                      (begin (substitute* '("src/gryphon/Makefile"
-;;                                            "src/shmx/Makefile"
-;;                                            "src/alien/oxygen/src/Makefile"
-;;                                            "src/alien/oxygen/Makefile"
-;;                                            "src/alien/oxygen/doc/Makefile"
-;;                                            "src/alien/Makefile"
-;;                                            "src/impala/Makefile"
-;;                                            "src/Makefile"
-;;                                            "src/shcl/Makefile"
-;;                                            "src/mcl/Makefile"
-;;                                            "src/shmcx/Makefile"
-;;                                            "src/shmcl/Makefile"
-;;                                            "src/clew/Makefile"
-;;                                            "src/shmcxquery/Makefile"
-;;                                            "img/Makefile"
-;;                                            "graphs/Makefile"
-;;                                            "testing/stream/Makefile"
-;;                                            "testing/Makefile"
-;;                                            "testing/blast/Makefile"
-;;                                            "testing/setops/Makefile"
-;;                                            "Makefile"
-;;                                            "doc/Makefile"
-;;                                            "util/Makefile"
-;;                                            "include/Makefile"
-;;                                            "scripts/Makefile"
-;;                                            )
-;;                               (("prefix = /usr/local") (string-append "prefix = " (assoc-ref outputs "out"))))
-;;                             #t))))
-;;          (replace 'build
-;;                   (lambda _
-;;                     (zero? (system* "ocaml" "setup.ml" "-build"))))
-;;          (add-before 'install 'setup-install
-;;                   (lambda* (#:key outputs #:allow-other-keys)
-;;                     (let* ((out (assoc-ref outputs "out"))
-;;                            (destdir (string-append out "/lib/ocaml")))
-;;                       (mkdir-p destdir)
-;;                       (setenv "OCAMLFIND_DESTDIR" destdir)
-;;                       (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
-;;                       #t))))))
-;;     (native-inputs
-;;      `(("autoconf" ,autoconf)
-;;        ("automake" ,automake)
-;;        ("libtool" ,libtool)
-;;        ("ocaml" ,ocaml)
-;;        ("ocaml-findlib" ,ocaml-findlib)))
-;;     (home-page "")
-;;     (synopsis "")
-;;     (description
-;;      "")
-;;     (license license:x11))) ;?
+(define-public ocaml-mcl ; only installs binaries, so is there any point of being ocaml specific?
+  (package
+    (name "ocaml-mcl")
+    (version "12-068oasis4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/fhcrc/mcl/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1l5jbhwjpsj38x8b9698hfpkv75h8hn3kj0gihjhn8ym2cwwv110"))))
+    (build-system ocaml-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests, maybe?
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'configure
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (setenv "SHELL" (which "sh"))
+                    (setenv "CONFIG-SHELL" (which "sh"))
+                    (substitute* "configure"
+                      (("SHELL = /bin/sh") (string-append "SHELL = "(which "sh"))))
+                    (substitute* "setup.ml"
+                      (("LDFLAGS=-fPIC") (string-append "LDFLAGS=-fPIC\"; \"SHELL=" (which "sh"))))
+                    (and
+                                        ;(zero? (system* "./bootstrap"))
+                     ;(zero? (system* "autoconf"))
+
+                     (zero? (system* "ocaml" "setup.ml" "-configure" "--prefix" (assoc-ref outputs "out")))
+                     (begin (substitute* '("src/gryphon/Makefile"
+                                           "src/shmx/Makefile"
+                                           "src/alien/oxygen/src/Makefile"
+                                           "src/alien/oxygen/Makefile"
+                                           "src/alien/oxygen/doc/Makefile"
+                                           "src/alien/Makefile"
+                                           "src/impala/Makefile"
+                                           "src/Makefile"
+                                           "src/shcl/Makefile"
+                                           "src/mcl/Makefile"
+                                           "src/shmcx/Makefile"
+                                           "src/shmcl/Makefile"
+                                           "src/clew/Makefile"
+                                           "src/shmcxquery/Makefile"
+                                           "img/Makefile"
+                                           "graphs/Makefile"
+                                           "testing/stream/Makefile"
+                                           "testing/Makefile"
+                                           "testing/blast/Makefile"
+                                           "testing/setops/Makefile"
+                                           "Makefile"
+                                           "doc/Makefile"
+                                           "util/Makefile"
+                                           "include/Makefile"
+                                           "scripts/Makefile"
+                                           )
+                              (("prefix = /usr/local") (string-append "prefix = " (assoc-ref outputs "out"))))
+                            #t))))
+         (replace 'build
+                  (lambda _
+                    (zero? (system* "ocaml" "setup.ml" "-build"))))
+         (add-before 'install 'setup-install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (destdir (string-append out "/lib/ocaml")))
+                      (mkdir-p destdir)
+                      (setenv "OCAMLFIND_DESTDIR" destdir)
+                      (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
+                      #t)))
+         (replace 'install
+                  (lambda _ (zero? (system* "ocaml" "setup.ml" "-install")))))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("ocaml" ,ocaml)
+       ("ocaml-findlib" ,ocaml-findlib)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (properties `((ocaml4.01.0-variant . ,(delay ocaml4.01.0-mcl))))
+    (license license:x11))) ;?
+
+(define-public ocaml4.01.0-mcl
+  (package-with-ocaml4.01.0 (strip-ocaml4.01.0-variant ocaml-mcl)))
+
 
 (define-public ocaml-batteries
   (package
@@ -440,7 +467,7 @@
 ;; Version 1.05 is the last version to support OCaml 4.01.0.
 (define-public ocaml4.01.0-camlzip-1.05
   (package
-    (name "ocaml-camlzip")
+    (name "ocaml4.01.0-camlzip")
     (version "1.05")
     (source
      (origin
@@ -459,6 +486,13 @@
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
+         (replace 'build
+                  (lambda _
+                    (and
+                     (zero? (system* "make" "all"))
+                     (zero? (system* "make" "allopt"))
+                     (zero? (system* "make" "allopt"))
+                     )))
          (add-before 'install 'setup-install
                      (lambda* (#:key outputs #:allow-other-keys)
                        (let* ((out (assoc-ref outputs "out"))
@@ -588,13 +622,18 @@
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
+         (add-after 'unpack 'patch-setup-ml
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out")))
+                        (substitute* "setup.ml"
+                          (("/usr/local") out)))
+                      #t))
            (add-before 'install 'setup-install
                        (lambda* (#:key outputs #:allow-other-keys)
                          (let* ((out (assoc-ref outputs "out"))
                                 (destdir (string-append out "/lib/ocaml")))
                            (mkdir-p destdir)
                            (setenv "OCAMLFIND_DESTDIR" destdir)
-                           (setenv "OCAMLFIND_LDCONF" (string-append destdir "/ld.conf"))
                            #t))))))
     (native-inputs
      `(("ocaml-findlib" ,ocaml-findlib)))
@@ -623,6 +662,7 @@
     (build-system ocaml-build-system)
     (arguments
      `(#:ocaml ,ocaml-4.01.0
+       #:test-target "test"
        #:phases
        (modify-phases %standard-phases
          (delete 'configure)
@@ -630,7 +670,18 @@
                     (lambda _
                       (substitute* "Makefile"
                         (("DESCRIPT:=pplacer-.*") "DESCRIPT:=pplacer-test\n")) ;fixme
-                      #t)))))
+                      #t))
+         (replace 'build
+                  (lambda _ (zero? (system* "make" "all"))))
+         (replace 'install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (bin (string-append out "/bin")))
+                      (copy-recursively "bin" bin)
+                      ;; TODO: Install scripts.
+                      )
+                    #t))
+         )))
     (inputs
      `(("zlib" ,zlib)
        ("ocaml-findlib" ,ocaml4.01.0-findlib)
@@ -638,7 +689,14 @@
        ("gsl" ,gsl)
        ("ocaml-batteries" ,ocaml4.01.0-batteries)
        ("ocaml-camlzip" ,ocaml4.01.0-camlzip-1.05)
-       ("ocaml-csv" ,ocaml4.01.0-csv)))
+       ("ocaml-csv" ,ocaml4.01.0-csv)
+       ("ocaml-sqlite3" ,ocaml4.01.0-sqlite3)
+       ("ocaml-xmlm" ,ocaml4.01.0-xmlm)
+       ("ocaml-mcl" ,ocaml4.01.0-mcl)
+       ("python" ,python-2)
+       ("python-biopython" ,python2-biopython)))
+    (native-inputs
+     `(("ocaml-ounit" ,ocaml4.01.0-ounit)))
     (synopsis "")
     (description
      "")

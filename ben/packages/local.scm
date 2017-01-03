@@ -8,7 +8,6 @@
   #:use-module (guix gexp)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system cmake)
-  #:use-module (guix build-system ocaml)
   #:use-module (guix build-system perl)
   #:use-module (guix build-system python)
   #:use-module (guix build-system ruby)
@@ -3243,3 +3242,31 @@ many popular version control systems.")
        "VContact is a tool to perform Guilt-by-contig-association automatic
 classification of viral contigs.")
       (license license:gpl3+))))
+
+(define-public exabayes ; seems to bundle things, and includes AVX etc. which
+                        ; might need to be disabled through configure flags.
+  (package
+    (name "exabayes")
+    (version "1.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "http://sco.h-its.org/exelixis/resource/download/software/exabayes-"
+         version ".tar.gz"))
+       (sha256
+        (base32
+         "18lmn0w3hz2dl7z5mkd1h6x9pdqa3l9hfs19kn3yhrsycjsg20g4"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:configure-flags '("--enable-mpi"
+                           ;;"--enable-tests" ;gtest is not available, could maybe be fixed.
+                           )))
+    (inputs
+     `(("openmpi" ,openmpi)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:gpl3+))) ;?

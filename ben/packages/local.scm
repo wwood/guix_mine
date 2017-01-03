@@ -3265,8 +3265,9 @@ classification of viral contigs.")
                            )))
     (inputs
      `(("openmpi" ,openmpi)))
-    (home-page "")
-    (synopsis "")
+    (home-page "http://sco.h-its.org/exelixis/web/software/exabayes/")
+    (synopsis "Large-scale Bayesian tree inference")
     (description
-     "")
+     "ExaBayes is a software package for Bayesian tree inference. It is
+particularly suitable for large-scale analyses on computer clusters.")
     (license license:gpl3+))) ;?

@@ -26,7 +26,6 @@
 
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages rails)
-  #:use-module (ben packages rails)
   )
 
 

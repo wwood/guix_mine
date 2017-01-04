@@ -50,6 +50,7 @@
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
+  #:use-module (gnu packages machine-learning)
   #:use-module (gnu packages maths)
   #:use-module (gnu packages mit-krb5)
   #:use-module (gnu packages mpi)
@@ -3208,7 +3209,8 @@ many popular version control systems.")
     (license (list license:gpl2+ license:bsd-2))))
 
 (define-public vcontact ; potentially could be contributed to guix-proper,
-                        ; unless any issues are found soon.
+                                        ; unless any issues are found soon.
+  ; Currently tests are not run
   ;; The releases do not appear to be packaged anywhere, so we fetch via git.
   (let ((version-string "0.1b.49")
         (commit "98ff5a9f28fd1d2aa4f29612112174b23b389509"))
@@ -3224,17 +3226,36 @@ many popular version control systems.")
         (file-name (string-append name "-" version "-checkout"))
         (sha256
          (base32
-          "0dkydfzd3yyilknpbfh6ay8hskqsgzk39c4gjfsn7vqxg4wghxkn"))))
+          "0dkydfzd3yyilknpbfh6ay8hskqsgzk39c4gjfsn7vqxg4wghxkn"))
+        (patches (search-patches "vcontact-relax-dependency-versions.patch"))))
       (build-system python-build-system)
       (arguments
-       `(#:python ,python-2))
-      (propagated-inputs
+       `(#:python ,python-2
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'check
+                    (lambda _ (zero? (system* "nosetests" "-v"))))
+           (add-after 'install 'wrap-binaries
+                      (lambda* (#:key inputs outputs #:allow-other-keys)
+                        (let* ((out (assoc-ref outputs "out"))
+                               (bin (string-append out "/bin"))
+                               (path (dirname (which "mcl"))))
+                          (for-each (lambda (file)
+                                      (wrap-program (string-append bin "/" file)
+                                        `("PATH" ":" prefix (,path))))
+                                    (list "vcontact" "vcontact-pcs"))
+                          #t))))))
+      (inputs
        `(("python-networkx" ,python2-networkx)
          ("python-numpy" ,python2-numpy)
-         ("python-scipy" ,python2-scipy)
-         ("python-pandas" ,python2-pandas)
+         ("python-scipy" ,python2-scipy);-0.13)
+         ("python-pandas" ,python2-pandas-0.13)
          ("python-scikit-learn" ,python2-scikit-learn)
-         ("python-biopython" ,python2-biopython)))
+         ("python-biopython" ,python2-biopython)
+         ("python-tables" ,python2-tables)
+         ("mcl" ,mcl)))
+      (native-inputs
+       `(("python-nose" ,python2-nose)))
       (home-page
        "http://www.eleves.ens.fr/home/doulcier/projects/virus/index.html")
       (synopsis "Viral contig automatic clustering and taxonomic assignment")
@@ -3242,6 +3263,44 @@ many popular version control systems.")
        "VContact is a tool to perform Guilt-by-contig-association automatic
 classification of viral contigs.")
       (license license:gpl3+))))
+
+(define-public python2-pandas-0.13
+  (package
+    (inherit python2-pandas)
+    (version "0.13.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pandas" version))
+       (sha256
+        (base32 "0ariw316c3psng7qc1nnv3v71w17cvqnk06rksb50rbrm9n784v8"))))))
+
+(define-public python2-scipy-0.13
+  (package
+    (inherit python2-scipy)
+    (version "0.13.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "scipy" version))
+       (sha256
+        (base32 "0rh2cy0yb01fgi9qk37aswcr5fdvx7jwjfpfqvamrhv0w1z3rqx9"))))))
+
+(define-public python2-numpy-1.8
+  (package
+    (inherit python2-numpy)
+    (version "1.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "numpy" version))
+       (sha256
+        (base32 "0lyj4yr7qy4vcdid3jbaqa2hs2skd5zzwq5hh7zyjxycka0x0r17"))))
+    (arguments
+     `(,@(substitute-keyword-arguments
+         (package-arguments python2-numpy)
+       ((#:phases phases)
+        `(alist-delete 'install-doc ,phases)))))))
 
 (define-public exabayes ; seems to bundle things, and includes AVX etc. which
                         ; might need to be disabled through configure flags.

@@ -1,0 +1,22 @@
+diff --git a/setup.py b/setup.py
+index a9fae62..e99c75d 100644
+--- a/setup.py
++++ b/setup.py
+@@ -11,11 +11,11 @@ setup(name='vcontact',
+       packages=['vcontact','vcontact.exports'],
+       scripts=['bin/vcontact','bin/vcontact-pcs'],
+       install_requires=[
+-        'networkx==1.8.1',
+-        'numpy==1.8.0',
+-        'scipy==0.13.3',
+-        'pandas==0.13.1',
+-        'scikit-learn==0.14.1',
+-        'biopython==1.63'
++        'networkx',
++        'numpy',
++        'scipy',
++        'pandas',
++        'scikit-learn',
++        'biopython'
+       ],
+ )

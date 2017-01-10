@@ -1409,18 +1409,18 @@ APIs.")
 (define-public r-ape
   (package
    (name "r-ape")
-   (version "3.5")
+   (version "4.0")
    (source
     (origin
      (method url-fetch)
      (uri (cran-uri "ape" version))
      (sha256
       (base32
-       "1n2q6rw85yq2kkyjagz2p33wvms4gdhv268b1b294gc6lzimyi8h"))))
+       "017jzwnknwxggpv9lkj9yyc66qv3mcl5psvbbszfivpmj26k79f9"))))
    (build-system r-build-system)
-   (propagated-inputs
-    `(("r-lattice" ,r-lattice)
-      ("r-nlme" ,r-nlme)))
+   ;(propagated-inputs
+   ; `(("r-lattice" ,r-lattice)
+   ;   ("r-nlme" ,r-nlme)))
    (home-page "http://ape-package.ird.fr/")
    (synopsis
     "Analyses of Phylogenetics and Evolution")
@@ -1711,6 +1711,50 @@ graph (SdBG) to achieve low memory assembly.")
     (synopsis "")
     (description "")
     (license #f)))
+
+(define-public r-phangorn
+  (package
+   (name "r-phangorn")
+   (version "2.1.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "phangorn" version))
+     (sha256
+      (base32
+       "1klc2s6crwmg30psgf1xkchyjqbksl7cdlnk3b0ypdw7pd3js5im"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-ape" ,r-ape)
+      ("r-fastmatch" ,r-fastmatch)
+      ("r-igraph" ,r-igraph)
+      ("r-magrittr" ,r-magrittr)
+      ("r-quadprog" ,r-quadprog)
+      ("r-rcpp" ,r-rcpp)))
+   (home-page
+    "https://github.com/KlausVigo/phangorn")
+   (synopsis "Phylogenetic Analysis in R")
+   (description
+    "Phylogenetic analysis in R: Estimation of phylogenetic trees and networks using Maximum Likelihood, Maximum Parsimony, distance methods and Hadamard conjugation.")
+   (license license:gpl2+)))
+
+(define-public r-fastmatch
+  (package
+   (name "r-fastmatch")
+   (version "1.0-4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "fastmatch" version))
+     (sha256
+      (base32
+       "16gfizfb1p7rjybrfm57nb6hdm30iirbppva8p8xf8pndz35fjbs"))))
+   (build-system r-build-system)
+   (home-page "http://www.rforge.net/fastmatch")
+   (synopsis "Fast match() function")
+   (description
+    "Package providing a fast match() replacement for cases that require repeated look-ups.  It is slightly faster that R's built-in match() function on first match against a table, but extremely fast on any subsequent lookup as it keeps the hash table in memory.")
+   (license license:gpl2)))
 
 (define-public sammy
   (let ((commit "9b71994902440c02c9b4a5c1e459ff522170b58a"))

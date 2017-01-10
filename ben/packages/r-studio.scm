@@ -61,7 +61,7 @@
   #:use-module (gnu packages swig)
   #:use-module (gnu packages tbb)
   #:use-module (gnu packages texinfo)
-  #:use-module (gnu packages tcsh)
+  #:use-module (gnu packages shells)
   #:use-module (gnu packages textutils)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages valgrind)
@@ -77,7 +77,7 @@
   #:use-module (gnu packages bioinformatics))
 
 
-;; Commmented out because gstreamer 0.10 is not present
+;; Commmented out because gstreamer 0.10 is not present, this package does not work.
 ;; This is a terrible package. It does not work inside a container, but does
 ;; seem to work outside, on Ubuntu 16.04 at least. It probably will not work on
 ;; other systems, and should be replaced with a package built properly from
@@ -85,7 +85,7 @@
 ;; (define-public r-studio-binary
 ;;   (package
 ;;     (name "r-studio-binary")
-;;     (version "0.99.903")
+;;     (version "1.0.136")
 ;;     (source (origin
 ;;               (method url-fetch)
 ;;               (uri (string-append
@@ -93,7 +93,7 @@
 ;;                     version "-amd64-debian.tar.gz"))
 ;;               (sha256
 ;;                (base32
-;;                 "044p9fr14s05nrmlxh860vz2h4qzn6jq2mlgnkidvnkan9pz7xhw"))))
+;;                 "1ghdavahwn4qgn7dnd0yjz7i5lgyxcdpfi4bm5bsmj6vxwfj3sg2"))))
 ;;     (build-system gnu-build-system)
 ;;     (arguments
 ;;      `(#:phases
@@ -109,7 +109,8 @@
 ;;                      "patchelf" "--set-rpath"
 ;;                      (string-append
 ;;                       (assoc-ref inputs "libxslt") "/lib:"
-;;                       (assoc-ref inputs "gstreamer") "/lib")
+;;                       ;(assoc-ref inputs "gstreamer") "/lib"
+;;                       )
 ;;                      "bin/libQt5WebKit.so.5"))))
 ;;          (replace 'install
 ;;                   (lambda* (#:key outputs #:allow-other-keys)
@@ -121,7 +122,8 @@
 ;;      `(("patchelf" ,patchelf)))
 ;;     (inputs
 ;;      `(("libxslt" ,libxslt)
-;;        ("gstreamer" ,gstreamer-0.10)))
+;;        ;("gstreamer" ,gstreamer-0.10) ; Needed usually but works on Ubuntu.
+;;        ))
 ;;     (home-page "")
 ;;     (synopsis "")
 ;;     (description

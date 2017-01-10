@@ -3374,3 +3374,44 @@ classification of viral contigs.")
      "ExaBayes is a software package for Bayesian tree inference. It is
 particularly suitable for large-scale analyses on computer clusters.")
     (license license:gpl3+))) ;?
+
+(define-public ruby-bio-ipcress
+  (package
+   (name "ruby-bio-ipcress")
+   (version "0.1.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "bio-ipcress" version))
+     (sha256
+      (base32
+       "0z9pgh4lx8mmrihrav4nxsjk4fn477jdkf96vqq98sc6xym3l1j3"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f ; requires jeweler.
+      #:phases
+      (modify-phases %standard-phases
+        (add-after 'install 'wrap-programs
+          (lambda* (#:key inputs outputs #:allow-other-keys)
+            (let* ((out (assoc-ref outputs "out"))
+                   (binary (string-append out "/bin/pcr.rb"))
+                   (path (string-append (assoc-ref inputs "exonerate") "/bin"))
+                   (gem_home (getenv "GEM_HOME")))
+              (wrap-program binary
+                `("GEM_HOME" ":" prefix (,(getenv "GEM_HOME"))))
+              (wrap-program binary
+                `("PATH" ":" prefix (,path)))
+              #t))))))
+   ;(native-inputs
+   ; `(("bundler" ,bundler)
+                                        ;   ("ruby-shoulda" ,ruby-shoulda)))
+   (inputs
+    `(("exonerate" ,exonerate)))
+   (propagated-inputs
+    `(("bioruby" ,bioruby)))
+   (synopsis
+    "")
+   (description
+    "")
+   (home-page "")
+   (license #f)))

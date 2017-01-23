@@ -1534,10 +1534,10 @@ help a user to decide whether their sample has a known or novel K locus.")
                  (wrap-program graftm `("PATH" ":" prefix (,path))))
                #t))))))))
 
-(define-public megahit
+(define-public megahit ; Contains bundled code, at least cityhash
   (package
     (name "megahit")
-    (version "1.0.6")
+    (version "1.1.1")
     (source
      (origin
        (method url-fetch)
@@ -1545,7 +1545,7 @@ help a user to decide whether their sample has a known or novel K locus.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "049c0p5k8vp08fgdn976x6n6025lip9c0mbv1zr6j771869f7p8n"))))
+         "11lz0p3bj4w14pwac1dkmpc77yi3i3552cif4shdr85nrdxbkih9"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -3415,3 +3415,30 @@ particularly suitable for large-scale analyses on computer clusters.")
     "")
    (home-page "")
    (license #f)))
+
+(define-public mglex
+  (package
+   (name "mglex")
+   (version "0.1.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "MGLEX" version))
+     (sha256
+      (base32
+       "0zflrry81afdf2yi4cqn9l2k20wzzwa9bxjxrqzyxr2ym5xk829y"))))
+   (build-system python-build-system)
+   (native-inputs
+    `(("python-setuptools-scm" ,python-setuptools-scm)))
+   (inputs
+    `(("python-numpy" ,python-numpy)
+      ("python-scipy" ,python-scipy)
+      ("python-docopt" ,python-docopt)))
+   (home-page "https://github.com/fungs/mglex")
+   (synopsis "MetaGenome Likelihood EXtractor")
+   (description
+    "MGLEX provides a probabilistic model to classify nucleotide sequences in
+metagenome samples.  It was developed as a framework to help researchers
+reconstruct individual genomes from such datasets using custom workflows and to
+give developers the possibility to integrate the model into their programs.")
+   (license license:gpl3)))

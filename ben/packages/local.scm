@@ -52,7 +52,6 @@
   #:use-module (gnu packages man)
   #:use-module (gnu packages machine-learning)
   #:use-module (gnu packages maths)
-  #:use-module (gnu packages mit-krb5)
   #:use-module (gnu packages mpi)
   #:use-module (gnu packages ncurses)
   #:use-module (gnu packages ocaml)
@@ -286,7 +285,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 (define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
-    (version "3.9.0")
+    (version "3.10.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://spades.bioinf.spbau.ru/release"
@@ -294,7 +293,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "0agdf9mf0p350mi8cp55q0vlk7wsjrj38hrbh96mia2sjk2nlhvp"))))
+                "0h8bpnjs27cjdhs73z0zl01fgblks69g5zc5iilv7zys45h6hi6d"))))
     (build-system cmake-build-system)
     (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
      `(("zlib" ,zlib)
@@ -315,7 +314,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
              (zero? (system*
                      (string-append (assoc-ref outputs "out") "/bin/spades.py")
                      "--test")))))))
-    (home-page "http://bioinf.spbau.ru/en/spades")
+    (home-page "http://cab.spbu.ru/software/spades")
     (synopsis "A single-cell and isolate genome assembler")
     (description
      "SPAdes – St. Petersburg genome assembler – is intended for both standard

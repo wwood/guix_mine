@@ -25,7 +25,7 @@
   #:use-module (gnu packages databases)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
-  #:use-module (gnu packages flex) 
+  #:use-module (gnu packages flex)
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
@@ -36,6 +36,7 @@
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
   #:use-module (gnu packages gtk)
+  #:use-module (gnu packages haskell)
   #:use-module (gnu packages icu4c)
   #:use-module (gnu packages image)
   #:use-module (gnu packages java)
@@ -55,7 +56,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
-;  #:use-module (gnu packages qt)
+  #:use-module (gnu packages qt)
   #:use-module (gnu packages ruby)
   #:use-module (gnu packages statistics)
   #:use-module (gnu packages swig)
@@ -177,157 +178,16 @@
 ;;         ("glib" ,glib "bin")
 ;;         ("python" ,python-2)))))
 
-(define-public qt-5.5
-  (package
-    (name "qt")
-    (version "5.5.1")
-    (source (origin
-             (method url-fetch)
-             (uri
-               (string-append
-                 "http://download.qt.io/official_releases/qt/"
-                 (version-major+minor version)
-                 "/" version
-                 "/single/qt-everywhere-opensource-src-"
-                 version ".tar.xz"))
-             (sha256
-               (base32
-                 "0615cn4n3n78v48lnmapqz2jizm2pzrjwvsjlnsf4awrsiiqw0kg"))
-             (modules '((guix build utils)))
-             (snippet
-              '(begin
-                ;; Remove qtwebengine, which relies on a bundled copy of
-                ;; chromium. Not only does it fail compilation in qt 5.5:
-                ;;    3rdparty/chromium/ui/gfx/codec/jpeg_codec.cc:362:10:
-                ;;    error: cannot convert ‘bool’ to ‘boolean’ in return
-                ;; it might also pose security problems.
-                ;; Alternatively, we could use the "-skip qtwebengine"
-                ;; configuration option.
-                (delete-file-recursively "qtwebengine")
-                ;; Remove one of the two bundled harfbuzz copies in addition
-                ;; to passing "-system-harfbuzz".
-                (delete-file-recursively "qtbase/src/3rdparty/harfbuzz-ng")
-                ;; Remove the bundled sqlite copy in addition to
-                ;; passing "-system-sqlite".
-                (delete-file-recursively "qtbase/src/3rdparty/sqlite")))))
-    (build-system gnu-build-system)
-    (propagated-inputs
-     `(("mesa" ,mesa)))
-    (inputs
-     `(("alsa-lib" ,alsa-lib)
-       ("dbus" ,dbus)
-       ("cups" ,cups)
-       ("expat" ,expat)
-       ("fontconfig" ,fontconfig)
-       ("freetype" ,freetype)
-       ("glib" ,glib)
-       ("harfbuzz" ,harfbuzz)
-       ("icu4c" ,icu4c)
-       ("libjpeg" ,libjpeg)
-       ("libmng" ,libmng)
-       ("libpci" ,pciutils)
-       ("libpng" ,libpng)
-       ("libx11" ,libx11)
-       ("libxcomposite" ,libxcomposite)
-       ("libxcursor" ,libxcursor)
-       ("libxfixes" ,libxfixes)
-       ("libxi" ,libxi)
-       ("libxinerama" ,libxinerama)
-       ("libxkbcommon" ,libxkbcommon)
-       ("libxml2" ,libxml2)
-       ("libxrandr" ,libxrandr)
-       ("libxrender" ,libxrender)
-       ("libxslt" ,libxslt)
-       ("libxtst" ,libxtst)
-       ("mtdev" ,mtdev)
-       ("mysql" ,mysql)
-       ("nss" ,nss)
-       ("openssl" ,openssl)
-       ("postgresql" ,postgresql)
-       ("pulseaudio" ,pulseaudio)
-       ("pcre" ,pcre)
-       ("sqlite" ,sqlite)
-       ("udev" ,eudev)
-       ("unixodbc" ,unixodbc)
-       ("xcb-util" ,xcb-util)
-       ("xcb-util-image" ,xcb-util-image)
-       ("xcb-util-keysyms" ,xcb-util-keysyms)
-       ("xcb-util-renderutil" ,xcb-util-renderutil)
-       ("xcb-util-wm" ,xcb-util-wm)
-       ("zlib" ,zlib)))
-    (native-inputs
-     `(("bison" ,bison)
-       ("flex" ,flex)
-       ("gperf" ,gperf)
-       ("perl" ,perl)
-       ("pkg-config" ,pkg-config)
-       ("python" ,python-2)
-       ("ruby" ,ruby)
-       ("which" ,(@ (gnu packages base) which))))
-    (arguments
-     `(;; FIXME: Disabling parallel building is a quick hack to avoid the
-       ;; failure described in
-       ;; https://lists.gnu.org/archive/html/guix-devel/2016-01/msg00837.html
-       ;; A more structural fix is needed.
-       #:parallel-build? #f
-       #:phases
-         (alist-replace
-          'configure
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let ((out (assoc-ref outputs "out")))
-              (substitute* '("configure" "qtbase/configure")
-                (("/bin/pwd") (which "pwd")))
-              (substitute* "qtbase/src/corelib/global/global.pri"
-                (("/bin/ls") (which "ls")))
-              ;; do not pass "--enable-fast-install", which makes the
-              ;; configure process fail
-              (zero? (system*
-                      "./configure"
-                      "-verbose"
-                      "-prefix" out
-                      "-opensource"
-                      "-confirm-license"
-                      ;; Most "-system-..." are automatic, but some use
-                      ;; the bundled copy by default.
-                      "-system-sqlite"
-                      "-system-harfbuzz"
-                      ;; explicitly link with openssl instead of dlopening it
-                      "-openssl-linked"
-                      ;; explicitly link with dbus instead of dlopening it
-                      "-dbus-linked"
-                      ;; drop special machine instructions not supported
-                      ;; on all instances of the target
-                      ,@(if (string-prefix? "x86_64"
-                                            (or (%current-target-system)
-                                                (%current-system)))
-                            '()
-                            '("-no-sse2"))
-                      "-no-sse3"
-                      "-no-ssse3"
-                      "-no-sse4.1"
-                      "-no-sse4.2"
-                      "-no-avx"
-                      "-no-avx2"
-                      "-no-mips_dsp"
-                      "-no-mips_dspr2"))))
-          %standard-phases)))
-    (home-page "http://qt-project.org/")
-    (synopsis "Cross-platform GUI library")
-    (description "Qt is a cross-platform application and UI framework for
-developers using C++ or QML, a CSS & JavaScript like language.")
-    (license license:lgpl2.1)
-
-    ;; Qt 4: 'QBasicAtomicPointer' leads to build failures on MIPS;
-    ;; see <http://hydra.gnu.org/build/112828>.
-    ;; Qt 5: assembler error; see <http://hydra.gnu.org/build/112526>.
-    (supported-systems (delete "mips64el-linux" %supported-systems))))
-
 ;; Does not work due to dependency hole - installer expects to be able to
-;; download many things (including build artifacts) as dependencies. Pain.
+;; download many things (including build artifacts) as dependencies. Pain. Some
+;; dependencies are already packaged by Guix e.g. pandoc, for these the file
+;; https://github.com/rstudio/rstudio/blob/master/src/cpp/session/CMakeLists.txt
+;; can probably be patched to avoid it looking for and installing these
+;; packages, since it expects them to be bundled.
 (define-public r-studio
   (package
     (name "r-studio")
-    (version "0.99.1279")
+    (version "1.1.50")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -336,39 +196,49 @@ developers using C++ or QML, a CSS & JavaScript like language.")
 	      (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1q7ssx0b2gmvvjh3fzagybfcjfh9cq4ml4xcinzj6ngh3g7kyfi7"))))
+                "1ls6sd11r2kfvc91k6kwp3qykqb0h60cn3zlfm2afzvnc8lbbnlm"))))
     (build-system cmake-build-system)
     (arguments
      `(#:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'prepare-dependencies
            (lambda* (#:key source inputs #:allow-other-keys)
-             (let ((dictionaries "dependencies/common/dictionaries"))
-               (mkdir-p dictionaries)
-               (with-directory-excursion dictionaries
-                                         (zero? (system* "unzip" (assoc-ref
-                                                                  inputs
-                                                                  "dictionaries"))))
-               ))))))
-                                   
-                                   
+             (let ((common "dependencies/common/"))
+               (for-each
+                (lambda (dependency)
+                  (let ((directory (string-append common dependency)))
+                    (mkdir-p directory)
+                    (with-directory-excursion
+                     directory
+                     (system* "unzip" (assoc-ref inputs dependency)))))
+                '("dictionaries" "mathjax-26"))))))))
     (native-inputs
      `(("unzip" ,unzip)))
     (inputs
-     `(("qt" ,qt-5.5) ; After this webkit is missing and cannot be built
-                      ; according to the ML, so have to use v5.5
+     `(("qt" ,qt) ; TODO: split into smaller components?
+       ("qtwebkit" ,qtwebkit)
        ("r" ,r)
        ("zlib" ,zlib)
        ("boost" ,boost)
        ("openssl" ,openssl)
        ("linux-pam" ,linux-pam)
+       ("pandoc" ,ghc-pandoc)
        ("dictionaries" ; TODO: replace this as it is effectively bundled code.
         ,(origin
            (method url-fetch)
            (uri "https://s3.amazonaws.com/rstudio-dictionaries/core-dictionaries.zip")
            (sha256
             (base32
-             "153lg3ai97qzbqp6zjg10dh3sfvz80v42cjw45zwz7gv1risjha3"))))))
+             "153lg3ai97qzbqp6zjg10dh3sfvz80v42cjw45zwz7gv1risjha3"))))
+       ("mathjax-26" ; TODO: This is a separate package, but what is copied in is
+                  ; actually minified so unsuitable for Guix. Needs to be
+                  ; packaged through npm?
+        ,(origin
+          (method url-fetch)
+          (uri "https://s3.amazonaws.com/rstudio-buildtools/mathjax-26.zip")
+          (sha256
+           (base32
+            "0wbcqb9rbfqqvvhqr1pbqax75wp8ydqdyhp91fbqfqp26xzjv6lk"))))))
     (home-page "")
     (synopsis "")
     (description

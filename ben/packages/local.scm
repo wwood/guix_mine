@@ -3441,3 +3441,57 @@ metagenome samples.  It was developed as a framework to help researchers
 reconstruct individual genomes from such datasets using custom workflows and to
 give developers the possibility to integrate the model into their programs.")
    (license license:gpl3)))
+
+(define-public r-googlevis
+  (package
+    (name "r-googlevis")
+    (version "0.6.2")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (cran-uri "googleVis" version))
+       (sha256
+        (base32
+         "1idnp9ndgg2dwybdpw7q3pkaw9kw2vy2xkls9qykrpz1p6nf3mn1"))))
+    (properties `((upstream-name . "googleVis")))
+    (build-system r-build-system)
+    (propagated-inputs `(("r-jsonlite" ,r-jsonlite)))
+    (home-page
+     "https://github.com/mages/googleVis#googlevis")
+    (synopsis "R Interface to Google Charts")
+    (description
+     "R interface to Google's chart tools, allowing users to create interactive charts based on data frames.  Charts are displayed locally via the R HTTP help server.  A modern browser with an Internet connection is required and for some charts a Flash player.  The data remains local and is not uploaded to Google.")
+    (license license:gpl2+)))
+
+(define-public binning-refiner
+  (let ((commit "4421a0471fbb3fc5e0291c04073364a0732ced35"))
+    (package
+      (name "binning-refiner")
+      (version "1.1")
+      (source
+      ; (local-file "/home/ben/git/Binning_refiner" #:recursive? #t))
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/wwood/Binning_refiner.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "06alzym65d07nr79fdxkv5xilh57nq0rp3j0yx2ims33qxx6szrv"))))
+      (build-system python-build-system)
+      (propagated-inputs
+       `(("r" ,r)
+         ("r-googlevis" ,r-googlevis)
+         ("python-rpy2" ,python-rpy2)
+         ("python-numpy" ,python-numpy)
+         ("python-matplotlib" ,python-matplotlib)
+         ("python-biopython" ,python-biopython)
+         ("coreutils" ,coreutils) ; 'rm' is used in Binning_refiner, at least.
+         ("checkm" ,checkm)))
+      (home-page "https://github.com/songweizhi/Binning_refiner")
+      (synopsis "Binning refiner")
+      (description
+       "Improving genome bins through the combination of different binning
+programs.")
+      (license license:gpl3+))))

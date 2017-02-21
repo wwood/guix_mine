@@ -858,10 +858,13 @@ microbial population studies.")
          ("python-pytz" ,python2-pytz)
          ("python-dendropy" ,python2-dendropy)
          ("python-pysam" ,python2-pysam)))
-      (home-page "")
-      (synopsis "")
+      (home-page "http://huttenhower.sph.harvard.edu/metaphlan2")
+      (synopsis "Profile the composition of microbial communities with metagenomes")
       (description
-       "")
+       "MetaPhlAn is a computational tool for profiling the composition of
+microbial communities from metagenomic shotgun sequencing data.  MetaPhlAn relies
+on unique clade-specific marker genes identified from ~17,000 reference
+genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
       (license license:expat)))) ;?
 
 (define-public barrnap

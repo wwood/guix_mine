@@ -187,7 +187,7 @@ on pairwise structural alignment algorithm of SCARNA.")
                    (let ((bin (string-append
                                (assoc-ref outputs "out") "/bin"))
                          (man (string-append
-                               (assoc-ref outputs "out") "share/man/man1")))                   
+                               (assoc-ref outputs "out") "share/man/man1")))
                      (mkdir-p bin)
                      (copy-file "aragorn"
                                 (string-append bin "/aragorn"))
@@ -3498,3 +3498,51 @@ give developers the possibility to integrate the model into their programs.")
        "Improving genome bins through the combination of different binning
 programs.")
       (license license:gpl3+))))
+
+(define-public azure-cli ; Does not work because this is a dependency hole.
+  (package
+    (name "azure-cli")
+    (version "0.1.2rc1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "azure-cli" version))
+       (sha256
+        (base32
+         "05vjmni9722byxhhyfjgnglm2g28b43msj03v4009dx3lnp4ykb9"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'wrap-binary
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out  (assoc-ref outputs "out"))
+                             (bin  (string-append out "/bin/"))
+                             (path (getenv "PATH")))
+                        (wrap-program (string-append bin "/az")
+                          `("PATH" ":" prefix
+                            (,path))))
+                      #t))
+         (add-after 'wrap-binary 'check-installed
+                    (lambda* (#:key outputs #:allow-other-keys
+                      (let* ((out (assoc-ref outputs "out"))
+                             (az (string-append out "/bin/az")))
+                        (zero? (system* az "-h")))))))))
+    (inputs
+     `(("python-wrapper" ,python-wrapper)))
+    (home-page "")
+    (synopsis "")
+    (description
+     "")
+    (license license:expat)))
+
+;; If there are errors making the DB, run "rm -rf ~/git/singlem/singlem/db;
+;; python setup.py sdist; rm -rf singlem.egg-info/"
+(define-public singlem-dev
+  (package
+   (inherit singlem)
+   (name "singlem-dev")
+   (version "0.0.0.dev")
+   (source
+    (local-file (string-append (getenv "HOME") "/git/singlem")
+                #:recursive? #t))))

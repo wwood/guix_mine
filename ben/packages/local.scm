@@ -20,6 +20,7 @@
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages bootstrap)
+  #:use-module (gnu packages check)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages curl)
@@ -3472,7 +3473,6 @@ give developers the possibility to integrate the model into their programs.")
       (name "binning-refiner")
       (version "1.1")
       (source
-      ; (local-file "/home/ben/git/Binning_refiner" #:recursive? #t))
        (origin
          (method git-fetch)
          (uri (git-reference
@@ -3546,3 +3546,58 @@ programs.")
    (source
     (local-file (string-append (getenv "HOME") "/git/singlem")
                 #:recursive? #t))))
+
+(define-public mash-next
+  (let ((commit "0a9a3f320ccdc598d9806e574334d71a3431193b"))
+    (package
+     (inherit mash)
+     (name "mash-next")
+     (version (string-append "1.1.1-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/marbl/Mash.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "0gb8i0p7ya5rcah5y233y3ix06f6lw4sf537r1waznx69642yn57"))
+              (modules '((guix build utils)))
+              (snippet
+               ;; Delete bundled kseq.
+               ;; TODO: Also delete bundled murmurhash and open bloom filter.
+               '(delete-file "src/mash/kseq.h")))))))
+
+(define-public mmseqs ; Uses -march=native but probably works. For tests need updated googletest in guix proper I'd say. Also should patch in the git commit to the cmake system somehow. Bundles a few libraries
+  ;; There are no releases so we package from git.
+  (let ((commit "b69fcd43f669b19a023123e1e97333a4284e3dbf"))
+    (package
+     (name "mmseqs")
+     (version (string-append "2-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/soedinglab/mmseqs2.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1adjzv8jh1plswwzmz3r2d70ksmkwinl34hwgvb7n7kv87z39q3r"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:tests? #f)) ; needs googlemock
+     (native-inputs
+      `(("xxd" ,vim)
+        ("googletest" ,googletest)))
+     (home-page "http://mmseqs.com")
+     (synopsis "Fast and sensitive protein search and clustering")
+     (description
+      "MMseqs2 (Many-against-Many searching) is a software suite to search and
+cluster huge protein sequence sets.  The software is designed to run on
+multiple cores and servers and exhibits very good scalability.  MMseqs2 can run
+10000 times faster than BLAST.  At 100 times its speed it achieves the same
+sensitivity.  It can also perform profile searches with the same sensitivity as
+PSI-BLAST but at around 270 times its speed.")
+     (license license:gpl3+)))) ; need to check actual code

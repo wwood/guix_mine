@@ -1181,6 +1181,13 @@ like HTSeq, pysam, numpy and scipy.")
         (base32
          "0z35bkk9phs40lf5061k1plhjdl5fskm0dmdikrsqi1bjihnxp8w"))))
     (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           ;; The default nose.collector in setup.py incorrectly runs the
+           ;; tests.
+           (lambda _ (zero? (system* "nosetests" "-x")))))))
     (native-inputs
      `(("python-nose" ,python-nose)))
     (propagated-inputs
@@ -3587,7 +3594,30 @@ programs.")
          "1adjzv8jh1plswwzmz3r2d70ksmkwinl34hwgvb7n7kv87z39q3r"))))
      (build-system cmake-build-system)
      (arguments
-      `(#:tests? #f)) ; needs googlemock
+      ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
+      `(#:tests? #f
+        #:phases
+        (modify-phases %standard-phases
+          (add-after 'unpack 'delete-bundled-code
+            (lambda _
+              ;; Delete bundled gzstream. Other entries in the lib/
+              ;; directory appear not to have any primary sources, or in the
+              ;; case of kseq, appears to be either out of date or has been
+              ;; modified relative to its original form.
+              ;(delete-file "lib/kseq/kseq.h")
+              (delete-file-recursively "lib/gzstream")
+              ;; (substitute* '("src/commons/A3MReader.cpp"
+              ;;                "src/commons/Util.cpp"
+              ;;                "src/util/createdb.cpp"
+              ;;                "src/util/extractdomains.cpp"
+              ;;                "src/test/TestDiagonalScoringPerformance.cpp"
+              ;;                "src/test/TestAlignmentPerformance.cpp")
+              ;;   (("^#include \\\"kseq.h\\\"\n$")
+              ;;    "#include \"htslib/kseq.h\"\n"))
+              #t)))))
+     (inputs
+      `(("htslib" ,htslib)
+        ("gzstream" ,gzstream)))
      (native-inputs
       `(("xxd" ,vim)
         ("googletest" ,googletest)))

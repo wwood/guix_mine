@@ -3631,3 +3631,60 @@ multiple cores and servers and exhibits very good scalability.  MMseqs2 can run
 sensitivity.  It can also perform profile searches with the same sensitivity as
 PSI-BLAST but at around 270 times its speed.")
      (license license:gpl3+)))) ; need to check actual code
+
+(define-public binsanity ; in process
+  (package
+   (name "binsanity")
+   (version "0.2.5.5")
+   (source
+    (origin
+     (method url-fetch)
+      (uri (pypi-uri "Binsanity" version))
+      (sha256
+        (base32
+          "0w9izgm3vd088rlaphmrjil9mjn5njjc14y2n1hg6idmk7cypshy"))))
+   (build-system python-build-system)
+   (arguments
+    `(#:python ,python-2 ; python 2 only.
+      #:phases
+      (modify-phases %standard-phases
+        (add-after 'unpack 'fix-setup.py
+          (lambda _
+            ;; One of the dependencies checkm-genome is not required as a
+            ;; Python library.
+            (substitute* "setup.py" ((".*install_requires.*") ""))
+            #t))
+      (add-after 'install 'wrap-programs
+        (lambda* (#:key outputs #:allow-other-keys)
+          (let* ((out  (assoc-ref outputs "out"))
+                 (bin  (string-append out "/bin"))
+                 (path (getenv "PATH")))
+            (for-each (lambda (file)
+                        (wrap-program (string-append bin "/" file)
+                                      `("PATH" ":" prefix (,path))))
+                      '("bin_evaluation"
+                        "Binsanity"
+                        "Binsanity-lc"
+                        "Binsanity-profile"
+                        "Binsanity-refine"
+                        "Binsanity-wf"
+                        "checkm_analysis"
+                        "get-ids"
+                        "transform-coverage-profile")))
+          #t)))))
+   (inputs
+    `(("python2-numpy" ,python2-numpy)
+        ("python2-scikit-learn" ,python2-scikit-learn)
+        ("python2-biopython" ,python2-biopython)
+        ("bedtools" ,bedtools)
+        ("python2-pandas" ,python2-pandas)
+        ("subread" ,subread)
+        ("bowtie" ,bowtie)
+        ("samtools" ,samtools)
+        ("checkm" ,checkm)))
+     (home-page "https://github.com/edgraham/BinSanity")
+     (synopsis "Unsupervised clustering of environmental microbial assemblies")
+     (description
+      "BinSanity contains a suite a scripts designed to cluster contigs
+generated from metagenomic assembly into putative genomes.")
+     (license license:gpl3)))

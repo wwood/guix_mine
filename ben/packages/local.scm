@@ -3605,7 +3605,7 @@ programs.")
               ;; case of kseq, appears to be either out of date or has been
               ;; modified relative to its original form.
               ;(delete-file "lib/kseq/kseq.h")
-              (delete-file-recursively "lib/gzstream")
+              ;; (delete-file-recursively "lib/gzstream")
               ;; (substitute* '("src/commons/A3MReader.cpp"
               ;;                "src/commons/Util.cpp"
               ;;                "src/util/createdb.cpp"

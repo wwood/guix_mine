@@ -3688,3 +3688,44 @@ PSI-BLAST but at around 270 times its speed.")
       "BinSanity contains a suite a scripts designed to cluster contigs
 generated from metagenomic assembly into putative genomes.")
      (license license:gpl3)))
+
+(define-public canu ; Copied from Marius Bakke
+  (package
+    (name "canu")
+    (version "1.4")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "https://github.com/marbl/canu"
+                                  "/archive/v" version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1amffqhn7cq42id13pm514iymf8v1dbk0dg4dk854dqb5wmjw3hp"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; there are no tests
+       #:phases
+       (modify-phases %standard-phases
+         ;; hijack configure phase to change to Makefile directory
+         (replace 'configure
+           (lambda _ (chdir "src")))
+         ;; no "install" target
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((bin (string-append (assoc-ref outputs "out")
+                                       "/bin")))
+               (mkdir-p bin)
+               (copy-recursively "../Linux-amd64/bin" bin)))))))
+    (inputs
+     `(("perl", perl)))
+    (propagated-inputs
+     `(("jre", icedtea-8)))
+    (supported-systems '("x86_64-linux")) ;; TODO: arm support
+    (home-page "https://github.com/marbl/canu")
+    (synopsis "Single molecule sequence assembler for genomes large and small")
+    (description
+     "Canu is a fork of the Celera Assembler, designed for high-noise single-molecule
+sequencing.  Canu is a hierarchical assembly pipeline which runs in four steps:
+detect overlys in high-noise sequences using MHAP; generate corrected sequence consensus;
+trim corrected sequences; and assemble trimmed corrected sequences.")
+(license license:gpl2)))

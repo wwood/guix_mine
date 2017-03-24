@@ -3632,7 +3632,7 @@ sensitivity.  It can also perform profile searches with the same sensitivity as
 PSI-BLAST but at around 270 times its speed.")
      (license license:gpl3+)))) ; need to check actual code
 
-(define-public binsanity ; in process
+(define-public binsanity ; in process?
   (package
    (name "binsanity")
    (version "0.2.5.5")
@@ -3674,17 +3674,144 @@ PSI-BLAST but at around 270 times its speed.")
           #t)))))
    (inputs
     `(("python2-numpy" ,python2-numpy)
-        ("python2-scikit-learn" ,python2-scikit-learn)
-        ("python2-biopython" ,python2-biopython)
-        ("bedtools" ,bedtools)
-        ("python2-pandas" ,python2-pandas)
-        ("subread" ,subread)
-        ("bowtie" ,bowtie)
-        ("samtools" ,samtools)
-        ("checkm" ,checkm)))
-     (home-page "https://github.com/edgraham/BinSanity")
-     (synopsis "Unsupervised clustering of environmental microbial assemblies")
-     (description
-      "BinSanity contains a suite a scripts designed to cluster contigs
+      ("python2-scikit-learn" ,python2-scikit-learn)
+      ("python2-biopython" ,python2-biopython)
+      ("bedtools" ,bedtools)
+      ("python2-pandas" ,python2-pandas)
+      ("subread" ,subread)
+      ("bowtie" ,bowtie)
+      ("samtools" ,samtools)
+      ("checkm" ,checkm)))
+   (home-page "https://github.com/edgraham/BinSanity")
+   (synopsis "Unsupervised clustering of environmental microbial assemblies")
+   (description
+    "BinSanity contains a suite a scripts designed to cluster contigs
 generated from metagenomic assembly into putative genomes.")
-     (license license:gpl3)))
+   (license license:gpl3)))
+
+(define-public pullseq
+  (package
+   (name "pullseq")
+   (version "1.0.2")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append "https://github.com/bcthomas/pullseq/archive/"
+                                version ".tar.gz"))
+            (file-name (string-append name "-" version ".tar.gz"))
+            (sha256
+             (base32
+              "0py8hsspvwjlckg2xi7jcpj0frrp2qbmsy9x55fx0knnwbhdg5d2")))) ; TODO: remove bundled kseq, uthash .h too
+   (build-system gnu-build-system)
+   (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'bootstrap
+           (lambda _
+             (zero? (system* "./bootstrap")))))))
+   (inputs
+    `(("pcre" ,pcre)
+      ("zlib" ,zlib)))
+   (native-inputs
+    `(("autoconf" ,autoconf)
+      ("automake" ,automake)
+      ("libtool" ,libtool)))
+   (home-page "https://github.com/bcthomas/pullseq")
+   (synopsis "Utility program for extracting sequences from fasta/q files")
+   (description
+    "Pullseq extracts sequences from a fasta and fastq files.  This program is
+fast, and can be useful in a variety of situations.  You can use it to extract
+sequences from one fasta/fastq file into a new file, given either a list of
+header IDs to include or a regular expression pattern to match.  Results can be
+included (default) or excluded, and they can additionally be filtered with
+minimum / maximum sequence lengths. Additionally, it can convert from fastq to
+fasta or visa-versa and can change the length of the output sequence lines.")
+   (license license:expat)))
+
+(define-public das
+  (let ((commit "309cea91f556e007e7433e7b231ddbf1c88cd922"))
+    (package
+     (name "das")
+     (version (string-append "1.0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/cmks/DAS_Tool.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1c172gbd4fyyiabnhdfkig4k3djf9b6yhc5sm53lxr58xjwvb1h3"))))
+     (build-system r-build-system)
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'check)
+          (replace 'install
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (site-library (string-append out "/site-library/"))
+                     (params (list "--install-tests"
+                                   (string-append "--library="site-library)
+                                   "--built-timestamp=1970-01-01"
+                                   "."))
+                       ;; Some R packages contain a configure script for which
+                       ;; the CONFIG_SHELL variable should be set.
+                       (setenv "CONFIG_SHELL" (which "bash"))
+                       (mkdir-p site-library)
+                       (zero? (apply
+                               system* (append
+                                        (list "R" "CMD" "INSTALL"
+                                              "package/DASTool_1.0.0.tar.gz")
+                                        params))))))
+          (add-after 'install 'install2
+                   (lambda* (#:key inputs outputs #:allow-other-keys)
+                     (let* ((out (assoc-ref outputs "out"))
+                            (bin (string-append out "/bin"))
+                            (das "DAS_Tool.sh")
+                            (src (string-append out "/src")))
+                       (copy-recursively "src" src)
+                       (substitute* das
+                         (("^DIR=.*") (string-append "DIR=" out "\n")))
+                       (substitute* das
+                         (("> /dev/null 2>&1") ""))
+                       (install-file das bin)
+                       (wrap-program (string-append bin "/" das)
+                         `("PATH" ":" prefix (,(getenv "PATH"))))
+                       (wrap-program (string-append bin "/" das)
+                         `("R_LIBS_SITE" ":" prefix
+                           (,(string-append
+                              out "/site-library:"
+                              (getenv "R_LIBS_SITE")))))
+                       ;; TODO: put into /share instead, requires patching the
+                       ;; file I guess
+                       (zero? (system* "unzip" "-d" out
+                                       (assoc-ref inputs "db-data")))))))))
+     (native-inputs
+      `(("unzip" ,unzip)
+        ("db-data"
+         ,(origin
+             (method url-fetch)
+             (uri "http://banfieldlab.berkeley.edu/~csieber/db.zip")
+             (file-name (string-append "das-db.zip"))
+             (sha256
+              (base32
+               "1g5kajrznid037sm5kang7yx56pm7ibmrr5v3v4i4qzkax0xh4zb"))))))
+     (inputs
+      `(("r" ,r)
+        ("r-ggplot2" ,r-ggplot2)
+        ("r-domc" ,r-domc)
+        ("r-data-table" ,r-data-table)
+        ("ruby" ,ruby)
+        ("prodigal" ,prodigal)
+        ("pullseq" ,pullseq)
+        ("diamond" ,diamond)
+        ("blast+" ,blast+)
+        ("perl" ,perl)))
+     (home-page "https://github.com/cmks/DAS_Tool")
+     (synopsis "DAS Tool")
+     (description
+      "Recovery of genomes from metagenomes via a dereplication, aggregation,
+and scoring strategy.")
+     (license license:expat)))) ; need to check actual code

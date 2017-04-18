@@ -3554,6 +3554,116 @@ programs.")
     (local-file (string-append (getenv "HOME") "/git/singlem")
                 #:recursive? #t))))
 
+(define-public fastspar
+  (package
+   (name "fastspar")
+   (version "0.0.3")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/scwatts/fastspar/archive/v"
+           version ".tar.gz"))
+     (file-name (string-append name "-" version ".tar.gz"))
+     (sha256
+      (base32
+       "1a6pz4mxzj8nb0rdqarvki5idm3z0jqmz0s472xll0blwan6r8cl"))))
+   (build-system gnu-build-system)
+   (inputs
+    `(("gfortran" ,gfortran)
+      ("gfortran" ,gfortran "lib")
+      ("armadillo" ,armadillo)
+      ("openmpi" ,openmpi)
+      ("gsl" ,gsl)
+      ("openblas" ,openblas)))
+   (home-page "https://github.com/scwatts/fastspar")
+   (synopsis "C++ implementation of the SparCC algorithm")
+   (description
+    "FastSpar is a C++ implementation of the SparCC algorithm for inferring
+correlation networks from genomic survey data.  FastSpar is up to several
+thousand times faster than the original Python2 implementation available at
+https://bitbucket.org/yonatanf/sparcc and uses much less memory.  Additionally,
+SparCC's method of p-value has been replaced with exact p-value calculation. ")
+   (license license:gpl3)))
+
+(define-public slimm
+  (package
+   (name "slimm")
+   (version "0.2.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/seqan/slimm/archive/v"
+           version ".tar.gz"))
+     (file-name (string-append name "-" version ".tar.gz"))
+     (patches (search-patches "slimm-cmakelists.patch"))
+     (sha256
+      (base32
+       "02cykm279aq3lgahim8vqkp19q8l3ca6iphx0d9w0n9xxfjdqbkq"))))
+   (build-system cmake-build-system)
+   (inputs
+    `(("zlib" ,zlib)
+      ("seqan" ,seqan-2)
+      ("gcc" ,gcc-5)
+      ("gcc" ,gcc-5 "lib")))
+   (home-page "https://github.com/seqan/slimm")
+   (synopsis "Species Level Identification of Microbes from Metagenomes")
+   (description
+    "SLIMM is a taxonomic profiling tool that investigates which microorganisms
+are present in a sequenced sample. SLIMM requires a BAM/SAM alignment file as an
+input. One can use a read mapper of choice to map raw reads obtained from a
+sequencing machine to obtain the BAM/SAM file required as input for SLIMM.")
+   (license license:bsd-3)))
+
+
+(define-public seqan-2
+  (package
+    (inherit seqan)
+    (version "2.3.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "http://packages.seqan.de/seqan-library/"
+                                  "seqan-library-" version ".tar.bz2"))
+              (sha256
+               (base32
+                "1yvyh3w8fg44s8wwdmcxf95xnslsj5fh5mdl685jmgwmry8a6ky0"))))))
+
+(define-public seqan-src
+  (package
+    (name "seqan-src")
+    (version "2.3.2")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append "http://packages.seqan.de/seqan-src/"
+                                  "seqan-src-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1a9nf7bba8yafzr4cf4aic0s00qzb1zs45qajia7jr5miimd9j47"))))
+    (build-system cmake-build-system)
+    (arguments
+     `(#:tests? #f ; Just a timestamp error now I think.
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'check 'set-home
+           (lambda _ (setenv "HOME" "/tmp") #t)))))
+    (native-inputs
+     `(("python" ,python-2)
+       ("python-nose" ,python2-nose)
+       ("python-sphinx" ,python2-sphinx)
+       ("python-sphinx-rtd-theme" ,python2-sphinx-rtd-theme)
+       ("boost" ,boost)
+       ("zlib" ,zlib)))
+    (home-page "http://www.seqan.de")
+    (synopsis "Library for nucleotide sequence analysis")
+    (description
+     "SeqAn is a C++ library of efficient algorithms and data structures for
+the analysis of sequences with the focus on biological data.  It contains
+algorithms and data structures for string representation and their
+manipulation, online and indexed string search, efficient I/O of
+bioinformatics file formats, sequence alignment, and more.")
+    (license license:bsd-3)))
+
 (define-public mash-next
   (let ((commit "0a9a3f320ccdc598d9806e574334d71a3431193b"))
     (package
@@ -3632,7 +3742,7 @@ sensitivity.  It can also perform profile searches with the same sensitivity as
 PSI-BLAST but at around 270 times its speed.")
      (license license:gpl3+)))) ; need to check actual code
 
-(define-public binsanity ; in process
+(define-public binsanity ; in process?
   (package
    (name "binsanity")
    (version "0.2.5.5")
@@ -3674,18 +3784,18 @@ PSI-BLAST but at around 270 times its speed.")
           #t)))))
    (inputs
     `(("python2-numpy" ,python2-numpy)
-        ("python2-scikit-learn" ,python2-scikit-learn)
-        ("python2-biopython" ,python2-biopython)
-        ("bedtools" ,bedtools)
-        ("python2-pandas" ,python2-pandas)
-        ("subread" ,subread)
-        ("bowtie" ,bowtie)
-        ("samtools" ,samtools)
-        ("checkm" ,checkm)))
-     (home-page "https://github.com/edgraham/BinSanity")
-     (synopsis "Unsupervised clustering of environmental microbial assemblies")
-     (description
-      "BinSanity contains a suite a scripts designed to cluster contigs
+      ("python2-scikit-learn" ,python2-scikit-learn)
+      ("python2-biopython" ,python2-biopython)
+      ("bedtools" ,bedtools)
+      ("python2-pandas" ,python2-pandas)
+      ("subread" ,subread)
+      ("bowtie" ,bowtie)
+      ("samtools" ,samtools)
+      ("checkm" ,checkm)))
+   (home-page "https://github.com/edgraham/BinSanity")
+   (synopsis "Unsupervised clustering of environmental microbial assemblies")
+   (description
+    "BinSanity contains a suite a scripts designed to cluster contigs
 generated from metagenomic assembly into putative genomes.")
      (license license:gpl3)))
 
@@ -3728,4 +3838,255 @@ generated from metagenomic assembly into putative genomes.")
 sequencing.  Canu is a hierarchical assembly pipeline which runs in four steps:
 detect overlys in high-noise sequences using MHAP; generate corrected sequence consensus;
 trim corrected sequences; and assemble trimmed corrected sequences.")
-(license license:gpl2)))
+    (license license:gpl2)))
+
+(define-public pullseq
+  (package
+   (name "pullseq")
+   (version "1.0.2")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append "https://github.com/bcthomas/pullseq/archive/"
+                                version ".tar.gz"))
+            (file-name (string-append name "-" version ".tar.gz"))
+            (sha256
+             (base32
+              "0py8hsspvwjlckg2xi7jcpj0frrp2qbmsy9x55fx0knnwbhdg5d2")))) ; TODO: remove bundled kseq, uthash .h too
+   (build-system gnu-build-system)
+   (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-before 'configure 'bootstrap
+           (lambda _
+             (zero? (system* "./bootstrap")))))))
+   (inputs
+    `(("pcre" ,pcre)
+      ("zlib" ,zlib)))
+   (native-inputs
+    `(("autoconf" ,autoconf)
+      ("automake" ,automake)
+      ("libtool" ,libtool)))
+   (home-page "https://github.com/bcthomas/pullseq")
+   (synopsis "Utility program for extracting sequences from fasta/q files")
+   (description
+    "Pullseq extracts sequences from a fasta and fastq files.  This program is
+fast, and can be useful in a variety of situations.  You can use it to extract
+sequences from one fasta/fastq file into a new file, given either a list of
+header IDs to include or a regular expression pattern to match.  Results can be
+included (default) or excluded, and they can additionally be filtered with
+minimum / maximum sequence lengths. Additionally, it can convert from fastq to
+fasta or visa-versa and can change the length of the output sequence lines.")
+   (license license:expat)))
+
+(define-public das
+  (let ((commit "309cea91f556e007e7433e7b231ddbf1c88cd922"))
+    (package
+     (name "das")
+     (version (string-append "1.0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/cmks/DAS_Tool.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1c172gbd4fyyiabnhdfkig4k3djf9b6yhc5sm53lxr58xjwvb1h3"))))
+     (build-system r-build-system)
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases
+          (delete 'configure)
+          (delete 'check)
+          (replace 'install
+            (lambda* (#:key inputs outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (site-library (string-append out "/site-library/"))
+                     (params (list "--install-tests"
+                                   (string-append "--library="site-library)
+                                   "--built-timestamp=1970-01-01"
+                                   ".")))
+                       ;; Some R packages contain a configure script for which
+                       ;; the CONFIG_SHELL variable should be set.
+                       (setenv "CONFIG_SHELL" (which "bash"))
+                       (mkdir-p site-library)
+                       (zero? (apply
+                               system* (append
+                                        (list "R" "CMD" "INSTALL"
+                                              "package/DASTool_1.0.0.tar.gz")
+                                        params))))))
+          (add-after 'install 'install2
+                   (lambda* (#:key inputs outputs #:allow-other-keys)
+                     (let* ((out (assoc-ref outputs "out"))
+                            (bin (string-append out "/bin"))
+                            (das "DAS_Tool.sh")
+                            (src (string-append out "/src")))
+                       (copy-recursively "src" src)
+                       (substitute* das
+                         (("^DIR=.*") (string-append "DIR=" out "\n")))
+                       (substitute* das
+                         (("> /dev/null 2>&1") ""))
+                       (install-file das bin)
+                       (wrap-program (string-append bin "/" das)
+                         `("PATH" ":" prefix (,(getenv "PATH"))))
+                       (wrap-program (string-append bin "/" das)
+                         `("R_LIBS_SITE" ":" prefix
+                           (,(string-append
+                              out "/site-library:"
+                              (getenv "R_LIBS_SITE")))))
+                       ;; TODO: put into /share instead, requires patching the
+                       ;; file I guess
+                       (zero? (system* "unzip" "-d" out
+                                       (assoc-ref inputs "db-data")))))))))
+     (native-inputs
+      `(("unzip" ,unzip)
+        ("db-data"
+         ,(origin
+             (method url-fetch)
+             (uri "http://banfieldlab.berkeley.edu/~csieber/db.zip")
+             (file-name (string-append "das-db.zip"))
+             (sha256
+              (base32
+               "1g5kajrznid037sm5kang7yx56pm7ibmrr5v3v4i4qzkax0xh4zb"))))))
+     (inputs
+      `(("r" ,r)
+        ("r-ggplot2" ,r-ggplot2)
+        ("r-domc" ,r-domc)
+        ("r-data-table" ,r-data-table)
+        ("ruby" ,ruby)
+        ("prodigal" ,prodigal)
+        ("pullseq" ,pullseq)
+        ("diamond" ,diamond)
+        ("blast+" ,blast+)
+        ("perl" ,perl)))
+     (home-page "https://github.com/cmks/DAS_Tool")
+     (synopsis "DAS Tool")
+     (description
+      "Recovery of genomes from metagenomes via a dereplication, aggregation,
+and scoring strategy.")
+     (license license:expat)))) ; need to check actual code
+
+
+(define-public tmhmm
+  (package
+    (name "tmhmm")
+    (version "2.0c")
+    (source
+     (local-file (string-append (getenv "HOME") "/bioinfo/tmhmm-2.0c")
+                 #:recursive? #t))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check ; this is just a binary, so run rudimentary check.
+           (lambda _ (zero? (system* "./bin/tmhmm"))))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (bin (string-append out "/bin/"))
+                           ;; TODO: put in share instead, need to patch the
+                           ;; script in that case.
+                           (lib (string-append out "/lib/")))
+               (substitute*
+                "bin/tmhmm"
+                ((".*opt_basedir = \"/usr/cbs/packages.*")
+                 (string-append "$opt_basedir = \"" out "\";\n")))
+               (copy-recursively "bin" bin)
+               (copy-recursively "lib" lib))
+             #t)))))
+    (inputs
+     `(("perl" ,perl)))
+    (synopsis "Place query sequences on a fixed reference phylogenetic tree")
+    (description
+     "Predicts transmembrane domains")
+    (home-page "http://www.cbs.dtu.dk/services/TMHMM/")
+    (license #f))) ; Academic only
+
+(define-public ruby-bio-tm-hmm
+  (package
+   (name "ruby-bio-tm-hmm")
+   (version "0.2.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "bio-tm_hmm" version))
+     (sha256
+      (base32
+       "1w61vg34ig3884lv7q84z1wikpjf894p2bm0pfngdb2kfhvs80ib"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f ; requires jeweler.
+      #:phases
+      (modify-phases %standard-phases
+        (add-after 'install 'wrap-programs
+          (lambda* (#:key inputs outputs #:allow-other-keys)
+            (let* ((out (assoc-ref outputs "out"))
+                   (binary (string-append out "/bin/bio-tm_hmm"))
+                   (path (string-append (assoc-ref inputs "tmhmm") "/bin:"
+                                        (assoc-ref inputs "ruby") "/bin")))
+              (wrap-program binary
+                `("GEM_PATH" ":" prefix (,(getenv "GEM_PATH"))))
+              (wrap-program binary
+                `("GEM_HOME" ":" prefix (,(getenv "GEM_HOME"))))
+              (wrap-program binary
+                `("PATH" ":" prefix (,path)))
+              #t))))))
+   (inputs
+    `(("tmhmm" ,tmhmm)))
+   (propagated-inputs
+    `(("bioruby" ,bioruby)))
+   (synopsis "Ruby library for TMHMM")
+   (description
+    "A bioruby plugin for running the transmembrane domain predictor TMHMM
+automatically on multiple sequences in a FASTA file and manipulation of the
+results.")
+   (home-page "https://github.com/wwood/bioruby-tm_hmm")
+   (license license:expat))) ; TODO: The sources say ruby-license, the author does not mind.
+
+(define-public pftools ; Probably works, but the output structure is a bit
+                       ; messy. Need to put data files in share/ perhaps.
+  (package
+    (name "pftools")
+    (version "2.3.5.d")
+    (source (origin
+             (method url-fetch)
+             (uri (string-append
+                   "ftp://ftp.lausanne.isb-sib.ch/pub/software/unix/pftools/pft"
+                   (version-prefix version 2) "/pft" version ".tar.gz"))
+             (sha256
+              (base32
+               "1x8q8izm0wl6swqy2syclvgjma4h24rq8g7hjwmvp9kr4ibq0h2d"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; There are no tests.
+       #:parallel-build? #f
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin (string-append out "/bin/"))
+                    (mandir (string-append out "/man/")))
+               (substitute* "install_pftools.sh"
+                            (("/usr/bin/") bin)
+                            (("/usr/man/") mandir)
+                            (("read userInput") "")
+                            ((" >&2") "")
+                            (("read -s -n 1 userInput") "userInput='y'")
+                            (("ln -s.*") ""))
+               (zero? (system* "bash" "install_pftools.sh" out))))))))
+    (native-inputs
+     `(("which" ,which)))
+    (inputs
+     `(("gfortran" ,gfortran)))
+    (synopsis "Build protein and DNA profiles and use them to scan sequences")
+    (description
+     "The pftools package contains all the software necessary to build protein
+and DNA generalized profiles and use them to scan and align sequences, and
+search databases.")
+    (home-page "http://web.expasy.org/pftools/#Documentation")
+    (license license:gpl2))) ; 2+?

@@ -1,0 +1,22 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index a2a97a1..b65a819 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -89,12 +89,12 @@ elseif (COMPILER_IS_INTEL)
+     endif ()
+ endif ()
+ 
+-find_package(SeqAn  QUIET REQUIRED CONFIG)
++#find_package(SeqAn  QUIET REQUIRED CONFIG)
+ 
+-if (SEQAN_VERSION_STRING VERSION_LESS "2.3.1")
+-    message (FATAL_ERROR "The minimum SeqAn verison required is 2.3.1!")
+-    return ()
+-endif ()
++#if (SEQAN_VERSION_STRING VERSION_LESS "2.3.1")
++#    message (FATAL_ERROR "The minimum SeqAn verison required is 2.3.1!")
++#    return ()
++#endif ()
+ 
+ message(STATUS "These dependencies where found:")
+ message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")

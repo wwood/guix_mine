@@ -3694,13 +3694,13 @@ generated from metagenomic assembly into putative genomes.")
    (name "pullseq")
    (version "1.0.2")
    (source (origin
-            (method url-fetch)
-            (uri (string-append "https://github.com/bcthomas/pullseq/archive/"
-                                version ".tar.gz"))
-            (file-name (string-append name "-" version ".tar.gz"))
-            (sha256
-             (base32
-              "0py8hsspvwjlckg2xi7jcpj0frrp2qbmsy9x55fx0knnwbhdg5d2")))) ; TODO: remove bundled kseq, uthash .h too
+             (method url-fetch)
+             (uri (string-append "https://github.com/bcthomas/pullseq/archive/"
+                                 version ".tar.gz"))
+             (file-name (string-append name "-" version ".tar.gz"))
+             (sha256
+              (base32
+               "0py8hsspvwjlckg2xi7jcpj0frrp2qbmsy9x55fx0knnwbhdg5d2")))) ; TODO: remove bundled kseq, uthash .h too
    (build-system gnu-build-system)
    (arguments
      `(#:phases
@@ -3755,7 +3755,7 @@ fasta or visa-versa and can change the length of the output sequence lines.")
                      (params (list "--install-tests"
                                    (string-append "--library="site-library)
                                    "--built-timestamp=1970-01-01"
-                                   "."))
+                                   ".")))
                        ;; Some R packages contain a configure script for which
                        ;; the CONFIG_SHELL variable should be set.
                        (setenv "CONFIG_SHELL" (which "bash"))
@@ -3815,3 +3815,52 @@ fasta or visa-versa and can change the length of the output sequence lines.")
       "Recovery of genomes from metagenomes via a dereplication, aggregation,
 and scoring strategy.")
      (license license:expat)))) ; need to check actual code
+
+(define-public sepp ; Includes bundled code. Seems to work, but need to (1)
+                    ; replace more instances of ~/.sepp and (2) replace the path
+                    ; to the java executable.
+  (let ((commit "e4b47531ed5b57fd875c90f08d4a434b7cce1cb5"))
+    (package
+     (name "sepp")
+     (version (string-append "2.0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/smirarab/sepp.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1yaxf4fv388j5j5b75fbv5l1qm6fb8vjfjhr0p7z0rasn395qxpr"))
+       (patches (search-patches "sepp.patch"))))
+     (build-system python-build-system)
+     (arguments
+      `(#:python ,python-2 ; python-2 only
+        #:phases
+        (modify-phases %standard-phases
+          (add-after 'unpack 'set-main-config
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (config-directory (string-append out "/share/sepp")))
+                ;; Set the config directory to be in the store, not a user's
+                ;; home directory.
+                ;; XXX: TODO: Patch all instances of these kinds of files.
+                (setenv "HOME" config-directory)
+                (mkdir-p config-directory)
+                (substitute* "sepp/config.py"
+                  (("main_config_path = os.path.expanduser.*")
+                   (string-append "main_config_path = \"" config-directory
+                                  "/.sepp/main.config\"\n"))))))
+          (add-after 'install 'setup-config
+            (lambda _
+              (zero? (system* "python" "setup.py" "config")))))))
+     (inputs
+      `(("python-dendropy" ,python2-dendropy)
+        ("icedtea" ,icedtea)))
+     (home-page "https://github.com/smirarab/sepp")
+     (synopsis "Ensemble of HMM methods (SEPP, TIPP, UPP)")
+     (description
+      "SEPP, TIPP, UPP, HIPPI. These methods use ensembles of Hidden Markov
+Models (HMMs) in different ways, each focusing on a different problem.")
+     (license license:expat)))) ; ?

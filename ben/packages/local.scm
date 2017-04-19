@@ -4090,13 +4090,12 @@ search databases.")
     (home-page "http://web.expasy.org/pftools/#Documentation")
     (license license:gpl2))) ; 2+?
 
-(define-public sepp ; Includes bundled code. Seems to work, but need to (1)
-                    ; replace more instances of ~/.sepp and (2) replace the path
-                    ; to the java executable.
+(define-public sepp ; Includes bundled code, which shouldn't be too hard to
+                    ; remove.
   (let ((commit "e4b47531ed5b57fd875c90f08d4a434b7cce1cb5"))
     (package
      (name "sepp")
-     (version (string-append "2.0-1." (string-take commit 8)))
+     (version (string-append "3.2"))
      (source
       (origin
        (method git-fetch)
@@ -4113,10 +4112,16 @@ search databases.")
       `(#:python ,python-2 ; python-2 only
         #:phases
         (modify-phases %standard-phases
-          (add-after 'unpack 'set-main-config
-            (lambda* (#:key outputs #:allow-other-keys)
+          (add-after 'unpack 'set-paths
+            (lambda* (#:key inputs outputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
-                     (config-directory (string-append out "/share/sepp")))
+                     (config-directory (string-append out "/share/sepp"))
+                     (java (assoc-ref inputs "java")))
+                (substitute*
+                 '("sepp/exhaustive_tipp.py"
+                   "sepp/jobs.py")
+                 (("\"java\"")
+                  (string-append "\"" java "/bin/java\"")))
                 ;; Set the config directory to be in the store, not a user's
                 ;; home directory.
                 (mkdir-p config-directory)
@@ -4128,17 +4133,148 @@ search databases.")
                    "sepp/exhaustive_tipp.py"
                    "sepp/exhaustive_upp.py"
                    "setup.py")
-                 (("os.path.expanduser(\"~/")
+                 (("os.path.expanduser\\(\"~/")
                   (string-append "os.path.join(\"" config-directory "/"))))))
           (add-after 'install 'setup-config
             (lambda _
               (zero? (system* "python" "setup.py" "config")))))))
      (inputs
       `(("python-dendropy" ,python2-dendropy)
-        ("icedtea" ,icedtea)))
+        ("java" ,icedtea)))
      (home-page "https://github.com/smirarab/sepp")
      (synopsis "Ensemble of HMM methods (SEPP, TIPP, UPP)")
      (description
       "SEPP, TIPP, UPP, HIPPI. These methods use ensembles of Hidden Markov
 Models (HMMs) in different ways, each focusing on a different problem.")
-     (license license:expat)))) ; ?
+     (license license:gpl3+)))) ; Not exhaustively tested.
+
+
+(define-public sepp-dev
+  (package
+   (inherit sepp)
+   (name "sepp-dev")
+   (source
+    (local-file (string-append (getenv "HOME") "/git/sepp")
+                #:recursive? #t))))
+
+(define-public meta-gene-annotator ; There are no sources available, so we cannot build it. Also probably does not work in a container.
+  (package
+   (name "meta-gene-annotator")
+   (version (string-append "0-1.20170418"))
+   (source
+    (origin
+     (method url-fetch/tarbomb)
+     (uri "http://metagene.nig.ac.jp/metagene/mga_x86_64.tar.gz")
+     (sha256
+      (base32
+       "1byqgcmxpsrkb2vgravd1x6bhj8wsc9i4p0x5dcr8wqvlmfb97nj"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     ;; (replace 'build
+                     ;;          (lambda* (#:key inputs #:allow-other-keys)
+                     ;;                   (let* ((libc (assoc-ref inputs "libc"))
+                     ;;                          (ld-so (string-append libc
+                     ;;                                                ,(glibc-dynamic-linker "i686-linux"))))
+                     ;;                     (zero? (system*
+                     ;;                             "patchelf" "--interpreter" ld-so
+                     ;;                             "mga_linux_ia64")))))
+                     (delete 'build)
+                     ;; (replace 'check
+                     ;;          (lambda* (#:key inputs #:allow-other-keys)
+                     ;;                   (zero? (system* "mga_linux_ia64" (assoc-ref inputs "example-genome")))))
+                     (delete 'check)
+                     (replace 'install
+                              (lambda* (#:key outputs #:allow-other-keys)
+                                       (let* ((out (assoc-ref outputs "out"))
+                                              (bin (string-append out "/bin")))
+                                         (install-file "mga_linux_ia64" bin)
+                                         #t))))))
+   ;; (native-inputs
+   ;;  `(("patchelf" ,patchelf)
+   ;;    ("example-genome"
+   ;;     ,(origin
+   ;;       (method url-fetch)
+   ;;       (uri "http://www.ebi.ac.uk/ena/data/view/CP002565&display=fasta")
+   ;;       (file-name (string-append "ena-genome-CP002565.fasta"))
+   ;;       (sha256
+   ;;        (base32
+   ;;         "0dv3m29kgyssjc96zbmb5khkrk7cy7a66bsjk2ricwc302g5hgfy"))))))
+   (home-page "")
+   (synopsis "")
+   (description
+    "")
+   (license license:gpl3+))) ; Not ?
+
+
+(define-public virsorter ; Hard to source, at least, in progress.
+  (let ((commit "939d5910ca5ffac7194693fea834b80694834384"))
+    (package
+     (name "virsorter")
+     (version (string-append "0.1"))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/simroux/VirSorter.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1fb48vj60mz08c1yyxq628xa7sdpn8xlk8lqhvdf91znb7pxllh6"))))
+     (build-system gnu-build-system)
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases)
+        ))
+     (inputs
+      `(("perl" ,perl)
+        ("perl-capture-tiny" ,perl-capture-tiny)
+        ("bioperl" ,bioperl-minimal)
+        ("perl-file-which" ,perl-file-which)
+        ("meta-gene-annotator" ,meta-gene-annotator)
+        ("hmmer" ,hmmer)
+        ("mcl" ,mcl)
+        ("muscle" ,muscle)
+        ;("blast" ,blast) ; NOTT blast+ and old blast is not in guix.
+        ))
+     (home-page "https://github.com/smirarab/sepp")
+     (synopsis "Ensemble of HMM methods (SEPP, TIPP, UPP)")
+     (description
+      "SEPP, TIPP, UPP, HIPPI. These methods use ensembles of Hidden Markov
+Models (HMMs) in different ways, each focusing on a different problem.")
+     (license license:gpl3+)))) ; Not exhaustively tested.
+
+(define-public virsorter-data
+  (package
+   (name "virsorter-data")
+   (version "0-1.20160204")
+   (source
+    (origin
+     (method url-fetch)
+     (uri "http://datacommons.cyverse.org/browse/iplant/home/shared/imicrobe/VirSorter/virsorter-data.tar.gz") ; There is no public interface to download this file, it must be incorporated via 'guix download'
+     (sha256
+      (base32
+       "133vw2pi4s15z76yx53ywwwhsp46dqdl2p0gbingywm4y31hfzm8"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+                    (delete 'configure)
+                    (delete 'build)
+                    (delete 'check)
+                    (replace 'install
+                             (lambda* (#:key outputs #:allow-other-keys)
+                                      (let* ((out (assoc-ref outputs "out"))
+                                             (share (string-append out "/share")))
+                                        (mkdir-p share)
+                                        (copy-file-recursively virsorter-data share)
+                                        #t))))))
+   (home-page "")
+   (synopsis "")
+   (description
+    "")
+   (license license:gpl3+))) ; Not exhaustively tested.
+

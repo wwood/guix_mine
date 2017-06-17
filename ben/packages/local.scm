@@ -28,6 +28,7 @@
   #:use-module (gnu packages cyrus-sasl)
   #:use-module (gnu packages databases)
   #:use-module (gnu packages datastructures)
+  #:use-module (gnu packages django)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
@@ -1416,28 +1417,6 @@ APIs.")
     "Phylocom integration, community analyses, null-models, traits and evolution in R")
    (license license:gpl2+)))
 
-(define-public r-ape
-  (package
-   (name "r-ape")
-   (version "4.0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "ape" version))
-     (sha256
-      (base32
-       "017jzwnknwxggpv9lkj9yyc66qv3mcl5psvbbszfivpmj26k79f9"))))
-   (build-system r-build-system)
-   ;(propagated-inputs
-   ; `(("r-lattice" ,r-lattice)
-   ;   ("r-nlme" ,r-nlme)))
-   (home-page "http://ape-package.ird.fr/")
-   (synopsis
-    "Analyses of Phylogenetics and Evolution")
-   (description
-    "Functions for reading, writing, plotting, and manipulating phylogenetic trees, analyses of comparative data in a phylogenetic framework, ancestral character analyses, analyses of diversification and macroevolution, computing distances from allelic and nucleotide data, reading and writing nucleotide sequences as well as importing from BioConductor, and several tools such as Mantel's test, generalized skyline plots, graphical exploration of phylogenetic data (alex, trex, kronoviz), estimation of absolute evolutionary rates and clock-like trees using mean path lengths and penalized likelihood.  Phylogeny estimation can be done with the NJ, BIONJ, ME, MVR, SDM, and triangle methods, and several methods handling incomplete distance matrices (NJ*, BIONJ*, MVR*, and the corresponding triangle method).  Some functions call external applications (PhyML, Clustal, T-Coffee, Muscle) whose results are returned into R.")
-   (license license:gpl2+)))
-
 (define-public r-nlme
   (package
    (name "r-nlme")
@@ -1544,7 +1523,7 @@ help a user to decide whether their sample has a known or novel K locus.")
                  (wrap-program graftm `("PATH" ":" prefix (,path))))
                #t))))))))
 
-(define-public megahit ; Contains bundled code, at least cityhash
+(define-public megahit
   (package
     (name "megahit")
     (version "1.1.1")
@@ -1555,33 +1534,59 @@ help a user to decide whether their sample has a known or novel K locus.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "11lz0p3bj4w14pwac1dkmpc77yi3i3552cif4shdr85nrdxbkih9"))))
+         "11lz0p3bj4w14pwac1dkmpc77yi3i3552cif4shdr85nrdxbkih9"))
+       (modules '((guix build utils)))
+       (snippet
+        ;; Delete bundled cityhash library.  Do not delete bundled IDBA,
+        ;; kseq.h or khash.h as these have been modified from their original
+        ;; form.
+        '(begin
+           (delete-file "city.cpp")
+           (delete-file "citycrc.h")
+           (delete-file "city.h")
+           #t))))
     (build-system gnu-build-system)
     (arguments
-     `(#:phases
+     `(;; Include cityhash in the list of libraries.
+       #:make-flags '("LIB=-lm -lz -lpthread -lcityhash")
+       #:phases
        (modify-phases %standard-phases
+         (add-after 'unpack 'patch-makefile
+           (lambda _
+             (substitute* "Makefile"
+               (("city.o") ""))
+             #t))
          (delete 'configure)
          (replace 'check
-                  (lambda _
-                    (zero? (system* "./megahit" "-h"))))
+           (lambda _
+             (zero?
+              (system* "./megahit" "-t" "4" "--12"
+                       "example/readsInterleaved1.fa.gz" "-o" "megahit_out"))))
          (replace 'install ; No install target.
-                  (lambda* (#:key inputs outputs #:allow-other-keys)
-                    (let* ((out (assoc-ref outputs "out"))
-                           (bin (string-append out "/bin")))
-                      (for-each (lambda (prog)
-                                  (install-file prog bin))
-                                '("megahit"
-                                  "megahit_asm_core"
-                                  "megahit_toolkit"
-                                  "megahit_sdbg_build")))
-                    #t)))))
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((out  (assoc-ref outputs "out"))
+                    (bin  (string-append out "/bin"))
+                    (path (getenv "PATH")))
+               (for-each (lambda (program)
+                           (install-file program bin)
+                           (wrap-program (string-append bin "/" program)
+                             `("PATH" ":" prefix (,path))))
+                         '("megahit"
+                           "megahit_asm_core"
+                           "megahit_toolkit"
+                           "megahit_sdbg_build")))
+             #t)))))
     (inputs
      `(("zlib" ,zlib)
-       ("python" ,python-2)))
-    (home-page "")
+       ("python" ,python-2)
+       ("cityhash" ,cityhash)
+       ;; 'free' and 'cat' are used when running megahit.
+       ("procps" ,procps)
+       ("coreutils" ,coreutils)))
+    (home-page "https://github.com/voutcn/megahit")
     (synopsis "Assembler for large and complex metagenomes")
     (description "MEGAHIT is a single node assembler for large and complex
-metagenomics NGS reads, such as soil. It makes use of succinct de Bruijn
+metagenomics NGS reads, such as soil.  It makes use of succinct de Bruijn
 graph (SdBG) to achieve low memory assembly.")
     (license license:gpl3+)))
 
@@ -3664,6 +3669,15 @@ manipulation, online and indexed string search, efficient I/O of
 bioinformatics file formats, sequence alignment, and more.")
     (license license:bsd-3)))
 
+(define-public bamm-dev
+  (package
+    (inherit bamm)
+    (name "bamm-dev")
+    (version "0.0.0.dev")
+    (source
+     (local-file "/tmp/BamM"
+                 #:recursive? #t))))
+
 (define-public mash-next
   (let ((commit "0a9a3f320ccdc598d9806e574334d71a3431193b"))
     (package
@@ -4277,4 +4291,193 @@ Models (HMMs) in different ways, each focusing on a different problem.")
    (description
     "")
    (license license:gpl3+))) ; Not exhaustively tested.
+
+(define-public anvio
+  (package
+   (name "anvio")
+   (version "2.3.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "anvio" version))
+     (sha256
+      (base32
+       "104w0zrgk0qgwj1gib4qmr9v94rpq2q0537b31qlfazfrnm46bq5"))))
+   (build-system python-build-system)
+   (inputs
+    `(("samtools" ,samtools)
+      ("prodigal" ,prodigal)
+      ("hmmer" ,hmmer)
+      ("sqlite" ,sqlite)
+      ("gsl" ,gsl)
+      ("hdf5" ,hdf5)))
+   (propagated-inputs
+    `(("python-bottle" ,python-bottle)
+      ("python-cherrypy" ,python-cherrypy)
+      ("python-cython" ,python-cython)
+      ("python-django" ,python-django)
+      ("python-ete3" ,python-ete3)
+      ("python-h5py" ,python-h5py)
+      ("python-mistune" ,python-mistune)
+      ("python-numpy" ,python-numpy)
+      ("python-psutil" ,python-psutil)
+      ("python-pysam" ,python-pysam)
+      ("python-requests" ,python-requests)
+      ("python-scikit-learn" ,python-scikit-learn)
+      ("python-scipy" ,python-scipy)))
+   (home-page
+    "https://merenlab.org/projects/anvio/")
+   (synopsis
+    "An interactive analysis and visualization platform for 'omics data. See https://merenlab.org/projects/anvio for more information")
+   (description
+    "An interactive analysis and visualization platform for 'omics data. See https://merenlab.org/projects/anvio for more information")
+   (license #f)))
+
+(define-public python-cherrypy
+  (package
+   (name "python-cherrypy")
+   (version "10.2.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "CherryPy" version))
+     (sha256
+      (base32
+       "1y4gx8zg4s1awvz52vagrkq51s1k6djan598sbapyp3nvws37n9j"))))
+   (build-system python-build-system)
+   (arguments
+     `(#:tests? #f)) ; Tests require further dependencies.
+   (native-inputs
+    `(("python-setuptools-scm" ,python-setuptools-scm)
+      ("python-pytest-runner" ,python-pytest-runner)))
+   (propagated-inputs
+    `(;("python-backports.unittest-mock"
+      ; ,python-backports.unittest-mock)
+      ("python-coverage" ,python-coverage)
+      ("python-graphviz" ,python-graphviz)
+      ("python-objgraph" ,python-objgraph)
+      ("python-pytest" ,python-pytest)
+      ("python-pytest-sugar" ,python-pytest-sugar)))
+   (home-page "http://www.cherrypy.org")
+   (synopsis "Object-Oriented HTTP framework")
+   (description "Object-Oriented HTTP framework")
+   (license license:bsd-3)))
+
+(define-public python-ete3
+  (package
+   (name "python-ete3")
+   (version "3.0.0b35")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "ete3" version))
+     (sha256
+      (base32
+       "066wj2ma50m2j9iliqri5sx6zpx2vqla23ifi2way02xhvsmbw7r"))))
+   (propagated-inputs
+    `(("python-six" ,python-six)
+      ("python-numpy" ,python-numpy)
+      ("python-scipy" ,python-scipy)
+                                        ;("python-pyqt" ,python-pyqt) ; pyqt4 is out-dated ?
+      ("python-lxml" ,python-lxml)))
+   (build-system python-build-system)
+   (home-page "http://etetoolkit.org")
+   (synopsis
+    "A Python Environment for (phylogenetic) Tree Exploration")
+   (description
+    "A Python Environment for (phylogenetic) Tree Exploration")
+   (license #f)))
+
+;; (package
+;;  (name "python-backports-unittest-mock")
+;;  (version "1.3")
+;;  (source
+;;   (origin
+;;    (method url-fetch)
+;;    (uri (string-append
+;;          "https://pypi.python.org/packages/e4/a2/85314249d89f400347aaa67e48526447468d730bca662ffcd0437133ac86/backports.unittest_mock-"
+;;          version
+;;          ".tar.gz"))
+;;    (sha256
+;;     (base32
+;;      "0xdkx5wf5a2w2zd2pshk7z2cvbv6db64c1x6v9v1a18ja7bn9nf6"))))
+;;  (build-system python-build-system)
+;;  (propagated-inputs
+;;   `(("python-jaraco.packaging"
+;;      ,python-jaraco.packaging)
+;;     ("python-rst.linker" ,python-rst.linker)
+;;     ("python-sphinx" ,python-sphinx)))
+;;  (home-page
+;;   "https://github.com/jaraco/backports.unittest_mock")
+;;  (synopsis "backports.unittest_mock")
+;;  (description "backports.unittest_mock")
+;;  (license #f))
+
+(define-public python-graphviz
+  (package
+    (name "python-graphviz")
+    (version "0.7.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "graphviz" version ".zip"))
+       (sha256
+        (base32
+         "10wywvqqc8567gwzi9dqlxihs8n8gmm3l65lv4d7k47s8pwlsx67"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("unzip" ,unzip)))
+    (propagated-inputs
+     `(("graphviz" ,graphviz)))
+    (home-page "https://github.com/xflr6/graphviz")
+    (synopsis "Simple Python interface for Graphviz")
+    (description
+     "Simple Python interface for Graphviz")
+    (license license:expat)))
+
+(define-public python-objgraph
+  (package
+    (name "python-objgraph")
+    (version "3.1.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "objgraph" version))
+       (sha256
+        (base32
+         "0435gj7krpqbd9aw0rwcklkzb3242magcl5s4h1m78xpifga7cwr"))))
+    (build-system python-build-system)
+    (native-inputs
+     `(("python-mock" ,python-mock)))
+    (propagated-inputs
+     `(("python-graphviz" ,python-graphviz)))
+    (home-page "http://mg.pov.lt/objgraph/")
+    (synopsis
+     "Draws Python object reference graphs with graphviz")
+    (description
+     "Draws Python object reference graphs with graphviz")
+    (license license:expat)))
+
+(define-public python-pytest-sugar
+  (package
+    (name "python-pytest-sugar")
+    (version "0.8.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "pytest-sugar" version))
+       (sha256
+        (base32
+         "13njxd4sm0b8lcx02vznswfa0q9pwknym0mnzl4sy03hjr4bz5ih"))))
+    (build-system python-build-system)
+    (propagated-inputs
+     `(("python-pytest" ,python-pytest)
+       ("python-termcolor" ,python-termcolor)))
+    (home-page
+     "http://pivotfinland.com/pytest-sugar/")
+    (synopsis
+     "py.test is a plugin for py.test that changes the default look and feel of py.test (e.g. progressbar, show tests that fail instantly).")
+    (description
+     "py.test is a plugin for py.test that changes the default look and feel of py.test (e.g. progressbar, show tests that fail instantly).")
+    (license license:bsd-3)))
 

@@ -80,7 +80,6 @@
   #:use-module (gnu packages web)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg)
-  #:use-module (gnu packages zip)
   #:use-module (srfi srfi-1)
   #:use-module (gnu packages bioinformatics))
 
@@ -88,10 +87,11 @@
 ;;(define cpu "sandybridge")
 
 (define-public (gcc-cpu-specific cpu)
-  (let ((base gcc-5)) ; gcc-6 does not seem to work.
+  (let ((base gcc-7))
     (package
      (inherit base)
      (name "gcc-cpu-specific")
+     (version (string-append (package-version base) "-cpu-specific-" cpu))
      (arguments
       (substitute-keyword-arguments (package-arguments base)
         ((#:configure-flags configure-flags)
@@ -105,7 +105,7 @@
     (name (package-name base-package))
     ;; We must set a higher package version so this package is used instead of
     ;; the package in Guix proper.
-    (version (string-append (package-version base-package) "-cpu-specific"))
+    (version (string-append (package-version base-package) "-cpu-specific-" cpu))
     (inputs
      `(,@(package-inputs base-package)
        ("gcc" ,((@@ (gnu packages commencement)

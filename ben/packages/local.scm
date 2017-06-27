@@ -84,7 +84,6 @@
   #:use-module (gnu packages xdisorg)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages xorg)
-  #:use-module (gnu packages zip)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
   #:use-module (srfi srfi-1)
@@ -1548,7 +1547,11 @@ help a user to decide whether their sample has a known or novel K locus.")
     (build-system gnu-build-system)
     (arguments
      `(;; Include cityhash in the list of libraries.
-       #:make-flags '("LIB=-lm -lz -lpthread -lcityhash")
+       #:make-flags '("LIB=-lm -lz -lpthread -lcityhash"
+                      ;; "CPU_ARCH="
+                      ;; "CPU_ARCH_SUFFIX="
+                      ;; "disablempopcnt=1"
+		      )
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-makefile
@@ -4551,3 +4554,56 @@ Models (HMMs) in different ways, each focusing on a different problem.")
 estimate the average coverage and predict the amount of sequences that will
 be required to achieve \"nearly complete coverage\".")
      (license license:gpl3+)))) ; ?
+
+(define-public peat ; Works but non-free.
+  (let ((commit "c2f94a2e17b7ee46d7a501f44903a498883bb5d3"))
+    (package
+      (name "peat")
+      (version (string-append "1.2.4-1." (string-take commit 8)))
+      (source
+       (origin
+         ;; (method url-fetch)
+         ;; (uri (string-append "https://github.com/jhhung/PEAT/archive/v"
+         ;;                     version ".tar.gz"))
+         ;; (file-name (string-append name "-" version ".tar.gz"))
+         ;; (sha256
+         ;;  (base32
+         ;;   "1ksyz8sijdazf0lgyzflgbghxcz410grl4vsxphi13qhzmyhw70y"))
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/jhhung/PEAT.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "11bds3bkvh3dbljjjadbz0hh3s26b08jy08zkxnk83kbap0xl95y"))
+         (modules '((guix build utils)))
+         (snippet
+          ;; Delete pre-built binaries and libraries.
+          '(begin
+             (delete-file "bin/PEAT")
+             (delete-file "bin/PEAT_linux")
+             (delete-file "bin/PEAT_mac")
+             (for-each (lambda (file)
+                         (delete-file file))
+                       (find-files "." ".*\\.a"))
+             #t))))
+      (build-system cmake-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (replace 'check
+             (lambda _
+               (zero? (system*
+                       "bin/PEAT" "paired" "-1" "test_file/test_paired1.fq.gz"
+                       "-2" "test_file/test_paired2.fq.gz" "-o" "testout"
+                       "--adapter_contexts")))))))
+      (inputs
+       `(("boost" ,boost)
+         ("zlib" ,zlib)
+         ("curl" ,curl)))
+      (home-page "")
+      (synopsis "")
+      (description
+       ".")
+      (license #f)))) ; GPL2 but only for non-profits, so not free software.

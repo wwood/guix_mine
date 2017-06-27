@@ -3559,6 +3559,15 @@ programs.")
     (local-file (string-append (getenv "HOME") "/git/singlem")
                 #:recursive? #t))))
 
+(define-public bamm-dev
+  (let ((base bamm))
+    (package
+      (inherit base)
+      (name "bamm-dev")
+      (version (string-append (package-version base) "-dev"))
+      (source
+       (local-file "/tmp/BamM" #:recursive? #t)))))
+
 (define-public fastspar
   (package
    (name "fastspar")
@@ -4481,3 +4490,64 @@ Models (HMMs) in different ways, each focusing on a different problem.")
      "py.test is a plugin for py.test that changes the default look and feel of py.test (e.g. progressbar, show tests that fail instantly).")
     (license license:bsd-3)))
 
+(define-public nonpareil
+  ;; Package from git since release is > 1 year out of date.
+  (let ((commit "72ce3c9e67caf5299556d27ede40e33a2afd0bb3"))
+    (package
+     (name "nonpareil")
+     (version (string-append "2.4.1-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/lmrodriguezr/nonpareil.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "1a9cwhbzdrpbm6zl7r3r106vmk9fbfn3vxjj44danzdhvwwpqd4d"))))
+     (build-system gnu-build-system)
+     (arguments
+      `(#:make-flags
+        (list (string-append "prefix=" (assoc-ref %outputs "out")))
+        #:tests? #f ; No tests.
+        #:phases
+        (modify-phases %standard-phases
+          (delete 'configure)
+          (replace 'build
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (flag (string-append "prefix=" out)))
+                (and (zero? (system* "make" flag "nonpareil"))
+                     (zero? (system* "make" flag "nonpareil-mpi"))))))
+          (add-before 'install 'remove-r-install-from-makefile
+            (lambda _
+              ;; We must run R CMD INSTALL with crafted arguments.
+              (substitute* "Makefile"
+                ((".*CMD INSTALL.*") ""))
+              #t))
+          (add-after 'install 'install-r-library
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out          (assoc-ref outputs "out"))
+                     (site-library (string-append out "/site-library/")))
+                ;; If dependencies cannot be found at install time, R will refuse to
+                ;; install the package.
+                (setenv "R_LIBS_SITE" site-library)
+                ;; Some R packages contain a configure script for which the CONFIG_SHELL
+                ;; variable should be set.
+                (setenv "CONFIG_SHELL" (which "bash"))
+                (mkdir-p site-library)
+                (zero? (system* "R" "CMD" "INSTALL" "--install-tests"
+                                (string-append "--library=" site-library)
+                                "--built-timestamp=1970-01-01"
+                                "utils/Nonpareil"))))))))
+     (inputs
+      `(("openmpi" ,openmpi)
+        ("r" ,r)))
+     (home-page "http://nonpareil.readthedocs.io")
+     (synopsis "Estimate average coverage and generate Nonpareil curves.")
+     (description
+      "Nonpareil uses the redundancy of the reads in metagenomic datasets to
+estimate the average coverage and predict the amount of sequences that will
+be required to achieve \"nearly complete coverage\".")
+     (license license:gpl3+)))) ; ?

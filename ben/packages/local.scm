@@ -1,4 +1,4 @@
-(define-module (ben packages local)
+das(define-module (ben packages local)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix utils)
@@ -1414,28 +1414,6 @@ APIs.")
    (synopsis "tools for integrating phylogenies and ecology")
    (description
     "Phylocom integration, community analyses, null-models, traits and evolution in R")
-   (license license:gpl2+)))
-
-(define-public r-nlme
-  (package
-   (name "r-nlme")
-   (version "3.1-128")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "nlme" version))
-     (sha256
-      (base32
-       "0639jzy1zvs4x1g4fdsgl3r8nxifcyhpppcdxnqrhl49zpm2i0sr"))))
-   (build-system r-build-system)
-   (native-inputs
-    `(("gfortran" ,gfortran)))
-   (propagated-inputs
-    `(("r-lattice" ,r-lattice)))
-   (home-page "http://cran.r-project.org/web/packages/nlme")
-   (synopsis "Linear and nonlinear mixed effects m,odels")
-   (description
-    "Fit and compare Gaussian linear and nonlinear mixed-effects models.")
    (license license:gpl2+)))
 
 (define-public kaptive
@@ -3904,11 +3882,11 @@ minimum / maximum sequence lengths. Additionally, it can convert from fastq to
 fasta or visa-versa and can change the length of the output sequence lines.")
    (license license:expat)))
 
-(define-public das
-  (let ((commit "309cea91f556e007e7433e7b231ddbf1c88cd922"))
+(define-public das ; Works except makeblastdb is run on read-only data once installed. Needs to patch it so that it isn't the case.
+  (let ((commit "97990da704b488ec7b5e447d93b9a163a3078d00"))
     (package
      (name "das")
-     (version (string-append "1.0-1." (string-take commit 8)))
+     (version (string-append "1.0-2." (string-take commit 8)))
      (source
       (origin
        (method git-fetch)
@@ -3918,7 +3896,7 @@ fasta or visa-versa and can change the length of the output sequence lines.")
        (file-name (string-append name "-" version "-checkout"))
        (sha256
         (base32
-         "1c172gbd4fyyiabnhdfkig4k3djf9b6yhc5sm53lxr58xjwvb1h3"))))
+         "0zp865ii2sj3bpy9q5afk9ssss7sh906501n5kiglnamznw04a17"))))
      (build-system r-build-system)
      (arguments
       `(#:phases
@@ -3963,8 +3941,14 @@ fasta or visa-versa and can change the length of the output sequence lines.")
                               (getenv "R_LIBS_SITE")))))
                        ;; TODO: put into /share instead, requires patching the
                        ;; file I guess
-                       (zero? (system* "unzip" "-d" out
-                                       (assoc-ref inputs "db-data")))))))))
+                       (and (zero? (system* "unzip" "-d" out
+                                            (assoc-ref inputs "db-data")))
+                            ;; Generated BLAST DBs.  TODO: Make this into a for-loop.
+                            (zero? (system* "makeblastdb" "-in" (string-append out "/db/bac.all.faa") "-dbtype" "prot"))
+                            (zero? (system* "makeblastdb" "-in" (string-append out "/db/bac.scg.faa") "-dbtype" "prot"))
+                            (zero? (system* "makeblastdb" "-in" (string-append out "/db/arc.all.faa") "-dbtype" "prot"))
+                            (zero? (system* "makeblastdb" "-in" (string-append out "/db/arc.scg.faa") "-dbtype" "prot"))
+                            )))))))
      (native-inputs
       `(("unzip" ,unzip)
         ("db-data"
@@ -3985,7 +3969,9 @@ fasta or visa-versa and can change the length of the output sequence lines.")
         ("pullseq" ,pullseq)
         ("diamond" ,diamond)
         ("blast+" ,blast+)
-        ("perl" ,perl)))
+        ("perl" ,perl)
+        ("sed" ,sed) ; TODO: Check that these inputs are sufficient in a container.
+        ("grep" ,grep)))
      (home-page "https://github.com/cmks/DAS_Tool")
      (synopsis "DAS Tool")
      (description
@@ -4607,3 +4593,184 @@ be required to achieve \"nearly complete coverage\".")
       (description
        ".")
       (license #f)))) ; GPL2 but only for non-profits, so not free software.
+
+(define-public r-maps
+  (package
+   (name "r-maps")
+   (version "3.2.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "maps" version))
+     (sha256
+      (base32
+       "0577f3b5d3a7djl7r0miy9mzr6xq6jb32p8nyrma7m2azasbwyj3"))))
+   (build-system r-build-system)
+   (home-page
+    "http://cran.r-project.org/web/packages/maps")
+   (synopsis "Draw Geographical Maps")
+   (description
+    "Display of maps.  Projection code and larger maps are in separate packages ('mapproj' and 'mapdata').")
+   (license license:gpl2)))
+
+(define-public r-phytools
+  (package
+   (name "r-phytools")
+   (version "0.6-00")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "phytools" version))
+     (sha256
+      (base32
+       "04xf7rksii496xiih3ijywxs4j4994z1f1yllvywzvmqqyk0khdn"))))
+   (build-system r-build-system)
+   (native-inputs
+    `(("which" ,which)))
+   (propagated-inputs
+    `(("r-animation" ,r-animation)
+      ("r-ape" ,r-ape)
+      ("r-clustergeneration" ,r-clustergeneration)
+      ("r-coda" ,r-coda)
+      ("r-combinat" ,r-combinat)
+      ("r-maps" ,r-maps)
+      ("r-mnormt" ,r-mnormt)
+      ("r-msm" ,r-msm)
+      ("r-nlme" ,r-nlme)
+      ("r-numderiv" ,r-numderiv)
+      ("r-phangorn" ,r-phangorn)
+      ("r-plotrix" ,r-plotrix)
+      ("r-scatterplot3d" ,r-scatterplot3d)))
+   (home-page
+    "http://github.com/liamrevell/phytools")
+   (synopsis
+    "Phylogenetic Tools for Comparative Biology (and Other Things)")
+   (description
+    "Package contains various functions for phylogenetic analysis.  This functionality is concentrated in the phylogenetic analysis of comparative data from species.  For example, the package includes functions for Bayesian and ML ancestral state estimation; visual simulation of trait evolution; fitting models of trait evolution with multiple Brownian rates and correlations; visualizing discrete and continuous character evolution using colors or projections into trait space; identifying the location of a change in the rate of character evolution on the tree; fast Brownian motion simulation and simulation under several other models of continuous trait evolution; fitting a model of correlated binary trait evolution; locating the position of a fossil or an recently extinct lineage on a tree using continuous character data with ML; plotting lineage accumulation through time, including across multiple trees (such as a Bayesian posterior sample); conducting an analysis called stochastic character mapping, in which character histories for a discrete trait are sampled from their posterior probability distribution under a model; conducting a multiple (i.e., partial) Mantel test; fitting a phylogenetic regression model with error in predictor and response variables; conducting a phylogenetic principal components analysis, a phylogenetic regression, a reduced major axis regression, a phylogenetic canonical correlation analysis, and a phylogenetic ANOVA; projecting a tree onto a geographic map; simulating discrete character histories on the tree; fitting a model in which a discrete character evolves under the threshold model; visualization of cospeciation; and a simple statistical test for cospeciation between two trees.  In addition to this phylogenetic comparative method functionality, the package also contains functions for a wide range of other purposes in phylogenetic biology.  For instance, functionality in this package includes (but is not restricted to): adding taxa to a tree (including randomly, everywhere, or automatically to genera); generating all bi- and multi-furcating trees for a set of taxa; reducing a phylogeny to its backbone tree; dropping tips or adding tips to special types of phylogenetic trees; exporting a tree as an XML file; converting a tree with a mapped character to a tree with singleton nodes and one character state per edge; estimating a phylogeny using the least squares method; simulating birth-death trees under a range of conditions; rerooting trees; computing a consensus tree under multiple methods, including via minimization of the distance to other trees in the set; a wide range of visualizations of trees; and a variety of other manipulations and analyses that phylogenetic biologists may find useful for their research.")
+   (license license:gpl2+)))
+
+(define-public r-animation
+  (package
+   (name "r-animation")
+   (version "2.5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "animation" version))
+     (sha256
+      (base32
+       "0pxmihfr3q1hh4cdnzf7wbzqak5spa3kv4p1wl89giqqngqzwcmj"))))
+   (build-system r-build-system)
+   (home-page "https://yihui.name/animation")
+   (native-inputs
+    `(("which" ,which)))
+   (synopsis
+    "A Gallery of Animations in Statistics and Utilities to Create Animations")
+   (description
+    "Provides functions for animations in statistics, covering topics in probability theory, mathematical statistics, multivariate statistics, non-parametric statistics, sampling survey, linear models, time series, computational statistics, data mining and machine learning.  These functions may be helpful in teaching statistics and data analysis.  Also provided in this package are a series of functions to save animations to various formats, e.g.  Flash, 'GIF', HTML pages, 'PDF' and videos. 'PDF' animations can be inserted into 'Sweave' / 'knitr' easily.")
+   (license (list license:gpl2+ license:gpl3+))))
+
+(define-public r-clustergeneration
+  (package
+   (name "r-clustergeneration")
+   (version "1.3.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "clusterGeneration" version))
+     (sha256
+      (base32
+       "1ak8p2sxz3y9scyva7niywyadmppg3yhvn6mwjq7z7cabbcilnbw"))))
+   (properties
+    `((upstream-name . "clusterGeneration")))
+   (build-system r-build-system)
+   (propagated-inputs `(("r-mass" ,r-mass)))
+   (home-page
+    "http://cran.r-project.org/web/packages/clusterGeneration")
+   (synopsis
+    "Random Cluster Generation (with Specified Degree of Separation)")
+   (description
+    "We developed the clusterGeneration package to provide functions for generating random clusters, generating random covariance/correlation matrices, calculating a separation index (data and population version) for pairs of clusters or cluster distributions, and 1-D and 2-D projection plots to visualize clusters.  The package also contains a function to generate random clusters based on factorial designs with factors such as degree of separation, number of clusters, number of variables, number of noisy variables.")
+   (license license:gpl2+)))
+
+(define-public r-combinat
+  (package
+   (name "r-combinat")
+   (version "0.0-8")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "combinat" version))
+     (sha256
+      (base32
+       "1h9hr88gigihc4na7lb5i7rn4az1xa7sb34zvnznaj6pdrmwy4qm"))))
+   (build-system r-build-system)
+   (home-page
+    "http://cran.r-project.org/web/packages/combinat")
+   (synopsis "combinatorics utilities")
+   (description "routines for combinatorics")
+   (license license:gpl2)))
+
+(define-public r-msm
+  (package
+   (name "r-msm")
+   (version "1.6.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "msm" version))
+     (sha256
+      (base32
+       "0h0h9cgavpylbj9692750if1hw7qylhsad549fqjx5l0zqbh3zhy"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-expm" ,r-expm)
+      ("r-mvtnorm" ,r-mvtnorm)
+      ("r-survival" ,r-survival)))
+   (home-page
+    "http://cran.r-project.org/web/packages/msm")
+   (synopsis
+    "Multi-State Markov and Hidden Markov Models in Continuous Time")
+   (description
+    "Functions for fitting continuous-time Markov and hidden Markov multi-state models to longitudinal data.  Designed for processes observed at arbitrary times in continuous time (panel data) but some other observation schemes are supported.  Both Markov transition rates and the hidden Markov output process can be modelled in terms of covariates, which may be constant or piecewise-constant in time.")
+   (license license:gpl2+)))
+
+(define-public r-scatterplot3d
+  (package
+   (name "r-scatterplot3d")
+   (version "0.3-40")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "scatterplot3d" version))
+     (sha256
+      (base32
+       "0ababcj87kx7860mica9y2ydlhskxmgj9n46crx036cila512jc2"))))
+   (build-system r-build-system)
+   (home-page
+    "http://cran.r-project.org/web/packages/scatterplot3d")
+   (synopsis "3D Scatter Plot")
+   (description
+    "Plots a three dimensional (3D) point cloud.")
+   (license license:gpl2)))
+
+(define-public r-expm
+  (package
+   (name "r-expm")
+   (version "0.999-2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "expm" version))
+     (sha256
+      (base32
+       "1mihl67kvv1xv0figp25jkmwfn4iwkcx15cng2348y8gm6zybw9q"))))
+   (build-system r-build-system)
+   (propagated-inputs `(("r-matrix" ,r-matrix)))
+   (native-inputs `(("gfortran" ,gfortran)))
+   (home-page
+    "http://R-Forge.R-project.org/projects/expm/")
+   (synopsis "Matrix Exponential, Log, 'etc'")
+   (description
+    "Computation of the matrix exponential, logarithm, sqrt, and related quantities.")
+   (license license:gpl2+)))

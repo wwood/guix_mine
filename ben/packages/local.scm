@@ -1,4 +1,4 @@
-das(define-module (ben packages local)
+(define-module (ben packages local)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix utils)
@@ -3538,7 +3538,27 @@ programs.")
    (version "0.0.0.dev")
    (source
     (local-file (string-append (getenv "HOME") "/git/singlem")
-                #:recursive? #t))))
+                #:recursive? #t))
+   (inputs
+    `(("graftm" ,graftm)
+      ("python-biopython" ,python2-biopython)
+      ("python-extern" ,python2-extern)
+      ("python-tempdir" ,python2-tempdir)
+      ("python-dendropy" ,python2-dendropy)
+      ("python-subprocess32" ,python2-subprocess32)
+      ("python-biom-format" ,python2-biom-format)
+      ("python-h5py" ,python2-h5py)
+      ("python-pandas" ,python2-pandas)
+      ("seqmagick" ,seqmagick)
+      ("blast+" ,blast+)
+      ("vsearch" ,vsearch)
+      ("krona-tools" ,krona-tools)
+      ("fxtract" ,fxtract)
+      ("hmmer" ,hmmer)
+      ("diamond" ,diamond)
+      ;; Include GraftM-specific dependencies too as GraftM is not installed as
+      ;; a library.
+      ("taxtastic" ,taxtastic)))))
 
 (define-public bamm-dev
   (let ((base bamm))

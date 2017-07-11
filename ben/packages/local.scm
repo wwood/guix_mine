@@ -1,4 +1,4 @@
-das(define-module (ben packages local)
+(define-module (ben packages local)
   #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix packages)
   #:use-module (guix utils)
@@ -3549,6 +3549,15 @@ programs.")
       (source
        (local-file "/tmp/BamM" #:recursive? #t)))))
 
+(define-public graftm-dev
+  (let ((base graftm))
+    (package
+     (inherit base)
+     (name "graftm-dev")
+     (version (string-append (package-version base) "-dev"))
+     (source
+      (local-file "/tmp/graftM" #:recursive? #t)))))
+
 (define-public fastspar
   (package
    (name "fastspar")
@@ -4542,7 +4551,7 @@ be required to achieve \"nearly complete coverage\".")
      (license license:gpl3+)))) ; ?
 
 (define-public peat ; Works but non-free.
-  (let ((commit "c2f94a2e17b7ee46d7a501f44903a498883bb5d3"))
+  (let ((commit "2bb4a50966a225ba0b75772f453d410d2c5932d0"))
     (package
       (name "peat")
       (version (string-append "1.2.4-1." (string-take commit 8)))
@@ -4562,7 +4571,7 @@ be required to achieve \"nearly complete coverage\".")
          (file-name (string-append name "-" version "-checkout"))
          (sha256
           (base32
-           "11bds3bkvh3dbljjjadbz0hh3s26b08jy08zkxnk83kbap0xl95y"))
+           "1biigjc0rypdgyvygh9zbcc72h9xlq2w7dyak3iq01hm9j3cxa6k"))
          (modules '((guix build utils)))
          (snippet
           ;; Delete pre-built binaries and libraries.
@@ -4576,14 +4585,19 @@ be required to achieve \"nearly complete coverage\".")
              #t))))
       (build-system cmake-build-system)
       (arguments
-       `(#:phases
+       `(#:out-of-source? #f
+         #:phases
          (modify-phases %standard-phases
            (replace 'check
              (lambda _
                (zero? (system*
                        "bin/PEAT" "paired" "-1" "test_file/test_paired1.fq.gz"
-                       "-2" "test_file/test_paired2.fq.gz" "-o" "testout"
-                       "--adapter_contexts")))))))
+                       "-2" "test_file/test_paired2.fq.gz" "-o" "testout"))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+                 (install-file "bin/PEAT" bin)
+                 #t))))))
       (inputs
        `(("boost" ,boost)
          ("zlib" ,zlib)

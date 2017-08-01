@@ -4808,3 +4808,168 @@ be required to achieve \"nearly complete coverage\".")
    (description
     "Computation of the matrix exponential, logarithm, sqrt, and related quantities.")
    (license license:gpl2+)))
+
+(define-public ruby-sidekiq
+  (package
+   (name "ruby-sidekiq")
+   (version "5.0.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "sidekiq" version))
+     (sha256
+      (base32
+       "0nazi3a9aq7c7cxk749qz9ilp7dv39r9n3zsbjg4frc96bb85s9w"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f)) ; Tests require rails, which is not yet packaged.
+   (propagated-inputs
+    `(("ruby-concurrent-ruby" ,ruby-concurrent)
+      ("ruby-connection-pool" ,ruby-connection-pool)
+      ("ruby-rack-protection" ,ruby-rack-protection)
+      ("ruby-redis" ,ruby-redis)))
+   (synopsis
+    "Simple, efficient background processing for Ruby.")
+   (description
+    "Simple, efficient background processing for Ruby.")
+   (home-page "http://sidekiq.org")
+   (license #f))) ;?
+
+(define-public ruby-redis
+  (package
+   (name "ruby-redis")
+   (version "3.3.3")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "redis" version))
+     (sha256
+      (base32
+       "0kdj7511l6kqvqmaiw7kw604c83pk6f4b540gdsq1bf7yxm6qx6g"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f)) ; Tests require a running redis instance.
+   (synopsis
+    "    A Ruby client that tries to match Redis' API one-to-one, while still
+    providing an idiomatic interface. It features thread-safety,
+    client-side sharding, pipelining, and an obsession for performance.
+")
+   (description
+    "    A Ruby client that tries to match Redis' API one-to-one, while still
+    providing an idiomatic interface.  It features thread-safety,
+    client-side sharding, pipelining, and an obsession for performance.
+")
+   (home-page "https://github.com/redis/redis-rb")
+   (license license:expat)))
+
+(define-public ruby-rack-protection
+  (package
+   (name "ruby-rack-protection")
+   (version "2.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "rack-protection" version))
+     (sha256
+      (base32
+       "04dad1ij5lgjp2pk8ykpxxx2081krmlbh8gii5ip7zpwnc6g2x2m"))))
+   (build-system ruby-build-system)
+   (native-inputs
+    `(("bundler" ,bundler)
+      ("ruby-rspec" ,ruby-rspec)))
+   (propagated-inputs
+    `(("ruby-rack" ,ruby-rack)))
+   (synopsis
+    "Protect against typical web attacks, works with all Rack apps, including Rails.")
+   (description
+    "Protect against typical web attacks, works with all Rack apps, including Rails.")
+   (home-page
+    "http://github.com/sinatra/sinatra/tree/master/rack-protection")
+   (license license:expat)))
+
+(define-public ruby-sidekiq-limit-fetch
+  (package
+   (name "ruby-sidekiq-limit-fetch")
+   (version "3.4.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "sidekiq-limit_fetch" version))
+     (sha256
+      (base32
+       "0ykpqw2nc9fs4v0slk5n4m42n3ihwwkk5mcyw3rz51blrdzj92kr"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f)) ; Tests require a running redis instance
+   (native-inputs
+    `(("bundler" ,bundler)
+      ("ruby-redis-namespace" ,ruby-redis-namespace)
+      ("ruby-rspec" ,ruby-rspec)))
+   (propagated-inputs
+    `(("ruby-sidekiq" ,ruby-sidekiq)))
+   (synopsis
+    "    Sidekiq strategy to restrict number of workers
+    which are able to run specified queues simultaneously.
+")
+   (description
+    "    Sidekiq strategy to restrict number of workers
+    which are able to run specified queues simultaneously.
+")
+   (home-page
+    "https://github.com/brainopia/sidekiq-limit_fetch")
+   (license license:expat)))
+
+(define-public ruby-attentive-sidekiq
+  (package
+   (name "ruby-attentive-sidekiq")
+   (version "0.3.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "attentive_sidekiq" version))
+     (sha256
+      (base32
+       "113ak7fhjvlzc82ybq41wz63vqz80bnawqb1s58k1pv6ibk0dxac"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:tests? #f)) ; Tests reqire redis-namespace, etc. Possible to package in future.
+   (propagated-inputs
+    `(("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-concurrent" ,ruby-concurrent)))
+   (synopsis
+    "This gem allows you to watch the jobs which suddenly dissappeared from redis without being completed by redis worker")
+   (description
+    "This gem allows you to watch the jobs which suddenly dissappeared from redis without being completed by redis worker")
+   (home-page
+    "http://rubygems.org/gems/attentive_sidekiq")
+   (license license:expat)))
+
+(define-public ruby-redis-namespace
+(package
+  (name "ruby-redis-namespace")
+  (version "1.5.3")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "redis-namespace" version))
+      (sha256
+        (base32
+          "0r6l40yhgyzc367s7d74jsxn638fdl5p3zlfvpzyfhri22qa391a"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:tests? #f)) ; Gemfile is missing from distributed gem, so tests fail.
+  (propagated-inputs
+   `(("ruby-redis" ,ruby-redis)))
+  (synopsis
+    "Adds a Redis::Namespace class which can be used to namespace calls
+to Redis. This is useful when using a single instance of Redis with
+multiple, different applications.
+")
+  (description
+    "Adds a Redis::Namespace class which can be used to namespace calls
+to Redis.  This is useful when using a single instance of Redis with
+multiple, different applications.
+")
+  (home-page
+    "http://github.com/resque/redis-namespace")
+  (license license:expat)))

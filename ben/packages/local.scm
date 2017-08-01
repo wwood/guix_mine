@@ -3537,8 +3537,9 @@ programs.")
    (name "singlem-dev")
    (version "0.0.0.dev")
    (source
-    (local-file (string-append (getenv "HOME") "/git/singlem")
-                #:recursive? #t))
+   ; (local-file (string-append (getenv "HOME") "/git/singlem")
+   ;             #:recursive? #t))
+    (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
    (inputs
     `(("graftm" ,graftm)
       ("python-biopython" ,python2-biopython)
@@ -4973,3 +4974,180 @@ multiple, different applications.
   (home-page
     "http://github.com/resque/redis-namespace")
   (license license:expat)))
+
+(define-public busco ; setup.py method is insufficient. Also need to set paths in config.ini to all the extraneous dependencies.
+  (let ((commit "e83a6c94101511484799f9770cdfc148559b136d"))
+    (package
+      (name "busco")
+      (version "3.0.2")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://gitlab.com/ezlab/busco.git")
+               (commit commit)))
+         (sha256
+          (base32
+           "0ivc028gdryyvpznkzw2pbm5pj1x6svdawdr7gmbrdm6111gnsgc"))))
+      (build-system python-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (add-before 'check 'set-pythonpath
+             (lambda _
+               (setenv "PYTHONPATH"
+                       (string-append (getenv "PYTHONPATH") ":build/lib"))
+               #t))
+           (add-after 'install 'finish-install
+             (lambda*  (#:key outputs #:allow-other-keys)
+               (let* ((out    (assoc-ref outputs "out"))
+                      (bin    (string-append out "/bin")))
+                 (copy-file-recursively "scripts" bin)
+                 #t
+                 ))))))
+      (inputs
+       `(("blast+" ,blast+)
+         ("hmmer" ,hmmer)
+         ("augustus" ,augustus)))
+      (home-page "http://busco.ezlab.org/")
+      (synopsis
+       "Assessing genome assembly and annotation completeness with Universal Single-Copy Orthologs")
+      (description
+       "Assessing genome assembly and annotation completeness with Universal Single-Copy Orthologs")
+      (license license:expat))))
+
+(define-public augustus ; at least sort of works
+  (package
+    (name "augustus")
+    (version "3.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "http://bioinf.uni-greifswald.de/augustus/binaries/augustus-"
+             version ".tar.gz"))
+       (sha256
+        (base32
+         "1r8qgwg3rwrwkjscidnndcgzgw3x52aiyl4f50bdmn1mx0qhjizn"))
+       (patches (search-patches "augustus.patch"))
+       (modules '((guix build utils)))
+       ;; Remove some already compiled code.
+       (snippet '(begin
+                   (delete-file-recursively "bin")
+                   #t))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:make-flags (list
+                     (string-append "INSTALLDIR=" (assoc-ref %outputs "out"))
+                     ;(string-append "BAMTOOLS=" (assoc-ref %build-inputs "bamtools") "/include/bamtools")
+                     )
+       #:tests? #f ; There are no tests.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'clean-and-setup
+           (lambda* (#:key inputs #:allow-other-keys)
+             (substitute* '("auxprogs/filterBam/src/Makefile"
+                            "auxprogs/bam2hints/Makefile"
+                            "auxprogs/bam2wig/Makefile"
+                            "auxprogs/checkTargetSortedness/Makefile")
+               (("^BAMTOOLS *= .*")
+                (string-append "BAMTOOLS =" (assoc-ref inputs "bamtools") "/include/bamtools\n"))
+               (("^SAMTOOLS *= .*")
+                (string-append "SAMTOOLS =" (assoc-ref inputs "samtools") "/include\n"))
+               (("^HTSLIB *= .*")
+                (string-append "HTSLIB =" (assoc-ref inputs "htslib") "/include\n"))
+               (("^BCFTOOLS *= .*")
+                (string-append "BCFTOOLS =" (assoc-ref inputs "bcftools") "/include\n"))
+               (("^TABIX *= .*")
+                (string-append "BAMTOOLS =" (assoc-ref inputs "htslib") "/include\n")))
+             (substitute* '("auxprogs/bam2hints/Makefile"
+                            "auxprogs/filterBam/src/Makefile")
+               (("^LIBS =.*")
+                (string-append "LIBS = -L" (assoc-ref inputs "bamtools") "/lib/bamtools -lbamtools -lz\n")))
+             (substitute* "auxprogs/bam2hints/Makefile"
+               (("^INCLUDES.*")
+                (string-append "INCLUDES =" (assoc-ref inputs "bamtools") "/include/bamtools\n")))
+             (zero? (system* "make" "clean"))))
+         (delete 'configure)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out    (assoc-ref outputs "out"))
+                    (bin    (string-append out "/bin"))
+                    (config (string-append out "/share/augustus/config")))
+               (for-each (lambda (file)
+                           (install-file file bin))
+                         (append
+                          (find-files "bin")
+                          (find-files "scripts")))
+               (mkdir-p config)
+               (copy-recursively "config" config)
+               (wrap-program (string-append bin "/augustus")
+                 `("AUGUSTUS_CONFIG_PATH" ":" suffix (,config))))
+             #t)))))
+    (inputs
+     `(("boost" ,boost)
+       ("zlib" ,zlib)
+       ("perl" ,perl)
+       ("bamtools" ,bamtools)
+       ("samtools" ,samtools)
+       ("htslib" ,htslib)
+       ("bcftools" ,bcftools)))
+    (home-page "")
+    (synopsis "")
+    (description
+     ".")
+    (license #f))) ; ?
+
+(define-public ruby-rerun
+  (package
+    (name "ruby-rerun")
+    (version "0.11.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "rerun" version))
+       (sha256
+        (base32
+         "0av239bpmy55fdx4qaw9n71aapjy2myr51h5plzjxsyr0fdwn1xq"))))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("ruby-rspec" ,ruby-rspec))) ; Actually tested?
+    (propagated-inputs
+     `(("ruby-listen" ,ruby-listen)))
+    (synopsis "Restarts an application when a file changes.")
+    (description
+     "Restarts your app when a file changes.  It is a no-frills, command-line
+alternative to Guard, Shotgun, Autotest, etc.")
+    (home-page "http://github.com/alexch/rerun/")
+    (license license:expat)))
+
+(define-public ruby-psych
+  (package
+    (name "ruby-psych")
+    (version "2.2.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (rubygems-uri "psych" version))
+       (sha256
+        (base32
+         "1myf06a6kqxih0dgpdfhixmsb8h4pqb8y1iglppr39n6aln7vmga"))))
+    (build-system ruby-build-system)
+    (native-inputs
+     `(("bundler" ,bundler)
+       ("ruby-rake-compiler" ,ruby-rake-compiler)))
+    (inputs
+     `(("libyaml" ,libyaml)))
+    (synopsis
+     "Psych is a YAML parser and emitter. Psych leverages libyaml[http://pyyaml.org/wiki/LibYAML]
+for its YAML parsing and emitting capabilities. In addition to wrapping libyaml,
+Psych also knows how to serialize and de-serialize most Ruby objects to and from the YAML format.
+")
+    (description
+     "Psych is a YAML parser and emitter.  Psych leverages libyaml[http://pyyaml.org/wiki/LibYAML]
+for its YAML parsing and emitting capabilities.  In addition to wrapping libyaml,
+Psych also knows how to serialize and de-serialize most Ruby objects to and from the YAML format.
+")
+    (home-page "https://github.com/ruby/psych")
+    (license license:expat)))
+

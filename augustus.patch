@@ -1,0 +1,13 @@
+diff --git a/auxprogs/compileSpliceCands/Makefile b/auxprogs/compileSpliceCands/Makefile
+index 691099c..46aae1e 100644
+--- a/auxprogs/compileSpliceCands/Makefile
++++ b/auxprogs/compileSpliceCands/Makefile
+@@ -3,6 +3,8 @@ compileSpliceCands : compileSpliceCands.o list.h list.o
+ #	cp compileSpliceCands ../../bin
+ compileSpliceCands.o : compileSpliceCands.c 
+ 	gcc -Wall -pedantic -ansi $(CPPFLAGS) -c compileSpliceCands.c 
++list.o :
++	gcc -Wall -pedantic -ansi $(CPPFLAGS) -c list.c 
+ 
+ all : compileSpliceCands
+ 

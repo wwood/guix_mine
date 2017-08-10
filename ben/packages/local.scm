@@ -871,7 +871,7 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
 (define-public barrnap
   (package
    (name "barrnap")
-   (version "0.7")
+   (version "0.8")
    (source
     (origin
       (method url-fetch)
@@ -881,7 +881,7 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
       (file-name (string-append name "-" version ".tar.gz"))
       (sha256
        (base32
-        "16y040np76my3y82hgk4yy790smbsk4h8d60d5swlv7ha3i768gg"))
+        "03rpy266cqrw8zqnbr9n2bq7m2vvhgzjgpn074avd4kyfqq4j042"))
       (modules '((guix build utils)))
       ;; Remove pre-built binaries.
       (snippet '(begin
@@ -915,7 +915,8 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
             #t)))))
    (inputs
     `(("perl" ,perl)
-      ("hmmer" ,hmmer)))
+      ("hmmer" ,hmmer)
+      ("which" ,which)))
    (home-page "https://github.com/tseemann/barrnap")
    (synopsis "Bacterial ribosomal RNA predictor")
    (description

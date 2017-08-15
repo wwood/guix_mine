@@ -906,12 +906,14 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
           (lambda* (#:key outputs #:allow-other-keys)
             (let* ((out  (assoc-ref outputs "out"))
                    (bin  (string-append out "/bin"))
+                   (db   (string-append out "/db")) ; TODO: Move into share.
                    (path (getenv "PATH"))
                    (file "barrnap"))
               (install-file (string-append "bin/" file) bin)
               (wrap-program (string-append bin "/" file)
                             `("PATH" ":" prefix (,path)))
-              (copy-recursively "db" out))
+              (mkdir-p db)
+              (copy-recursively "db" db))
             #t)))))
    (inputs
     `(("perl" ,perl)
@@ -3538,9 +3540,9 @@ programs.")
    (name "singlem-dev")
    (version "0.0.0.dev")
    (source
-   ; (local-file (string-append (getenv "HOME") "/git/singlem")
-   ;             #:recursive? #t))
-    (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
+    (local-file (string-append (getenv "HOME") "/git/singlem")
+                #:recursive? #t))
+   ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
    (inputs
     `(("graftm" ,graftm)
       ("python-biopython" ,python2-biopython)
@@ -3560,7 +3562,9 @@ programs.")
       ("diamond" ,diamond)
       ;; Include GraftM-specific dependencies too as GraftM is not installed as
       ;; a library.
-      ("taxtastic" ,taxtastic)))))
+      ("taxtastic" ,taxtastic)
+      ("python-orator" ,python2-orator)
+      ("sqlite" ,sqlite)))))
 
 (define-public bamm-dev
   (let ((base bamm))

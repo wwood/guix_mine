@@ -3536,45 +3536,18 @@ programs.")
 ;; If there are errors making the DB, run "rm -rf ~/git/singlem/singlem/db;
 ;; python setup.py sdist; rm -rf singlem.egg-info/"
 (define-public singlem-dev
-  (package
-   (inherit singlem)
-   (name "singlem-dev")
-   (version "0.0.0.dev")
-   (source
-    (local-file (string-append (getenv "HOME") "/git/singlem")
-                #:recursive? #t))
-   ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
-   (inputs
-    `(("graftm" ,graftm)
-      ("python-biopython" ,python2-biopython)
-      ("python-extern" ,python2-extern)
-      ("python-tempdir" ,python2-tempdir)
-      ("python-dendropy" ,python2-dendropy)
-      ("python-subprocess32" ,python2-subprocess32)
-      ("python-biom-format" ,python2-biom-format)
-      ("python-h5py" ,python2-h5py)
-      ("python-pandas" ,python2-pandas)
-      ("seqmagick" ,seqmagick)
-      ("blast+" ,blast+)
-      ("vsearch" ,vsearch)
-      ("krona-tools" ,krona-tools)
-      ("fxtract" ,fxtract)
-      ("hmmer" ,hmmer)
-      ("diamond" ,diamond)
-      ;; Include GraftM-specific dependencies too as GraftM is not installed as
-      ;; a library.
-      ("taxtastic" ,taxtastic)
-      ("python-orator" ,python2-orator)
-      ("sqlite" ,sqlite)))))
-
-(define-public bamm-dev
-  (let ((base bamm))
+  (let ((base singlem))
     (package
       (inherit base)
-      (name "bamm-dev")
-      (version (string-append (package-version base) "-dev"))
+      (name "singlem-dev")
+      (version "0.0.0.dev")
       (source
-       (local-file "/tmp/BamM" #:recursive? #t)))))
+       (local-file (string-append (getenv "HOME") "/git/singlem")
+                   #:recursive? #t))
+                                        ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
+      (propagated-inputs
+       `(("python-orator" ,python2-orator)
+         ,@(package-propagated-inputs base))))))
 
 (define-public graftm-dev
   (let ((base graftm))
@@ -5157,3 +5130,96 @@ Psych also knows how to serialize and de-serialize most Ruby objects to and from
     (home-page "https://github.com/ruby/psych")
     (license license:expat)))
 
+;; Much the same as bamm, except update to htslib 1.5.
+(define-public bamm-dev
+  (package
+    (name "bamm-dev")
+    (version "1.7.3")
+    (source (origin
+              (method url-fetch)
+              ;; BamM is not available on pypi.
+              (uri (string-append
+                    "https://github.com/Ecogenomics/BamM/archive/"
+                    version ".tar.gz"))
+              (file-name (string-append name "-" version ".tar.gz"))
+              (sha256
+               (base32
+                "1f35yxp4pc8aadsvbpg6r4kg2jh4fkjci0iby4iyljm6980sac0s"))
+              (modules '((guix build utils)))
+              (snippet
+               `(begin
+                  ;; Delete bundled htslib.
+                  (delete-file-recursively "c/htslib-1.3.1")
+                  #t))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2 ; BamM is Python 2 only.
+       ;; Do not use bundled libhts.  Do use the bundled libcfu because it has
+       ;; been modified from its original form.
+       #:configure-flags
+       (let ((htslib (assoc-ref %build-inputs "htslib")))
+         (list "--with-libhts-lib" (string-append htslib "/lib")
+               "--with-libhts-inc" (string-append htslib "/include/htslib")))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'autogen
+           (lambda _
+             (with-directory-excursion "c"
+               (let ((sh (which "sh")))
+                 ;; Use autogen so that 'configure' works.
+                 (substitute* "autogen.sh" (("/bin/sh") sh))
+                 (setenv "CONFIG_SHELL" sh)
+                 (substitute* "configure" (("/bin/sh") sh))
+                 (zero? (system* "./autogen.sh"))))))
+         (delete 'build)
+         ;; Run tests after installation so compilation only happens once.
+         (delete 'check)
+         (add-after 'install 'wrap-executable
+           (lambda* (#:key outputs #:allow-other-keys)
+            (let* ((out  (assoc-ref outputs "out"))
+                   (path (getenv "PATH")))
+              (wrap-program (string-append out "/bin/bamm")
+                `("PATH" ":" prefix (,path))))
+            #t))
+         (add-after 'wrap-executable 'post-install-check
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (setenv "PATH"
+                     (string-append (assoc-ref outputs "out")
+                                    "/bin:"
+                                    (getenv "PATH")))
+             (setenv "PYTHONPATH"
+                     (string-append
+                      (assoc-ref outputs "out")
+                      "/lib/python"
+                      (string-take (string-take-right
+                                    (assoc-ref inputs "python") 5) 3)
+                      "/site-packages:"
+                      (getenv "PYTHONPATH")))
+             ;; There are 2 errors printed, but they are safe to ignore:
+             ;; 1) [E::hts_open_format] fail to open file ...
+             ;; 2) samtools view: failed to open ...
+             (zero? (system* "nosetests"))
+             #t)))))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("zlib" ,zlib)
+       ("python-nose" ,python2-nose)
+       ("python-pysam" ,python2-pysam)))
+    (inputs
+     `(("htslib" ,htslib) ; At least one test fails on htslib-1.4+.
+       ("samtools" ,samtools)
+       ("bwa" ,bwa)
+       ("grep" ,grep)
+       ("sed" ,sed)
+       ("coreutils" ,coreutils)))
+    (propagated-inputs
+     `(("python-numpy" ,python2-numpy)))
+    (home-page "http://ecogenomics.github.io/BamM/")
+    (synopsis "Metagenomics-focused BAM file manipulator")
+    (description
+     "BamM is a C library, wrapped in python, to efficiently generate and
+parse BAM files, specifically for the analysis of metagenomic data.  For
+instance, it implements several methods to assess contig-wise read coverage.")
+    (license license:lgpl3+)))

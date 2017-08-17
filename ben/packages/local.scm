@@ -5223,3 +5223,50 @@ Psych also knows how to serialize and de-serialize most Ruby objects to and from
 parse BAM files, specifically for the analysis of metagenomic data.  For
 instance, it implements several methods to assess contig-wise read coverage.")
     (license license:lgpl3+)))
+
+(define-public drep ; Won't work properly because mummer and gANI are not packaged.
+  (package
+    (name "drep")
+    (version "1.0.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "drep" version))
+       (sha256
+        (base32
+         "1kxkxn34yffmf24zc23dvb7145zwymwcq22bcj6j15bpkkdfnjrw"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f ; The test suite does not work.
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'patch-setup.py
+           (lambda _
+             (substitute* "setup.py"
+               (("sklearn") "scikit-learn"))
+             #t))
+         (add-after 'install 'wrap-executable
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out  (assoc-ref outputs "out"))
+                    (path (getenv "PATH")))
+               (wrap-program (string-append out "/bin/dRep")
+                 `("PATH" ":" prefix (,path))))
+             #t)))))
+    (native-inputs
+     `(("python-pytest" ,python-pytest)))
+    (inputs
+     `(("checkm" ,checkm)
+       ("prodigal" ,prodigal)
+       ("mash" ,mash)
+       ("python-numpy" ,python-numpy)
+       ("python-pandas" ,python-pandas)
+       ("python-seaborn" ,python-seaborn)
+       ("python-matplotlib" ,python-matplotlib)
+       ("python-biopython" ,python-biopython)
+       ("python-sklearn" ,python-scikit-learn)))
+    (home-page "https://github.com/MrOlm/drep")
+    (synopsis
+     "De-replication of microbial genomes assembled from multiple samples")
+    (description
+     "De-replication of microbial genomes assembled from multiple samples")
+    (license license:expat)))

@@ -5270,3 +5270,88 @@ instance, it implements several methods to assess contig-wise read coverage.")
     (description
      "De-replication of microbial genomes assembled from multiple samples")
     (license license:expat)))
+
+(define-public eukrep ; Fails to build because sklearn is currently failing to build in Guix proper.
+  ;; There are no source releases on PyPI, so we package from git.
+  (let ((commit "f9158f2afd64513f93fcff935bbd5ec5ce95b113"))
+    (package
+     (name "eukrep")
+     (version "0.6.1")
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/patrickwest/EukRep.git")
+             (commit commit)))
+       (sha256
+        (base32
+         "0djac4g3mf29ls8492r5c300y9ckpc029aiqp207a24b2wryfrb0"))))
+     (build-system python-build-system)
+     (inputs
+      `(("python-numpy" ,python-numpy)
+        ("python-scikit-learn" ,python-scikit-learn)
+        ("python-kpal" ,python-kpal)
+        ("python-biopython" ,python-biopython)))
+     (home-page "https://github.com/patrickwest/EukRep")
+     (synopsis
+      "Classification of Eukaryotic and Prokaryotic sequences from metagenomic datasets")
+     (description
+      "Classification of Eukaryotic and Prokaryotic sequences from metagenomic datasets")
+     (license license:expat))))
+
+(define-public python-kpal
+  (package
+   (name "python-kpal")
+   (version "2.1.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "kPAL" version))
+     (sha256
+      (base32
+       "11f8i3rn8isxb1lbkabr1karnh32qlca07f69nnws2d3imj2sw2l"))))
+   (build-system python-build-system)
+   (home-page
+    "https://github.com/LUMC/kPAL")
+   (native-inputs
+    `(("python-mock" ,python-mock)
+      ("python-pytest" ,python-pytest)
+      ("python-sphinx" ,python-sphinx)
+      ("python-sphinx-rtd-theme" ,python-sphinx-rtd-theme)
+      ("python-tox" ,python-tox)))
+   (propagated-inputs
+    `(("python-numpy" ,python-numpy)
+      ("python-h5py" ,python-h5py)
+      ("python-biopython", python-biopython)
+      ("python-future" ,python-future)
+      ("python-semantic-version" ,python-semantic-version)
+      ("python-matplotlib" ,python-matplotlib)
+      ("python-pyqt" ,python-pyqt)
+      ("python-scipy" ,python-scipy)))
+   (synopsis
+    "k-mer analysis toolkit and programming library.")
+   (description
+    "k-mer analysis toolkit and programming library.")
+   (license license:expat)))
+
+(define-public python-semantic-version
+  (package
+   (name "python-semantic-version")
+   (version "2.6.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "semantic_version" version))
+     (sha256
+      (base32
+       "1h2l9xyg1zzsda6kjcmfcgycbvrafwci283vcr1v5sbk01l2hhra"))))
+   (build-system python-build-system)
+   (arguments
+    `(#:tests? #f)) ; Tests are not included in release
+   (home-page
+    "https://github.com/rbarrois/python-semanticversion")
+   (synopsis
+    "A library implementing the 'SemVer' scheme.")
+   (description
+    "A library implementing the 'SemVer' scheme.")
+   (license license:bsd-3)))

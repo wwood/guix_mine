@@ -41,6 +41,7 @@
   #:use-module (gnu packages guile)
   #:use-module (gnu packages gcc)
   #:use-module (gnu packages graphviz)
+  #:use-module (gnu packages graph)
   #:use-module (gnu packages graphics)
   #:use-module (gnu packages groff)
   #:use-module (gnu packages gstreamer)
@@ -5271,21 +5272,22 @@ instance, it implements several methods to assess contig-wise read coverage.")
      "De-replication of microbial genomes assembled from multiple samples")
     (license license:expat)))
 
-(define-public eukrep ; Fails to build because sklearn is currently failing to build in Guix proper.
+(define-public eukrep
   ;; There are no source releases on PyPI, so we package from git.
-  (let ((commit "f9158f2afd64513f93fcff935bbd5ec5ce95b113"))
+  (let ((commit "72f402870a53768093eeed58493b1feb39f3aa72"))
     (package
      (name "eukrep")
-     (version "0.6.1")
+     (version (string-append "0.6.1-1." (string-take commit 8)))
      (source
       (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/patrickwest/EukRep.git")
              (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
        (sha256
         (base32
-         "0djac4g3mf29ls8492r5c300y9ckpc029aiqp207a24b2wryfrb0"))))
+         "112i0ynmmgrammcp5chh5vbcw90s3wsx1zmsf72nfjz9y4qlryvm"))))
      (build-system python-build-system)
      (inputs
       `(("python-numpy" ,python-numpy)
@@ -5355,3 +5357,34 @@ instance, it implements several methods to assess contig-wise read coverage.")
    (description
     "A library implementing the 'SemVer' scheme.")
    (license license:bsd-3)))
+
+(define-public groopm2
+  (package
+    (name "groopm2")
+    (version (string-append "0.0.1"))
+    (source #f) ; Not yet released.
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:tests? #f))
+    (native-inputs
+     `(("python2-setuptools" ,python2-setuptools)
+       ("python2-cython" ,python2-cython)
+       ("python2-nose" ,python2-nose)))
+    (inputs
+     `(("graftm" ,graftm)
+       ("singlem" ,singlem)
+       ("bamm" ,bamm)
+       ("python-tempdir" ,python2-tempdir)))
+    (propagated-inputs
+     `(("python2-numpy" ,python2-numpy)
+       ("python2-scipy",python2-scipy)
+       ("python2-matplotlib" ,python2-matplotlib)
+       ("python2-tables" ,python2-tables)))
+    (home-page "https://ecogenomics.github.io/GroopM")
+    (synopsis "Metagenomic binning suite")
+    (description
+     "GroopM is a metagenomic binning toolset. It leverages spatio-temoral
+dynamics (differential coverage) to accurately (and almost automatically)
+extract population genomes from multi-sample metagenomic datasets.")
+(license license:gpl3+)))

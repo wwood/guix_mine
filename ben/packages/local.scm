@@ -288,7 +288,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 (define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
-    (version "3.10.1")
+    (version "3.11.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://spades.bioinf.spbau.ru/release"
@@ -296,7 +296,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "15hd4hgzn91gkqx16r7d76zvhzqhrqdjl1wnk15a2rvpjkmxk7fl"))))
+                "07xddfvan45c3qsh4c70d8sr0283x32k538s64d2407vqpka72ih"))))
     (build-system cmake-build-system)
     (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
      `(("zlib" ,zlib)

@@ -1496,7 +1496,7 @@ help a user to decide whether their sample has a known or novel K locus.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "11lz0p3bj4w14pwac1dkmpc77yi3i3552cif4shdr85nrdxbkih9"))
+         "1dac89dg2dy4ji0ykgyb3bavfc3brd363xlfjpmdlvwwsifrdlyh"))
        (modules '((guix build utils)))
        (snippet
         ;; Delete bundled cityhash library.  Do not delete bundled IDBA,
@@ -1514,7 +1514,8 @@ help a user to decide whether their sample has a known or novel K locus.")
                       ;; "CPU_ARCH="
                       ;; "CPU_ARCH_SUFFIX="
                       ;; "disablempopcnt=1"
-		      )
+                      )
+       #:test-target "test"
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-makefile
@@ -1523,11 +1524,6 @@ help a user to decide whether their sample has a known or novel K locus.")
                (("city.o") ""))
              #t))
          (delete 'configure)
-         (replace 'check
-           (lambda _
-             (zero?
-              (system* "./megahit" "-t" "4" "--12"
-                       "example/readsInterleaved1.fa.gz" "-o" "megahit_out"))))
          (replace 'install ; No install target.
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out  (assoc-ref outputs "out"))
@@ -5587,3 +5583,248 @@ extract population genomes from multi-sample metagenomic datasets.")
    (description
     " An alternative version of .C() and .Fortran() supporting long vectors and 64-bit integer type arguments.  The provided interface .C64() features mechanisms the avoid unnecessary copies of read-only or write-only arguments.  This makes it a convenient and fast interface to C/C++ and Fortran code.")
    (license license:gpl2+)))
+
+(define-public metacarvel ; does not work because included binaries have bad
+                          ; runpaths and these cannot be built from source.
+  (let ((commit "b48de515db3fd7bf0a817909eecba2242b3e5fee"))
+    (package
+      (name "metacarvel")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/marbl/MetaCarvel.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "108bdi9i9kvv9s9n92dzhr31q50in3igqlakvhfkjkqmplmvs912"))
+         (patches (search-patches "metacarvel.patch"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:parallel-build? #f
+         #:make-flags (list (string-append
+                             "DEST_DIR=" (assoc-ref %outputs "out")))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (add-before 'build 'clean
+             (lambda _ (zero? (system* "make" "clean"))))
+           (replace 'check
+             ;; There is no tests, so we simply get the help message.
+             (lambda _
+               (system* "chmod" "+x" "run.py")
+               (zero? (system* "python" "run.py" "-h"))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out  (assoc-ref outputs "out"))
+                      (bin  (string-append out "/bin"))
+                      (path (getenv "PATH"))
+                      (pythonpath (getenv "PYTHONPATH")))
+                 (for-each
+                  (lambda (file)
+                    (install-file file bin))
+                  '("bundler"
+                    "centrality"
+                    "libcorrect"
+                    "orientcontigs"
+                    "spqr"
+                    "run.py"))
+                 (wrap-program (string-append out "/bin/run.py")
+                   `("PATH" ":" prefix (,path)))
+                 (wrap-program (string-append out "/bin/run.py")
+                   `("pythonpath" ":" prefix (,pythonpath)))))))
+         ))
+      (inputs
+       `(("python" ,python-2) ; Python-2 only, I think.
+         ("python-networkx" ,python2-networkx)
+         ("samtools" ,samtools)
+         ("bedtools" ,bedtools)))
+      (home-page "https://github.com/marbl/MetaCarvel")
+      (synopsis "Scaffolder for metagenomes")
+      (description
+       "MetaCarvel is an updated version of previous metagenome scaffolder Bambus
+2.")
+      (license #f)))) ; Actually unknown
+
+(define-public python-networkit ; unfinished
+  (package
+    (name "python-networkit")
+    (version "4.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "networkit" version))
+       (sha256
+        (base32
+         "1asnrzxmwwj63ljs6c7cj5wn8jxr5g89239cphi0hq92ybvjws5b"))))
+    (build-system python-build-system)
+    (home-page "https://networkit.iti.kit.edu/")
+    (synopsis
+     "NetworKit is a toolbox for high-performance network analysis")
+    (description
+     "NetworKit is a toolbox for high-performance network analysis")
+    (license license:expat)))
+
+(define-public r-pathview
+  (package
+    (name "r-pathview")
+    (version "1.16.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "pathview" version))
+       (sha256
+        (base32
+         "0ff0v53vv86aqjyvkmmv72g3cmfkihmlxn6z6nkp086y22zcasqi"))))
+    (build-system r-build-system)
+    (propagated-inputs
+     `(("r-org-hs-eg-db" ,r-org-hs-eg-db)
+       ("r-kegggraph" ,r-kegggraph)
+       ("r-graphviz" ,r-graphviz)
+       ("r-xml" ,r-xml)
+       ("r-graph" ,r-graph)
+       ("r-png" ,r-png)
+       ("r-annotationdbi" ,r-annotationdbi)
+       ("r-keggrest" ,r-keggrest)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
+
+(define-public r-gage
+  (package
+    (name "r-gage")
+    (version "2.26.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "gage" version))
+       (sha256
+        (base32
+         "0h5ynrapm756y6gbljhaxz9m8q2113n1sd1dahm2ln5sx6blikkd"))))
+    (build-system r-build-system)
+    (propagated-inputs
+     `(("r-annotationdbi" ,r-annotationdbi)
+       ("r-keggrest" ,r-keggrest)
+       ("r-graph" ,r-graph)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
+
+(define-public r-keggrest
+  (package
+    (name "r-keggrest")
+    (version "1.16.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "KEGGREST" version))
+       (sha256
+        (base32
+         "1hnb0n63q7b4489p87p6p0z4lnbklzg121ny294hihjd341g7nx9"))))
+    (build-system r-build-system)
+    (propagated-inputs
+     `(("r-httr" ,r-httr)
+       ("r-png" ,r-png)
+       ("r-biostrings" ,r-biostrings)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
+
+(define-public r-kegggraph
+  (package
+    (name "r-kegggraph")
+    (version "1.38.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "KEGGgraph" version))
+       (sha256
+        (base32
+         "14x6npm7azzib17flhi51ikjq9d4vi5jgmhad52arij9savspi8p"))))
+    (build-system r-build-system)
+    (propagated-inputs
+     `(("r-xml" ,r-xml)
+       ("r-graph" ,r-graph)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
+
+(define-public r-graphviz ; Uses bundled graphviz
+  (package
+    (name "r-graphviz")
+    (version "2.20.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (bioconductor-uri "Rgraphviz" version))
+       (sha256
+        (base32
+         "0mwdqsmmhpk8szp3pf3bw66nv2sazpjiflpwdvqwjamvxyynmp67"))))
+    (build-system r-build-system)
+    ;; (arguments
+    ;;  `(#:configure-flags ; These configure flags aren't accepted for some reason - maybe they need to be at the end of the arguments, after a -- ? This isn't supported by the r-build-system AFAIK.
+    ;;    (list "--"
+    ;;          (string-append
+    ;;           "--with-graphviz=" (assoc-ref %build-inputs "graphviz")))))
+    (inputs
+     `(("zlib" ,zlib)
+       ("graphviz" ,graphviz)))
+    (propagated-inputs
+     `(("r-xml" ,r-xml)
+       ("r-graph" ,r-graph)))
+    (home-page "")
+    (synopsis "")
+    (description "")
+    (license #f)))
+
+(define-public minimap
+  (package
+   (name "minimap")
+   (version "2-2.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/lh3/minimap2/releases/download/v"
+           (substring version 2) "/minimap2-"
+           (substring version 2) ".tar.bz2"))
+     (sha256
+      (base32
+       "1ndfxhbs2mnv9y1lnaqm9ki85423qh2z889qzs64lif4fjm871ky"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:make-flags '("CC=gcc")
+      #:tests? #f ; No tests.
+      #:phases
+      (modify-phases %standard-phases
+        (delete 'configure)
+        (replace 'install
+          (lambda* (#:key outputs #:allow-other-keys)
+            (let* ((out (assoc-ref outputs "out"))
+                   (bin (string-append out "/bin"))
+                   (man (string-append out "/share/man/man1")))
+              (install-file "minimap2" bin)
+              (install-file "minimap2.1" man)
+              #t))))))
+   (inputs
+    `(("zlib" ,zlib)))
+   (home-page "https://github.com/lh3/minimap2")
+   (synopsis
+    "Fast pairwise aligner for genomic and spliced nucleotide sequences")
+   (description
+    "Minimap2 is a versatile sequence alignment program that aligns DNA or mRNA
+sequences against a large reference database.  Typical use cases include: (1)
+mapping PacBio or Oxford Nanopore genomic reads to the human genome; (2) finding
+overlaps between long reads with error rate up to ~15%; (3) splice-aware
+alignment of PacBio Iso-Seq or Nanopore cDNA or Direct RNA reads against a
+reference genome; (4) aligning Illumina single- or paired-end reads; (5)
+assembly-to-assembly alignment; (6) full-genome alignment between two closely
+related species with divergence below ~15%.")
+   (license license:expat)))
+

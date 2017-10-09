@@ -1508,7 +1508,7 @@ help a user to decide whether their sample has a known or novel K locus.")
 (define-public megahit
   (package
     (name "megahit")
-    (version "1.1.1")
+    (version "1.1.2")
     (source
      (origin
        (method url-fetch)
@@ -1516,7 +1516,7 @@ help a user to decide whether their sample has a known or novel K locus.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "11lz0p3bj4w14pwac1dkmpc77yi3i3552cif4shdr85nrdxbkih9"))
+         "1dac89dg2dy4ji0ykgyb3bavfc3brd363xlfjpmdlvwwsifrdlyh"))
        (modules '((guix build utils)))
        (snippet
         ;; Delete bundled cityhash library.  Do not delete bundled IDBA,
@@ -1534,7 +1534,8 @@ help a user to decide whether their sample has a known or novel K locus.")
                       ;; "CPU_ARCH="
                       ;; "CPU_ARCH_SUFFIX="
                       ;; "disablempopcnt=1"
-		      )
+                      )
+       #:test-target "test"
        #:phases
        (modify-phases %standard-phases
          (add-after 'unpack 'patch-makefile
@@ -1543,11 +1544,6 @@ help a user to decide whether their sample has a known or novel K locus.")
                (("city.o") ""))
              #t))
          (delete 'configure)
-         (replace 'check
-           (lambda _
-             (zero?
-              (system* "./megahit" "-t" "4" "--12"
-                       "example/readsInterleaved1.fa.gz" "-o" "megahit_out"))))
          (replace 'install ; No install target.
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((out  (assoc-ref outputs "out"))
@@ -3702,10 +3698,10 @@ bioinformatics file formats, sequence alignment, and more.")
 
 (define-public mmseqs ; Uses -march=native but probably works. For tests need updated googletest in guix proper I'd say. Also should patch in the git commit to the cmake system somehow. Bundles a few libraries
   ;; There are no releases so we package from git.
-  (let ((commit "b69fcd43f669b19a023123e1e97333a4284e3dbf"))
+  (let ((commit "d96d24698a58604a3daaf2c18fda6cd19afcf53e"))
     (package
      (name "mmseqs")
-     (version (string-append "2-1." (string-take commit 8)))
+     (version (string-append "2-2." (string-take commit 8)))
      (source
       (origin
        (method git-fetch)
@@ -3715,7 +3711,7 @@ bioinformatics file formats, sequence alignment, and more.")
        (file-name (string-append name "-" version "-checkout"))
        (sha256
         (base32
-         "1adjzv8jh1plswwzmz3r2d70ksmkwinl34hwgvb7n7kv87z39q3r"))))
+         "0zy95c3n7q9awhzh9klxkyzq184b7ljdgj1pddpa4cc1m0pa1jhx"))))
      (build-system cmake-build-system)
      (arguments
       ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
@@ -5587,3 +5583,42 @@ extract population genomes from multi-sample metagenomic datasets.")
     (synopsis "")
     (description "")
     (license #f)))
+
+(define-public minimap
+  (package
+   (name "minimap")
+   (version "2-2.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/lh3/minimap2/releases/download/v"
+           (substring version 2) "/minimap2-"
+           (substring version 2) ".tar.bz2"))
+     (sha256
+      (base32
+       "1ndfxhbs2mnv9y1lnaqm9ki85423qh2z889qzs64lif4fjm871ky"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:make-flags '("CC=gcc")
+      #:tests? #f ; No tests.
+      #:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     (replace 'install
+                              (lambda* (#:key outputs #:allow-other-keys)
+                                (let* ((out    (assoc-ref outputs "out"))
+                                       (bin    (string-append out "/bin"))
+                                       (man (string-append out "/share/man/man1")))
+                                  (install-file "minimap2" bin)
+                                  (install-file "minimap2.1" man)
+                                  #t)))
+                     )))
+   (inputs
+    `(("zlib" ,zlib)))
+   (home-page "https://github.com/patrickwest/EukRep")
+   (synopsis
+    "Fast pairwise aligner for genomic and spliced nucleotide sequences")
+   (description
+    "minimap2")
+   (license license:expat))) ;?

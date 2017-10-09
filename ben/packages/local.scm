@@ -21,6 +21,7 @@
   #:use-module (gnu packages boost)
   #:use-module (gnu packages bootstrap)
   #:use-module (gnu packages check)
+  #:use-module (gnu packages cmake)
   #:use-module (gnu packages compression)
   #:use-module (gnu packages cpio)
   #:use-module (gnu packages curl)
@@ -288,7 +289,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 (define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
-    (version "3.11.0")
+    (version "3.11.1")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://spades.bioinf.spbau.ru/release"
@@ -296,7 +297,7 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "07xddfvan45c3qsh4c70d8sr0283x32k538s64d2407vqpka72ih"))))
+                "0x5l4nkkjrkdn41ifz2baz9bp2r5blgrf77impc5nnbxpy35vf1s"))))
     (build-system cmake-build-system)
     (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
      `(("zlib" ,zlib)
@@ -328,7 +329,7 @@ assemblies.")
 (define-public idba
   (package
     (name "idba")
-    (version "1.1.2")
+    (version "1.1.3")
     (source (origin
               (method url-fetch)
               (uri (string-append
@@ -568,27 +569,6 @@ uncertainty in input sequences and modelling e.g. homopolymer errors in Roche
 sequences can then be aligned.")
     ;; According to 
     (license license:gpl3+)))
-
-(define-public r-permute
-  (package
-   (name "r-permute")
-   (version "0.9-0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "permute" version))
-     (sha256
-      (base32
-       "0w68cqw6s4pixix8bh1qzsy1pm64jqh1cjznw74h82ygp8sj7p73"))))
-   (build-system r-build-system)
-   ;(propagated-inputs `(("r-stats" ,r-stats)))
-   (home-page
-    "https://github.com/gavinsimpson/permute")
-   (synopsis
-    "Functions for Generating Restricted Permutations of Data")
-   (description
-    "This package provides a set of restricted permutation designs for freely exchangeable, line transects (time series), and spatial grid designs plus permutation of blocks (groups of samples) is provided. 'permute' also allows split-plot designs, in which the whole-plots or split-plots or both can be freely-exchangeable or one of the restricted designs.  The 'permute' package is modelled after the permutation schemes of 'Canoco 3.1' (and later) by Cajo ter Braak.")
-   (license license:gpl2+)))
 
 (define-public mummer ; potentially works, except that all the files need to be
                                         ; moved to the output directory before
@@ -1162,7 +1142,7 @@ algorithm takes as input a message of arbitrary length and produces as output a
        ("python-setuptools" ,python2-setuptools)
        ;("python-semiidbm" ,python2-semiidbm) ; TODO: package semiidbm.
        ("python-pymongo" ,python2-pymongo)
-       ("python-rpy2" ,python2-rpy2)
+       ;("python-rpy2" ,python2-rpy2) ; rpy2 is no longer supporting python-2.
        ("python-matplotlib" ,python2-matplotlib)
        ("python-msgpack" ,python2-msgpack)
        ("python-pandas" ,python2-pandas)))
@@ -1508,7 +1488,7 @@ help a user to decide whether their sample has a known or novel K locus.")
 (define-public megahit
   (package
     (name "megahit")
-    (version "1.1.1")
+    (version "1.1.2")
     (source
      (origin
        (method url-fetch)
@@ -3546,6 +3526,21 @@ programs.")
        (local-file (string-append (getenv "HOME") "/git/singlem")
                    #:recursive? #t))
                                         ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
+      (arguments
+       `(#:python ,python-2 ; python-2 only
+	 #:phases
+	 (modify-phases %standard-phases
+			(add-before 'check 'delete-smafa-tests
+				    (lambda _
+				      (delete-file "test/test_makedb_and_query.py")
+				      #t))
+           (add-after 'install 'wrap-programs
+	     (lambda* (#:key outputs #:allow-other-keys)
+	       (let* ((out (assoc-ref outputs "out"))
+		      (graftm (string-append out "/bin/singlem"))
+		      (path (getenv "PATH")))
+		 (wrap-program graftm `("PATH" ":" prefix (,path))))
+	       #t)))))
       (propagated-inputs
        `(("python-orator" ,python2-orator)
          ,@(package-propagated-inputs base))))))
@@ -3702,10 +3697,10 @@ bioinformatics file formats, sequence alignment, and more.")
 
 (define-public mmseqs ; Uses -march=native but probably works. For tests need updated googletest in guix proper I'd say. Also should patch in the git commit to the cmake system somehow. Bundles a few libraries
   ;; There are no releases so we package from git.
-  (let ((commit "b69fcd43f669b19a023123e1e97333a4284e3dbf"))
+  (let ((commit "d96d24698a58604a3daaf2c18fda6cd19afcf53e"))
     (package
      (name "mmseqs")
-     (version (string-append "2-1." (string-take commit 8)))
+     (version (string-append "2-2." (string-take commit 8)))
      (source
       (origin
        (method git-fetch)
@@ -3715,7 +3710,7 @@ bioinformatics file formats, sequence alignment, and more.")
        (file-name (string-append name "-" version "-checkout"))
        (sha256
         (base32
-         "1adjzv8jh1plswwzmz3r2d70ksmkwinl34hwgvb7n7kv87z39q3r"))))
+         "0zy95c3n7q9awhzh9klxkyzq184b7ljdgj1pddpa4cc1m0pa1jhx"))))
      (build-system cmake-build-system)
      (arguments
       ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
@@ -3816,7 +3811,7 @@ generated from metagenomic assembly into putative genomes.")
 (define-public canu ; Copied from Marius Bakke
   (package
     (name "canu")
-    (version "1.4")
+    (version "1.6le")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/marbl/canu"
@@ -5301,6 +5296,58 @@ instance, it implements several methods to assess contig-wise read coverage.")
       "Classification of Eukaryotic and Prokaryotic sequences from metagenomic datasets")
      (license license:expat))))
 
+(define-public ngs-bits
+  ;; There are no source releases on PyPI, so we package from git.
+  (let ((commit "767b40d5bfaeb792a9ed3678434c2d02300fb381"))
+    (package
+     (name "ngs-bits")
+     (version (string-append "0-2." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/imgag/ngs-bits.git")
+             (commit commit)
+             (recursive? #t)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "0wn420g46yi4vp55f0096i50lh2jhx0xnsn8fjx370lmgab78fqg"))))
+     (build-system gnu-build-system)
+     (arguments
+      `(#:tests? #f ; Tests fail for real reasons.
+        #:phases
+        (modify-phases %standard-phases
+          (delete 'configure)
+          (replace 'build
+            (lambda _
+              (and
+               (zero? (system* "make" "build_3rdparty"))
+               (zero? (system* "make" "build_tools_release")))))
+          ;; (replace 'check
+          ;;   (lambda _
+          ;;     (zero? (system* "make" "test_release"))))
+          (delete 'validate-runpath)
+          (replace 'install
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out  (assoc-ref outputs "out")))
+                (copy-recursively "bin" (string-append out "/bin"))
+                #t))))))
+     (native-inputs
+      `(("git" ,git)
+        ("cmake" ,cmake)))
+     (inputs
+      `(("qt" ,qt)
+        ("python" ,python-2)
+        ("python-matplotlib" ,python2-matplotlib)
+        ("gcc" ,gcc-7)))
+     (home-page "https://github.com/imgag/ngs-bits")
+     (synopsis
+      "Short-read sequencing tools")
+     (description
+      "Short-read sequencing tools")
+     (license license:gpl2+))))
+
 (define-public python-kpal
   (package
    (name "python-kpal")
@@ -5388,3 +5435,155 @@ instance, it implements several methods to assess contig-wise read coverage.")
 dynamics (differential coverage) to accurately (and almost automatically)
 extract population genomes from multi-sample metagenomic datasets.")
 (license license:gpl3+)))
+
+(define-public bipartite
+  (package
+  (name "r-bipartite")
+  (version "2.08")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (cran-uri "bipartite" version))
+      (sha256
+        (base32
+          "16j70ikzprjsm81w9bqbp26xxf14ckw654dy7c5hkz24x62qsx2i"))))
+  (build-system r-build-system)
+  (propagated-inputs
+    `(("r-fields" ,r-fields)
+      ("r-igraph" ,r-igraph)
+      ("r-mass" ,r-mass)
+      ("r-permute" ,r-permute)
+      ("r-sna" ,r-sna)
+      ("r-vegan" ,r-vegan)))
+  (home-page
+    "https://github.com/biometry/bipartite")
+  (synopsis
+    "Visualising Bipartite Networks and Calculating Some (Ecological) Indices")
+  (description
+    "Functions to visualise webs and calculate a series of indices commonly used to describe pattern in (ecological) webs.  It focuses on webs consisting of only two levels (bipartite), e.g.  pollination webs or predator-prey-webs.  Visualisation is important to get an idea of what we are actually looking at, while the indices summarise different aspects of the web's topology.")
+  (license (list license:gpl2+ license:gpl3+))))
+
+(define-public r-sna
+  (package
+   (name "r-sna")
+   (version "2.4")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "sna" version))
+     (sha256
+      (base32
+       "1ks8819qvpdfansfqj9p32s1rhvl26frvbi78m4rx1wd1qcv74i2"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-network" ,r-network)
+      ("r-statnet-common" ,r-statnet-common)))
+   (home-page "http://www.statnet.org")
+   (synopsis "Tools for Social Network Analysis")
+   (description
+    "This package provides a range of tools for social network analysis, including node and graph-level indices, structural distance and covariance methods, structural equivalence detection, network regression, random graph generation, and 2D/3D network visualization.")
+   (license license:gpl2+)))
+
+(define-public r-fields
+  (package
+   (name "r-fields")
+   (version "9.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "fields" version))
+     (sha256
+      (base32
+       "0fjk1gcgmmra38f574smv2grk3vkd81gldic85liaws1nqvb0z4w"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-maps" ,r-maps) ("r-spam" ,r-spam)))
+   (native-inputs `(("gfortran" ,gfortran)))
+   (home-page "http://www.image.ucar.edu/fields")
+   (synopsis "Tools for Spatial Data")
+   (description
+    "For curve, surface and function fitting with an emphasis on splines, spatial data and spatial statistics.  The major methods include cubic, and thin plate splines, Kriging, and compactly supported covariance functions for large data sets.  The splines and Kriging methods are supported by functions that can determine the smoothing parameter (nugget and sill variance) and other covariance function parameters by cross validation and also by restricted maximum likelihood.  For Kriging there is an easy to use function that also estimates the correlation scale (range parameter).  A major feature is that any covariance function implemented in R and following a simple format can be used for spatial prediction.  There are also many useful functions for plotting and working with spatial data as images.  This package also contains an implementation of sparse matrix methods for large spatial data sets and currently requires the sparse matrix (spam) package.  Use help(fields) to get started and for an overview.  The fields source code is deliberately commented and provides useful explanations of numerical details as a companion to the manual pages.  The commented source code can be viewed by expanding  source code version and looking in the R subdirectory.  The reference for fields can be generated by the citation function in R and has DOI <doi:10.5065/D6W957CT>.")
+   (license license:gpl2+)))
+
+(define-public r-spam
+  (package
+   (name "r-spam")
+   (version "2.1-1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "spam" version))
+     (sha256
+      (base32
+       "1j6yppyf3sngpmq99w0d3j8wlrmjsfsixw902rl6339w985b1lxc"))))
+   (build-system r-build-system)
+   (propagated-inputs
+    `(("r-dotcall64" ,r-dotcall64)))
+   (native-inputs `(("gfortran" ,gfortran)))
+   (home-page
+    "http://www.math.uzh.ch/furrer/software/spam/")
+   (synopsis "SPArse Matrix")
+   (description
+    "Set of functions for sparse matrix algebra.  Differences with other sparse matrix packages are: (1) we only support (essentially) one sparse matrix format, (2) based on transparent and simple structure(s), (3) tailored for MCMC calculations within G(M)RF. (4) and it is fast and scalable (with the extension package spam64).")
+   (license license:lgpl2.0)))
+
+(define-public r-network
+  (package
+   (name "r-network")
+   (version "1.13.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "network" version))
+     (sha256
+      (base32
+       "11sg330xb7gcnl3f6lwhhjdabz6mk43828i2np635pqw4s4yl13s"))))
+   (build-system r-build-system)
+   (home-page "http://statnet.org/")
+   (synopsis "Classes for Relational Data")
+   (description
+    "Tools to create and modify network objects.  The network class can represent a range of relational data types, and supports arbitrary vertex/edge/graph attributes.")
+   (license license:gpl2+)))
+
+(define-public r-statnet-common
+  (package
+   (name "r-statnet-common")
+   (version "4.0.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "statnet.common" version))
+     (sha256
+      (base32
+       "0yw6l5b4qv0jqlg4zyczas7m12a5pyqghs6ydxy2f6v6vxkijvi0"))))
+   (properties
+    `((upstream-name . "statnet.common")))
+   (build-system r-build-system)
+   (home-page "http://www.statnet.org")
+   (synopsis
+    "Common R Scripts and Utilities Used by the Statnet Project Software")
+   (description
+    "Non-statistical utilities used by the software developed by the Statnet Project.  They may also be of use to others.")
+   (license #f)))
+
+(define-public r-dotcall64
+  (package
+   (name "r-dotcall64")
+   (version "0.9-04")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (cran-uri "dotCall64" version))
+     (sha256
+      (base32
+       "0qp6magpp0jaa0b9sfkbxd91afayl24kj0yrh0ix1v3ahdnaar8f"))))
+   (properties `((upstream-name . "dotCall64")))
+   (build-system r-build-system)
+   (native-inputs `(("gfortran" ,gfortran)))
+   (home-page
+    "https://git.math.uzh.ch/reinhard.furrer/dotCall64")
+   (synopsis
+    "Enhanced Foreign Function Interface Supporting Long Vectors")
+   (description
+    " An alternative version of .C() and .Fortran() supporting long vectors and 64-bit integer type arguments.  The provided interface .C64() features mechanisms the avoid unnecessary copies of read-only or write-only arguments.  This makes it a convenient and fast interface to C/C++ and Fortran code.")
+   (license license:gpl2+)))

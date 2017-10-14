@@ -5851,3 +5851,57 @@ related species with divergence below ~15%.")
    (synopsis "Minimap2 python binding")
    (description "Minimap2 python binding")
    (license license:expat)))
+
+(define-public groopm2
+  (let ((commit "1a8fd8b33f9df16435cd7cc262e46f7b30b984ff"))
+    (package
+     (name "groopm2")
+     (version (string-append "2.0.0-1"))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/dparks1134/GroopM.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "14sbqj6zznj5pxr6kfsr4p2sq0k1zbbsdn3jwyl89fqcq6ys4zrs"))))
+     (build-system python-build-system)
+     (arguments
+      `(#:python ,python-2
+        #:phases
+        (modify-phases %standard-phases
+          (add-after 'install 'wrap2
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out  (assoc-ref outputs "out"))
+                     (bin  (string-append out "/bin"))
+                     (path (getenv "PATH"))
+                     (pythonpath (getenv "PYTHONPATH")))
+                (wrap-program (string-append out "/bin/groopm2")
+                  `("PATH" ":" prefix (,path)))
+                ;; Not sure why but `prefix' does not work below, for reasons
+                ;; that escape me. On the local servers, an old version of
+                ;; matplotlib from later in the path gets loaded, which fails.
+                (wrap-program (string-append out "/bin/groopm2")
+                  `("PYTHONPATH" ":" = (,pythonpath)))
+                #t))))))
+     (native-inputs
+      `(("python2-setuptools" ,python2-setuptools)
+        ("python2-cython" ,python2-cython)))
+     (inputs
+      `(("python-tempdir" ,python2-tempdir)
+        ("python2-numpy" ,python2-numpy)
+        ("python2-scipy",python2-scipy)
+        ("python2-matplotlib" ,python2-matplotlib)
+        ("python2-tables" ,python2-tables)
+        ("bamm" ,bamm)
+        ("singlem" ,singlem)))
+     (home-page "https://ecogenomics.github.io/GroopM")
+     (synopsis "Metagenomic binning suite")
+     (description
+      "GroopM is a metagenomic binning toolset. It leverages spatio-temoral
+dynamics (differential coverage) to accurately (and almost automatically)
+extract population genomes from multi-sample metagenomic datasets.")
+     (license license:gpl3+))))
+

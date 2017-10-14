@@ -3755,14 +3755,14 @@ PSI-BLAST but at around 270 times its speed.")
 (define-public binsanity ; in process?
   (package
    (name "binsanity")
-   (version "0.2.5.5")
+   (version "0.2.6.1")
    (source
     (origin
      (method url-fetch)
       (uri (pypi-uri "Binsanity" version))
       (sha256
         (base32
-          "0w9izgm3vd088rlaphmrjil9mjn5njjc14y2n1hg6idmk7cypshy"))))
+          "1v7lw6vjaa0h3srdbh65bjxc0199haqahyhhwvl83klkjqpc969c"))))
    (build-system python-build-system)
    (arguments
     `(#:python ,python-2 ; python 2 only.

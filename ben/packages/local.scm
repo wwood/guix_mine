@@ -37,6 +37,7 @@
   #:use-module (gnu packages fontutils)
   #:use-module (gnu packages gl)
   #:use-module (gnu packages glib)
+  #:use-module (gnu packages gnome)
   #:use-module (gnu packages gnuzilla)
   #:use-module (gnu packages gperf)
   #:use-module (gnu packages guile)
@@ -3151,10 +3152,12 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
       "")
      (license license:expat))))
 
-(define-public meld ; does not work with --pure
+(define-public meld ; does not work with --pure, strace suggests this might be
+                    ; related to the compile schemas thing. Look at the gtk
+                    ; build system for inspiration?
   (package
     (name "meld")
-    (version "3.16.4")
+    (version "3.18.0")
     (source (origin
              (method url-fetch)
              (uri (string-append "mirror://gnome/sources/" name "/"
@@ -3162,11 +3165,10 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
                                  name "-" version ".tar.xz"))
              (sha256
               (base32
-               "0rwflfkfnb9ydnk4k591x0il29d4dvz95cjs2f279blx64lgki4k"))))
+               "0gi2jzgsrd5q2icyp6wphbn532ddg82nxhfxlffkniy7wnqmi0c4"))))
     (build-system python-build-system)
     (arguments
-     `(#:python ,python-2
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (add-before 'build 'setup
            (lambda* (#:key outputs #:allow-other-keys)
@@ -3175,15 +3177,15 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
                  (("melddir = os.path.dirname\\(sys.executable\\)")
                   (string-append "melddir = '" out "'"))))))
          (delete 'check)
-         (add-after 'install 'post-install-check
-           ;; Running the tests before installation breaks installation so that
-           ;; the 'meld' executable croaks, so we run the tests after
-           ;; installation.
-           (lambda _
-             (setenv "HOME" "/tmp")
-             (setenv "PYTHONPATH"
-                     (string-append "build/lib:" (getenv "PYTHONPATH")))
-             (zero? (system* "py.test" "-v"))))
+         ;; (add-after 'install 'post-install-check
+         ;;   ;; Running the tests before installation breaks installation so that
+         ;;   ;; the 'meld' executable croaks, so we run the tests after
+         ;;   ;; installation.
+         ;;   (lambda _
+         ;;     (setenv "HOME" "/tmp")
+         ;;     (setenv "PYTHONPATH"
+         ;;             (string-append "build/lib:" (getenv "PYTHONPATH")))
+         ;;     (zero? (system* "py.test" "-v"))))
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
@@ -3194,7 +3196,7 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
                             "python"
                             "setup.py"
                             "--no-update-icon-cache"
-                            "--no-compile-schemas"
+                            ;;"--no-compile-schemas"
                             "install"
                             "--prefix"
                             out))
@@ -3205,20 +3207,22 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
                       ; (string-append gsettings "/meld"))
                       (wrap-program (string-append out "/bin/meld")
                         `("GI_TYPELIB_PATH" ":" prefix (,gi-typelib-path)))
-                      #t))))))))
+                      #t)))))
+         )))
     (propagated-inputs
      `(("gtk+" ,gtk+)
        ("glib:out" ,glib "out")
        ("gtksourceview" ,gtksourceview)))
     (inputs
-     `(("python2-pygobject" ,python2-pygobject)("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
-       ("python2-pycairo" ,python2-pycairo)))
+     `(("python-pygobject" ,python-pygobject)
+       ("gsettings-desktop-schemas" ,gsettings-desktop-schemas)
+       ("python-pycairo" ,python-pycairo)))
     (native-inputs
      `(("intltool" ,intltool)
        ("itstool" ,itstool)
        ("glib:bin" ,glib "bin")
-       ("python2-pytest" ,python2-pytest)
-       ("python2-pytest-mock" ,python2-pytest-mock)))
+       ("python-pytest" ,python-pytest)
+       ("python-pytest-mock" ,python-pytest-mock)))
     (home-page "http://meldmerge.org/")
     (synopsis "Visual diff and merge tool")
     (description
@@ -3553,7 +3557,7 @@ programs.")
 (define-public fastspar
   (package
    (name "fastspar")
-   (version "0.0.3")
+   (version "0.0.4")
    (source
     (origin
      (method url-fetch)
@@ -3563,7 +3567,7 @@ programs.")
      (file-name (string-append name "-" version ".tar.gz"))
      (sha256
       (base32
-       "1a6pz4mxzj8nb0rdqarvki5idm3z0jqmz0s472xll0blwan6r8cl"))))
+       "1w5mry829rv0jpfg027f2fi5ym6pqiylg43mfpxiq0sifbrrbnv4"))))
    (build-system gnu-build-system)
    (inputs
     `(("gfortran" ,gfortran)
@@ -3579,7 +3583,8 @@ programs.")
 correlation networks from genomic survey data.  FastSpar is up to several
 thousand times faster than the original Python2 implementation available at
 https://bitbucket.org/yonatanf/sparcc and uses much less memory.  Additionally,
-SparCC's method of p-value has been replaced with exact p-value calculation. ")
+SparCC's method of p-value has been replaced with exact p-value calculation.")
+   ;; GPLv3 only according to the README.
    (license license:gpl3)))
 
 (define-public slimm
@@ -5828,3 +5833,21 @@ assembly-to-assembly alignment; (6) full-genome alignment between two closely
 related species with divergence below ~15%.")
    (license license:expat)))
 
+(define-public python-mappy ; Might work, but uses bundled minimap code.
+  (package
+   (name "python-mappy")
+   (version "2.2")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "mappy" version))
+     (sha256
+      (base32
+       "07cz80z551zi46caq89g2ffy5n345q4y63mn35vk2ciy6497169y"))))
+   (build-system python-build-system)
+   (inputs
+    `(("zlib" ,zlib)))
+   (home-page "https://github.com/lh3/minimap2")
+   (synopsis "Minimap2 python binding")
+   (description "Minimap2 python binding")
+   (license license:expat)))

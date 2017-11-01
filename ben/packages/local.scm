@@ -5905,3 +5905,118 @@ dynamics (differential coverage) to accurately (and almost automatically)
 extract population genomes from multi-sample metagenomic datasets.")
      (license license:gpl3+))))
 
+;; (define-public aspera-connect ; Not free software, and also does not actually
+;;                               ; work? Not sure how to test, and NCBI's SRA
+;;                               ; prefetch fails to use it correctly.
+;;   (package
+;;    (name "aspera-connect")
+;;    (version "3.7.4.147727")
+;;    (source
+;;     (origin
+;;      (method url-fetch/tarbomb)
+;;      (uri
+;;       (string-append
+;;        "http://download.asperasoft.com/download/sw/connect/3.7.4/aspera-connect-"
+;;        version "-linux-64.tar.gz"))
+;;      (sha256
+;;       (base32
+;;        "0nx4rrfqgkmvcjg1m2p93aqcb8j2kk2p7b2qbsxwl2426q9p11cs"))))
+;;    (build-system gnu-build-system)
+;;    (arguments
+;;     `(#:tests? #f ; No tests.
+;;       #:phases
+;;       (modify-phases %standard-phases
+;;                      (replace 'configure
+;;                               (lambda* (#:key outputs #:allow-other-keys)
+;;                                 (let* ((out  (assoc-ref outputs "out")))
+;;                                   (setenv "HOME" out)
+;;                                   #t)))
+;;                      (delete 'build)
+;;                      (replace 'install
+;;                               (lambda _
+;;                                 (zero? (system* "./aspera-connect-3.7.4.147727-linux-64.sh"))))
+;;                      )))
+;;    (home-page "")
+;;    (synopsis
+;;     "")
+;;    (description
+;;     "")
+;;    (license license:expat)))
+
+(define-public python-ggplot
+  (package
+    (name "python-ggplot")
+    (version "0.11.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "ggplot" version))
+       (sha256
+        (base32
+         "17s6aspq4i9jrqkg15pn7wazxnq66mbpcvc54nniby47b7mckfs8"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:tests? #f)) ; Tests appear to fail.
+    (propagated-inputs
+     `(("python-brewer2mpl" ,python-brewer2mpl)
+       ("python-cycler" ,python-cycler)
+       ("python-matplotlib" ,python-matplotlib)
+       ("python-numpy" ,python-numpy)
+       ("python-pandas" ,python-pandas)
+       ("python-patsy" ,python-patsy)
+       ("python-scipy" ,python-scipy)
+       ("python-six" ,python-six)
+       ("python-statsmodels" ,python-statsmodels)))
+    (home-page "https://github.com/yhat/ggplot/")
+    (synopsis "ggplot for python")
+    (description "ggplot for python")
+    (license license:bsd-3)))
+
+(define-public python2-ggplot
+  (package-with-python2 python-ggplot))
+
+(define-public python-brewer2mpl
+  (package
+    (name "python-brewer2mpl")
+    (version "1.4.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "brewer2mpl" version))
+       (sha256
+        (base32
+         "070vbc4wclzlln3wq22y3n54bxlaf7641vg4fym8as3nx8dls29f"))))
+    (build-system python-build-system)
+    (home-page
+     "https://github.com/jiffyclub/brewer2mpl/wiki")
+    (synopsis
+     "Connect colorbrewer2.org color maps to Python and matplotlib")
+    (description
+     "Connect colorbrewer2.org color maps to Python and matplotlib")
+    (license #f)))
+
+(define-public python2-brewer2mpl
+  (package-with-python2 python-brewer2mpl))
+
+(define-public r-virfinder
+  (package
+    (name "r-virfinder")
+    (version "1.1")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/jessieren/VirFinder/blob/master/linux/VirFinder_"
+                           version ".tar.gz?raw=true"))
+       (sha256
+        (base32
+         "1d4mhnvill5vca1hwhywjivhmdhhqmyjkgvsnjmsvmnz872q86hy"))))
+    (build-system r-build-system)
+    (native-inputs
+     `(("r-rcpp" ,r-rcpp)))
+    (propagated-inputs
+     `(("r-glmnet" ,r-glmnet)
+       ("r-qvalue" ,r-qvalue)))
+    (home-page "https://github.com/jessieren/VirFinder")
+    (synopsis "VirFinder: a novel k-mer based tool for identifying viral sequences from assembled metagenomic data ")
+    (description "VirFinder: a novel k-mer based tool for identifying viral sequences from assembled metagenomic data ")
+    (license #f))) ; GPL3 but only for academic use? Huh?

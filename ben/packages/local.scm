@@ -6180,3 +6180,25 @@ extract population genomes from multi-sample metagenomic datasets.")
     "IPyVega: An IPython/Jupyter widget for Vega and Vega-Lite")
    (license #f)))
 
+(define-public python-squarify
+  (package
+    (name "python-squarify")
+    (version "0.3.0")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "squarify" version))
+       (sha256
+        (base32
+         "0wrg7kly2jsj42b3dr37pqdqw61rgscjffvs38hwzfsgq6wdcvlb"))))
+    (build-system python-build-system)
+    (home-page
+     "https://github.com/laserson/squarify")
+    (synopsis
+     "Pure Python implementation of the squarify treemap layout algorithm")
+    (description
+     "Pure Python implementation of the squarify treemap layout algorithm")
+    (license #f)))
+
+(define-public python2-squarify
+  (package-with-python2 python-squarify))

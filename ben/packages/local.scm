@@ -3547,6 +3547,8 @@ programs.")
 	       #t)))))
       (propagated-inputs
        `(("python-orator" ,python2-orator)
+         ("python-squarify" ,python2-squarify)
+         ("python-matplotlib" ,python2-matplotlib)
          ,@(package-propagated-inputs base))))))
 
 (define-public graftm-dev

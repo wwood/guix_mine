@@ -1499,6 +1499,7 @@ help a user to decide whether their sample has a known or novel K locus.")
        (method url-fetch)
        (uri (string-append "https://github.com/voutcn/megahit/archive/v"
                            version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
          "1dac89dg2dy4ji0ykgyb3bavfc3brd363xlfjpmdlvwwsifrdlyh"))

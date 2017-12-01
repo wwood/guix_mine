@@ -5309,10 +5309,10 @@ instance, it implements several methods to assess contig-wise read coverage.")
 
 (define-public ngs-bits
   ;; There are no source releases on PyPI, so we package from git.
-  (let ((commit "767b40d5bfaeb792a9ed3678434c2d02300fb381"))
+  (let ((commit "ba82e325a0336d8c34342483d099a2c49dda11c9"))
     (package
      (name "ngs-bits")
-     (version (string-append "0-2." (string-take commit 8)))
+     (version (string-append "0-3." (string-take commit 8)))
      (source
       (origin
        (method git-fetch)
@@ -5323,7 +5323,7 @@ instance, it implements several methods to assess contig-wise read coverage.")
        (file-name (string-append name "-" version "-checkout"))
        (sha256
         (base32
-         "0wn420g46yi4vp55f0096i50lh2jhx0xnsn8fjx370lmgab78fqg"))))
+         "1c9npb1lqg34q8wlyf0sb5ssn8hbq2wgkkc1mp72wrr2xdywqa5a"))))
      (build-system gnu-build-system)
      (arguments
       `(#:tests? #f ; Tests fail for real reasons.

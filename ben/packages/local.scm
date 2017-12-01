@@ -3535,11 +3535,14 @@ programs.")
        `(#:python ,python-2 ; python-2 only
 	 #:phases
 	 (modify-phases %standard-phases
-			(add-before 'check 'delete-smafa-tests
-				    (lambda _
-				      (delete-file "test/test_makedb_and_query.py")
-				      #t))
-           (add-after 'install 'wrap-programs
+			(add-before 'check 'delete-some-tests
+        (lambda _
+          (delete-file "test/test_makedb_and_query.py")
+          (substitute* "test/test_appraise.py"
+            (("def test_appraise_plot_real_data")
+             "@unittest.skip(\"No display\")\n    def do_not_test"))
+          #t))
+      (add-after 'install 'wrap-programs
 	     (lambda* (#:key outputs #:allow-other-keys)
 	       (let* ((out (assoc-ref outputs "out"))
 		      (graftm (string-append out "/bin/singlem"))

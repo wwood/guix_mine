@@ -5725,27 +5725,6 @@ extract population genomes from multi-sample metagenomic datasets.")
     (description "")
     (license #f)))
 
-(define-public r-keggrest
-  (package
-    (name "r-keggrest")
-    (version "1.16.1")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (bioconductor-uri "KEGGREST" version))
-       (sha256
-        (base32
-         "1hnb0n63q7b4489p87p6p0z4lnbklzg121ny294hihjd341g7nx9"))))
-    (build-system r-build-system)
-    (propagated-inputs
-     `(("r-httr" ,r-httr)
-       ("r-png" ,r-png)
-       ("r-biostrings" ,r-biostrings)))
-    (home-page "")
-    (synopsis "")
-    (description "")
-    (license #f)))
-
 (define-public r-kegggraph
   (package
     (name "r-kegggraph")
@@ -6224,3 +6203,18 @@ extract population genomes from multi-sample metagenomic datasets.")
    (description
     "Enrich your 'ggplots' with group-wise comparisons.  This package provides an easy way to indicate if two groups are significantly different.  Commonly this is shown by a bracket on top connecting the groups of interest which itself is annotated with the level of significance (NS, *, **, ***).  The package provides a single layer (geom_signif()) that takes the groups for comparison and the test (t.test(), wilcox.text() etc.) as arguments and adds the annotation to the plot.")
    (license license:gpl3)))
+
+(define-public r-ape-big-tree-cophenetic
+  (package
+   (inherit r-ape)
+   (name "r-ape-big-tree-cophenetic")
+   (version "5.0")
+   (source
+    (origin
+      (method url-fetch)
+      (uri (cran-uri "ape" version))
+      (sha256
+       (base32
+        "0q59pmxawz498cb9mv5m49lhiwxib8ak94yyydz7qg8b6lpd4bn3"))
+      (patches
+       (search-patches "ape-big-tree-cophenetic.patch"))))))

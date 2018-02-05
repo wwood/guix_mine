@@ -53,6 +53,7 @@
   #:use-module (gnu packages image)
   #:use-module (gnu packages java)
   #:use-module (gnu packages less)
+  #:use-module (gnu packages libffi)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
@@ -2734,7 +2735,7 @@ at improving these draft assemblies.")
 (define-public ruby-bio-ipcress
   (package
     (name "ruby-bio-ipcress")
-    (version "0.0.1")
+    (version "0.1.0")
     (source
      (origin
        (method url-fetch)
@@ -2746,13 +2747,7 @@ at improving these draft assemblies.")
     (arguments
      `(#:phases
        (modify-phases %standard-phases
-         (add-before 'build 'patch-gemfile
-                     (lambda _
-                       (substitute* ".gemspec"
-                         ((".*rdoc.*") ""))
-                       #t))
-         (replace 'check
-                  (lambda _ (zero? (system* "rspec")))))))
+)))
     (propagated-inputs
      `(("ruby-bio" ,bioruby)))
     (native-inputs
@@ -3374,27 +3369,29 @@ particularly suitable for large-scale analyses on computer clusters.")
        "0z9pgh4lx8mmrihrav4nxsjk4fn477jdkf96vqq98sc6xym3l1j3"))))
    (build-system ruby-build-system)
    (arguments
-    `(#:tests? #f ; requires jeweler.
-      #:phases
+    `(#:phases
       (modify-phases %standard-phases
-        (add-after 'install 'wrap-programs
+        (add-before 'build 'patch-gemfile
+          (lambda _
+            (substitute* ".gemspec"
+              ((".*rdoc.*") ""))
+            #t))
+        (replace 'check
+                 (lambda _ (zero? (system* "rspec"))))
+        (add-after 'wrap 'wrap-with-exonerate
           (lambda* (#:key inputs outputs #:allow-other-keys)
             (let* ((out (assoc-ref outputs "out"))
                    (binary (string-append out "/bin/pcr.rb"))
-                   (path (string-append (assoc-ref inputs "exonerate") "/bin"))
-                   (gem_home (getenv "GEM_HOME")))
-              (wrap-program binary
-                `("GEM_HOME" ":" prefix (,(getenv "GEM_HOME"))))
+                   (path (string-append (assoc-ref inputs "exonerate") "/bin")))
               (wrap-program binary
                 `("PATH" ":" prefix (,path)))
               #t))))))
-   ;(native-inputs
-   ; `(("bundler" ,bundler)
-                                        ;   ("ruby-shoulda" ,ruby-shoulda)))
+   (propagated-inputs
+    `(("ruby-bio" ,bioruby)))
    (inputs
     `(("exonerate" ,exonerate)))
-   (propagated-inputs
-    `(("bioruby" ,bioruby)))
+   (native-inputs
+    `(("ruby-rspec" ,ruby-rspec)))
    (synopsis
     "")
    (description
@@ -3533,22 +3530,19 @@ programs.")
                                         ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
       (arguments
        `(#:python ,python-2 ; python-2 only
-	 #:phases
-	 (modify-phases %standard-phases
-			(add-before 'check 'delete-some-tests
-        (lambda _
-          (delete-file "test/test_makedb_and_query.py")
-          (substitute* "test/test_appraise.py"
-            (("def test_appraise_plot_real_data")
-             "@unittest.skip(\"No display\")\n    def do_not_test"))
-          #t))
-      (add-after 'install 'wrap-programs
-	     (lambda* (#:key outputs #:allow-other-keys)
-	       (let* ((out (assoc-ref outputs "out"))
-		      (graftm (string-append out "/bin/singlem"))
-		      (path (getenv "PATH")))
-		 (wrap-program graftm `("PATH" ":" prefix (,path))))
-	       #t)))))
+         #:phases
+         (modify-phases %standard-phases
+           (add-before 'check 'delete-some-tests
+             (lambda _
+               (delete-file "test/test_makedb_and_query.py")
+               #t))
+           (add-after 'install 'wrap-programs
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (graftm (string-append out "/bin/singlem"))
+                      (path (getenv "PATH")))
+                 (wrap-program graftm `("PATH" ":" prefix (,path))))
+               #t)))))
       (propagated-inputs
        `(("python-orator" ,python2-orator)
          ("python-squarify" ,python2-squarify)
@@ -6208,3 +6202,35 @@ extract population genomes from multi-sample metagenomic datasets.")
 
 (define-public python2-squarify
   (package-with-python2 python-squarify))
+
+(define-public ruby-bio-faster
+  (package
+   (name "ruby-bio-faster")
+   (version "0.4.5")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "bio-faster" version))
+     (sha256
+      (base32
+       "0ymrvs7qskwlhpcwlx3ig6r5xjn5y6bwz9gsg66446g06cf43ym3"))))
+   (build-system ruby-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+        (replace 'check
+          (lambda _
+            ;; (invoke "rspec") ;;FIXME
+            #t)))))
+   (propagated-inputs
+    `(("ruby-ffi" ,ruby-ffi)))
+   (native-inputs
+    `(("ruby-rspec" ,ruby-rspec)
+      ("bundler" ,bundler)
+      ("ruby-rake-compiler" ,ruby-rake-compiler)))
+   (synopsis "A fast parser for FastQ files")
+   (description
+    "This package provides a fast parser for FastQ files")
+   (home-page
+    "http://github.com/fstrozzi/bioruby-faster")
+   (license license:expat)))

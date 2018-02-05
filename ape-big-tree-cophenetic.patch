@@ -1,0 +1,36 @@
+diff --git a/R/cophenetic.phylo.R b/R/cophenetic.phylo.R
+index 2a4a892..70fc15c 100644
+--- a/R/cophenetic.phylo.R
++++ b/R/cophenetic.phylo.R
+@@ -17,7 +17,7 @@ dist.nodes <- function(x)
+     d <- .C(dist_nodes, as.integer(n), as.integer(m),
+             as.integer(x$edge[, 1] - 1L), as.integer(x$edge[, 2] - 1L),
+             as.double(x$edge.length), as.integer(Nedge(x)),
+-            double(nm * nm), NAOK = TRUE)[[7]]
++            double(double(nm) * nm), NAOK = TRUE)[[7]]
+     dim(d) <- c(nm, nm)
+     dimnames(d) <- list(1:nm, 1:nm)
+     d
+diff --git a/src/dist_nodes.c b/src/dist_nodes.c
+index d091cb9..fea3572 100644
+--- a/src/dist_nodes.c
++++ b/src/dist_nodes.c
+@@ -17,7 +17,7 @@
+ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
+ /* n: nb of tips, m: nb of nodes, N: nb of edges */
+ {
+-	int i, j, k, a, d, NM = *n + *m, ROOT;
++	long long i, j, k, a, d, NM = *n + *m, ROOT;
+ 	double x;
+ 
+ 	ROOT = e1[0]; d = e2[0]; /* the 2 nodes of the 1st edge */
+@@ -38,4 +38,9 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
+ 		if (k != ROOT)
+ 			D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = D[DINDEX2(ROOT, a)] + x;
+ 	}
++  printf("DONE\n");
++  for (i = 1; i < *N; i++) {
++    printf("%i\t%i\n", i, D[i]);
++  }
++  printf("DONE\n");
+ }

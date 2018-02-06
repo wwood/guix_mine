@@ -6249,3 +6249,76 @@ extract population genomes from multi-sample metagenomic datasets.")
       (patches
        (search-patches "ape-big-tree-cophenetic.patch"))))))
 
+(define-public ruby-rgfa
+  (package
+  (name "ruby-rgfa")
+  (version "1.3.1")
+  (source
+    (origin
+      (method url-fetch)
+      (uri (rubygems-uri "rgfa" version))
+      (sha256
+        (base32
+          "0fzb0kj96ac63bgxrhldcmn3w6451jvixj8qg5cj8ij80kzj6gww"))))
+  (build-system ruby-build-system)
+  (arguments
+   `(#:phases
+     (modify-phases %standard-phases
+                    ;; There are no tests, so we do a simple require test.
+                    (replace 'check
+                             (lambda _
+                               (setenv "RUBYLIB" "lib")
+                               (invoke "ruby" "-r" "rgfa")
+                               (invoke "ruby" "-r" "rgfatools")
+                               #t)))))
+  (synopsis "Graphical Fragment Assembly (GFA) format library")
+  (description
+    "The Graphical Fragment Assembly (GFA) is a proposed format which allow to
+describe the product of sequence assembly.  This gem implements the proposed
+specifications for the GFA format described under
+@url{https://github.com/pmelsted/GFA-spec/blob/master/GFA-spec.md} as close as
+possible.  The library allows to create an RGFA object from a file in the GFA
+format or from scratch, to enumerate the graph elements (segments, links,
+containments, paths and header lines), to traverse the graph (by traversing all
+links outgoing from or incoming to a segment), to search for elements (e.g.
+which links connect two segments) and to manipulate the graph (e.g. to eliminate
+a link or a segment or to duplicate a segment distributing the read counts
+evenly on the copies).")
+  (home-page "http://github.com/ggonnella/rgfa")
+  (license license:isc))) ; But rubygems says different?
+
+(define-public gfa1
+  ;; There are no released versions, so we package from Git.
+  (let ((commit "2faeed2953399102e8bb22f5aa833c8f900a7587"))
+    (package
+      (name "gfa1")
+      (version (string-append "0-1." (string-take commit 8)))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/lh3/gfa1.git")
+               (commit commit)))
+         (file-name (string-append name "-" version "-checkout"))
+         (sha256
+          (base32
+           "1l13qzgz9dm7jqvfv64xw6a0nj8ygsjgrlmipwccrv96k8jj9i71"))))
+      (arguments
+       `(#:tests? #f ; There are no tests.
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (install-file "gfaview" bin)
+                 #t))))))
+      (build-system gnu-build-system)
+      (inputs
+       `(("zlib" ,zlib)))
+      (home-page "https://github.com/lh3/gfa1")
+      (synopsis "Library and command-line tool to for GFA assembly graphs")
+      (description
+       "Library and command-line tool to manipulate assembly graph in the GFA format.")
+      (license #f)))) ;? Not specified AFAICS

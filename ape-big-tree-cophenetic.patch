@@ -1,5 +1,5 @@
 diff --git a/R/cophenetic.phylo.R b/R/cophenetic.phylo.R
-index 2a4a892..5fef4b9 100644
+index 2a4a892..d806e00 100644
 --- a/R/cophenetic.phylo.R
 +++ b/R/cophenetic.phylo.R
 @@ -17,7 +17,7 @@ dist.nodes <- function(x)
@@ -11,26 +11,93 @@ index 2a4a892..5fef4b9 100644
      dim(d) <- c(nm, nm)
      dimnames(d) <- list(1:nm, 1:nm)
      d
+@@ -30,3 +30,24 @@ cophenetic.phylo <- function(x)
+     dimnames(ans)[1:2] <- list(x$tip.label)
+     ans
+ }
++
++dist.nodes_printer<- function(x)
++{
++    x <- reorder(x) # required for the C code
++    n <- Ntip(x)
++    m <- x$Nnode
++    nm <- n + m
++
++    .C(dist_nodes_printer, as.integer(n), as.integer(m),
++       as.integer(x$edge[, 1] - 1L), as.integer(x$edge[, 2] - 1L),
++       as.double(x$edge.length), as.integer(Nedge(x)),
++       NAOK = TRUE)
++    return()
++}
++
++cophenetic.phylo_printer<- function(x)
++{
++    n <- length(x$tip.label)
++    dist.nodes_printer(x)
++    return()
++}
+diff --git a/src/ape.c b/src/ape.c
+index 2d938d1..d909354 100644
+--- a/src/ape.c
++++ b/src/ape.c
+@@ -40,6 +40,7 @@ void dist_dna(unsigned char *x, int *n, int *s, int *model, double *d,
+ 	      double *BF, int *pairdel, int *variance, double *var,
+ 	      int *gamma, double *alpha);
+ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D);
++void dist_nodes_printer(int *n, int *m, int *e1, int *e2, double *el, int *N);
+ void C_ewLasso(double *D, int *N, int *e1, int *e2);
+ void GlobalDeletionDNA(unsigned char *x, int *n, int *s, int *keep);
+ void mat_expo(double *P, int *nr);
+@@ -101,6 +102,7 @@ static R_CMethodDef C_entries[] = {
+     {"delta_plot", (DL_FUNC) &delta_plot, 5},
+     {"dist_dna", (DL_FUNC) &dist_dna, 11},
+     {"dist_nodes", (DL_FUNC) &dist_nodes, 7},
++    {"dist_nodes_printer", (DL_FUNC) &dist_nodes_printer, 6},
+     {"C_ewLasso", (DL_FUNC) &C_ewLasso, 4},
+     {"GlobalDeletionDNA", (DL_FUNC) &GlobalDeletionDNA, 4},
+     {"mat_expo", (DL_FUNC) &mat_expo, 2},
 diff --git a/src/dist_nodes.c b/src/dist_nodes.c
-index d091cb9..fea3572 100644
+index d091cb9..1883158 100644
 --- a/src/dist_nodes.c
 +++ b/src/dist_nodes.c
-@@ -17,7 +17,7 @@
- void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
- /* n: nb of tips, m: nb of nodes, N: nb of edges */
- {
--	int i, j, k, a, d, NM = *n + *m, ROOT;
-+	long long i, j, k, a, d, NM = *n + *m, ROOT;
- 	double x;
- 
- 	ROOT = e1[0]; d = e2[0]; /* the 2 nodes of the 1st edge */
-@@ -38,4 +38,9 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
- 		if (k != ROOT)
+@@ -39,3 +39,40 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
  			D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = D[DINDEX2(ROOT, a)] + x;
  	}
-+  printf("DONE\n");
-+  for (i = 1; i < *N; i++) {
-+    printf("%i\t%i\n", i, D[i]);
-+  }
-+  printf("DONE\n");
  }
++
++/* Like dist_nodes, except print the distances to STDOUT, so that trees with n*m*/
++void dist_nodes_printer(int *n, int *m, int *e1, int *e2, double *el, int *N)
++/* n: nb of tips, m: nb of nodes, N: nb of edges */
++{
++	long long i, j, k, a, d, NM = *n + *m, ROOT;
++	double x;
++  double *D = (double*) calloc(NM*NM, sizeof(double));
++
++	ROOT = e1[0]; d = e2[0]; /* the 2 nodes of the 1st edge */
++	D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = el[0]; /* the 1st edge gives the 1st distance */
++
++/* go down along the edge matrix
++   starting at the 2nd edge: */
++	for (i = 1; i < *N; i++) {
++		a = e1[i]; d = e2[i]; x = el[i]; /* get the i-th nodes and branch length */
++		D[DINDEX2(a, d)] = D[DINDEX2(d, a)] = x;
++    //printf("1: %i %i\n", DINDEX2(a, d), DINDEX2(d, a));
++		/* then go up along the edge matrix from the i-th edge
++		   to visit the nodes already visited and update the distances: */
++		for (j = i - 1; j >= 0; j--) {
++			k = e2[j];
++			if (k == a) continue;
++			D[DINDEX2(k, d)] = D[DINDEX2(d, k)] = D[DINDEX2(a, k)] + x;
++      //printf("2: %i %i %i\n", DINDEX2(k, d), DINDEX2(d, k), DINDEX2(a, k));
++		}
++		if (k != ROOT)
++			D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = D[DINDEX2(ROOT, a)] + x;
++	}
++  //printf("DONE\n");
++  for (i = 1; i < NM; i++) {
++    for (j = 1; j < NM; j++)
++      printf("%i\t%i\t%f\n", i, j, D[i + NM*j]);
++  }
++  //printf("DONE\n");
++  free(D);
++}

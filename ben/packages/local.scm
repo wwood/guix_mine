@@ -6322,3 +6322,27 @@ evenly on the copies).")
       (description
        "Library and command-line tool to manipulate assembly graph in the GFA format.")
       (license #f)))) ;? Not specified AFAICS
+
+(define-public ruby-bio-sra
+  (package
+   (name "ruby-bio-sra")
+   (version "0.3.1")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (rubygems-uri "bio-sra" version))
+     (sha256
+      (base32
+       "0pnad5cmdd9q3khfiscxm9cqr80y2yxkb098rzdbx0i8fhb7pp3d"))))
+   (build-system ruby-build-system)
+   (propagated-inputs
+    `(("ruby-activerecord" ,ruby-activerecord)
+      ("ruby-activesupport" ,ruby-activesupport)
+      ("ruby-bio-logger" ,ruby-bio-logger)
+      ("ruby-sqlite3" ,ruby-sqlite3)))
+   (synopsis
+    "A Sequence Read Archive (SRA) download script and Ruby interface to the SRAdb (SRA metadata) SQLite database.")
+   (description
+    "This package provides a Sequence Read Archive (SRA) download script and Ruby interface to the SRAdb (SRA metadata) SQLite database.")
+   (home-page "http://github.com/wwood/bioruby-sra")
+   (license license:expat)))

@@ -1878,7 +1878,7 @@ is useful for testing other software.")
                        ; currently not built.
   (package
     (name "bandage")
-    (version "0.8.0")
+    (version "0.8.1")
     (source
      (origin
        (method url-fetch)
@@ -1887,7 +1887,7 @@ is useful for testing other software.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "080q4kvjhbb7is29bdw93q6r0giza9iknr5wzrw6wv8ciajrb02c"))))
+         "0lj4wk4672yv3r22i68x2vl379y8bns3bynczm7ja2rzw2avcq7i"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -3556,7 +3556,7 @@ programs.")
      (name "graftm-dev")
      (version (string-append (package-version base) "-dev"))
      (source
-      (local-file "/tmp/graftM" #:recursive? #t)))))
+      (local-file (string-append (getenv "HOME") "/git/graftM") #:recursive? #t)))))
 
 (define-public fastspar
   (package
@@ -6322,3 +6322,11 @@ evenly on the copies).")
       (description
        "Library and command-line tool to manipulate assembly graph in the GFA format.")
       (license #f)))) ;? Not specified AFAICS
+
+(define-public dirseq-dev
+  (package
+   (inherit dirseq)
+   (name "dirseq-dev")
+   (source
+    (local-file (string-append (getenv "HOME") "/git/dirseq")
+                #:recursive? #t))))

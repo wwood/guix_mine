@@ -3516,38 +3516,63 @@ programs.")
      "")
     (license license:expat)))
 
-;; If there are errors making the DB, run "rm -rf ~/git/singlem/singlem/db;
-;; python setup.py sdist; rm -rf singlem.egg-info/"
 (define-public singlem-dev
-  (let ((base singlem))
-    (package
-      (inherit base)
-      (name "singlem-dev")
-      (version "0.0.0.dev")
-      (source
-       (local-file (string-append (getenv "HOME") "/git/singlem")
-                   #:recursive? #t))
+  (package
+   (name "singlem-dev")
+   (version "0.0.0.dev")
+   (source
+    (local-file (string-append (getenv "HOME") "/git/singlem")
+                #:recursive? #t))
                                         ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
-      (arguments
-       `(#:python ,python-2 ; python-2 only
-         #:phases
-         (modify-phases %standard-phases
-           (add-before 'check 'delete-some-tests
-             (lambda _
-               (delete-file "test/test_makedb_and_query.py")
-               #t))
-           (add-after 'install 'wrap-programs
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out (assoc-ref outputs "out"))
-                      (graftm (string-append out "/bin/singlem"))
-                      (path (getenv "PATH")))
-                 (wrap-program graftm `("PATH" ":" prefix (,path))))
-               #t)))))
-      (propagated-inputs
-       `(("python-orator" ,python2-orator)
-         ("python-squarify" ,python2-squarify)
-         ("python-matplotlib" ,python2-matplotlib)
-         ,@(package-propagated-inputs base))))))
+    ;; (name "singlem")
+    ;; (version "0.9.0")
+    ;; (source (origin
+    ;;           (method url-fetch)
+    ;;           (uri (pypi-uri "singlem" version))
+    ;;           (sha256
+    ;;            (base32
+    ;;             "17kc78n9g78x5hifznf92g5al9wjqcf5l239jdc3mk96fmgh59yq"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2 ; python-2 only
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'install 'wrap-programs
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (graftm (string-append out "/bin/singlem"))
+                    (path (getenv "PATH")))
+               (wrap-program graftm `("PATH" ":" prefix (,path))))
+             #t)))))
+    (native-inputs
+     `(("python-setuptools" ,python2-setuptools)
+       ("python-nose" ,python2-nose)))
+    (inputs
+     `(("blast+" ,blast+)
+       ("vsearch" ,vsearch)
+       ("krona-tools" ,krona-tools)
+       ("fxtract" ,fxtract)
+       ("hmmer" ,hmmer)
+       ("diamond" ,diamond)
+       ("smafa" ,smafa-binary)
+       ("graftm" ,graftm)
+       ("python-extern" ,python2-extern)
+       ("python-tempdir" ,python2-tempdir)
+       ("python-dendropy" ,python2-dendropy)
+       ("python-subprocess32" ,python2-subprocess32)
+       ("python-biom-format" ,python2-biom-format)
+       ("python-h5py" ,python2-h5py)
+       ("python-orator" ,python2-orator)
+       ("python-squarify" ,python2-squarify)
+       ("python-matplotlib" ,python2-matplotlib)))
+    (home-page "http://github.com/wwood/singlem")
+    (synopsis "De-novo OTUs from shotgun metagenomes")
+    (description
+     "SingleM is a tool to find the abundances of discrete operational taxonomic
+units (OTUs) directly from shotgun metagenome data, without heavy reliance of
+reference sequence databases.  It is able to differentiate closely related
+species even if those species are from lineages new to science.")
+    (license license:gpl3+)))
 
 (define-public graftm-dev
   (let ((base graftm))
@@ -6354,3 +6379,43 @@ evenly on the copies).")
     "This package provides a Sequence Read Archive (SRA) download script and Ruby interface to the SRAdb (SRA metadata) SQLite database.")
    (home-page "http://github.com/wwood/bioruby-sra")
    (license license:expat)))
+
+(define-public prokka-genomic-context
+  (package
+    (name "prokka-genomic-context")
+    (version "0-1")
+    (source
+     (local-file (string-append
+                  (getenv "HOME")
+                  "/git/prokka_via_uniprot/prokka_genomic_context.py")))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+                      (replace 'unpack
+                               (lambda* (#:key inputs #:allow-other-keys)
+                                        (copy-recursively (assoc-ref inputs "source") "prokka_genomic_context.py")))
+                      (delete 'configure)
+                      (delete 'build)
+                      (replace 'check
+                               (lambda _
+                                 (chmod "prokka_genomic_context.py" #o555)
+                                 #t ;;(invoke "prokka_genomic_context.py" "-h")
+                                 ))
+                      (replace 'install
+                               (lambda* (#:key outputs #:allow-other-keys)
+                                        (let* ((out  (assoc-ref outputs "out"))
+                                               (bin  (string-append out "/bin"))
+                                               (pythonpath (getenv "PYTHONPATH"))
+                                               (file "prokka_genomic_context.py"))
+                                          (install-file file bin)
+                                          (wrap-program (string-append bin "/" file)
+                                                        `("PYTHONPATH" ":" prefix (,pythonpath))))
+                                        #t)))))
+    (inputs
+     `(("python2-mgkit" ,python2-mgkit)))
+    (home-page "https://bitbucket.org/setsuna80/mgkit/")
+    (synopsis "Genome context viewer for PROKKA GFF files")
+    (description "Genome context viewer for PROKKA GFF files")
+    (license license:gpl3+)))

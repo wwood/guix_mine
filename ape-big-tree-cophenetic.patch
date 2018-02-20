@@ -57,7 +57,7 @@ index 2d938d1..d909354 100644
      {"GlobalDeletionDNA", (DL_FUNC) &GlobalDeletionDNA, 4},
      {"mat_expo", (DL_FUNC) &mat_expo, 2},
 diff --git a/src/dist_nodes.c b/src/dist_nodes.c
-index d091cb9..1883158 100644
+index d091cb9..82e7e53 100644
 --- a/src/dist_nodes.c
 +++ b/src/dist_nodes.c
 @@ -39,3 +39,40 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
@@ -94,8 +94,8 @@ index d091cb9..1883158 100644
 +			D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = D[DINDEX2(ROOT, a)] + x;
 +	}
 +  //printf("DONE\n");
-+  for (i = 1; i < NM; i++) {
-+    for (j = 1; j < NM; j++)
++  for (i = 0; i < *n; i++) {
++    for (j = 0; j < *n; j++)
 +      printf("%i\t%i\t%f\n", i, j, D[i + NM*j]);
 +  }
 +  //printf("DONE\n");

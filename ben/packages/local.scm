@@ -3521,9 +3521,9 @@ programs.")
    (name "singlem-dev")
    (version "0.0.0.dev")
    (source
-    (local-file (string-append (getenv "HOME") "/git/singlem")
-                #:recursive? #t))
-                                        ; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.8.0.dev2.tar.gz")))
+    ;; (local-file (string-append (getenv "HOME") "/git/singlem")
+    ;;             #:recursive? #t))
+   (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.9.0.tar.gz")))
     ;; (name "singlem")
     ;; (version "0.9.0")
     ;; (source (origin
@@ -3725,61 +3725,59 @@ bioinformatics file formats, sequence alignment, and more.")
                ;; TODO: Also delete bundled murmurhash and open bloom filter.
                '(delete-file "src/mash/kseq.h")))))))
 
-(define-public mmseqs ; Uses -march=native but probably works. For tests need updated googletest in guix proper I'd say. Also should patch in the git commit to the cmake system somehow. Bundles a few libraries
-  ;; There are no releases so we package from git.
-  (let ((commit "d96d24698a58604a3daaf2c18fda6cd19afcf53e"))
-    (package
-     (name "mmseqs")
-     (version (string-append "2-2." (string-take commit 8)))
-     (source
-      (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/soedinglab/mmseqs2.git")
-             (commit commit)))
-       (file-name (string-append name "-" version "-checkout"))
-       (sha256
-        (base32
-         "0zy95c3n7q9awhzh9klxkyzq184b7ljdgj1pddpa4cc1m0pa1jhx"))))
-     (build-system cmake-build-system)
-     (arguments
-      ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
-      `(#:tests? #f
-        #:phases
-        (modify-phases %standard-phases
-          (add-after 'unpack 'delete-bundled-code
-            (lambda _
-              ;; Delete bundled gzstream. Other entries in the lib/
-              ;; directory appear not to have any primary sources, or in the
-              ;; case of kseq, appears to be either out of date or has been
-              ;; modified relative to its original form.
-              ;(delete-file "lib/kseq/kseq.h")
-              ;; (delete-file-recursively "lib/gzstream")
-              ;; (substitute* '("src/commons/A3MReader.cpp"
-              ;;                "src/commons/Util.cpp"
-              ;;                "src/util/createdb.cpp"
-              ;;                "src/util/extractdomains.cpp"
-              ;;                "src/test/TestDiagonalScoringPerformance.cpp"
-              ;;                "src/test/TestAlignmentPerformance.cpp")
-              ;;   (("^#include \\\"kseq.h\\\"\n$")
-              ;;    "#include \"htslib/kseq.h\"\n"))
-              #t)))))
-     (inputs
-      `(("htslib" ,htslib)
-        ("gzstream" ,gzstream)))
-     (native-inputs
-      `(("xxd" ,vim)
-        ("googletest" ,googletest)))
-     (home-page "http://mmseqs.com")
-     (synopsis "Fast and sensitive protein search and clustering")
-     (description
-      "MMseqs2 (Many-against-Many searching) is a software suite to search and
+(define-public mmseqs ; Uses -march=native but probably works. For tests need
+                      ; updated googletest in guix proper I'd say. Bundles a few
+                      ; libraries
+  (package
+   (name "mmseqs")
+   (version "2-23394")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append "https://github.com/soedinglab/MMseqs2/archive/"
+                                version ".tar.gz"))
+            (file-name (string-append name "-" version ".tar.gz"))
+            (sha256
+             (base32
+              "0wkhnrkhya0l2ayib50c1s24nbxxx4p8ll1pzinapqad9kzkyxin"))))
+   (build-system cmake-build-system)
+   (arguments
+    ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
+    `(#:tests? #f
+      #:phases
+      (modify-phases %standard-phases
+                     (add-after 'unpack 'delete-bundled-code
+                                (lambda _
+                                  ;; Delete bundled gzstream. Other entries in the lib/
+                                  ;; directory appear not to have any primary sources, or in the
+                                  ;; case of kseq, appears to be either out of date or has been
+                                  ;; modified relative to its original form.
+                                        ;(delete-file "lib/kseq/kseq.h")
+                                  ;; (delete-file-recursively "lib/gzstream")
+                                  ;; (substitute* '("src/commons/A3MReader.cpp"
+                                  ;;                "src/commons/Util.cpp"
+                                  ;;                "src/util/createdb.cpp"
+                                  ;;                "src/util/extractdomains.cpp"
+                                  ;;                "src/test/TestDiagonalScoringPerformance.cpp"
+                                  ;;                "src/test/TestAlignmentPerformance.cpp")
+                                  ;;   (("^#include \\\"kseq.h\\\"\n$")
+                                  ;;    "#include \"htslib/kseq.h\"\n"))
+                                  #t)))))
+   (inputs
+    `(("htslib" ,htslib)
+      ("gzstream" ,gzstream)))
+   (native-inputs
+    `(("xxd" ,vim)
+      ("googletest" ,googletest)))
+   (home-page "http://mmseqs.com")
+   (synopsis "Fast and sensitive protein search and clustering")
+   (description
+    "MMseqs2 (Many-against-Many searching) is a software suite to search and
 cluster huge protein sequence sets.  The software is designed to run on
 multiple cores and servers and exhibits very good scalability.  MMseqs2 can run
 10000 times faster than BLAST.  At 100 times its speed it achieves the same
 sensitivity.  It can also perform profile searches with the same sensitivity as
 PSI-BLAST but at around 270 times its speed.")
-     (license license:gpl3+)))) ; need to check actual code
+   (license license:gpl3+))) ; need to check actual code
 
 (define-public binsanity ; in process?
   (package
@@ -6393,29 +6391,149 @@ evenly on the copies).")
      `(#:python ,python-2
        #:phases
        (modify-phases %standard-phases
-                      (replace 'unpack
-                               (lambda* (#:key inputs #:allow-other-keys)
-                                        (copy-recursively (assoc-ref inputs "source") "prokka_genomic_context.py")))
-                      (delete 'configure)
-                      (delete 'build)
-                      (replace 'check
-                               (lambda _
-                                 (chmod "prokka_genomic_context.py" #o555)
-                                 #t ;;(invoke "prokka_genomic_context.py" "-h")
-                                 ))
-                      (replace 'install
-                               (lambda* (#:key outputs #:allow-other-keys)
-                                        (let* ((out  (assoc-ref outputs "out"))
-                                               (bin  (string-append out "/bin"))
-                                               (pythonpath (getenv "PYTHONPATH"))
-                                               (file "prokka_genomic_context.py"))
-                                          (install-file file bin)
-                                          (wrap-program (string-append bin "/" file)
-                                                        `("PYTHONPATH" ":" prefix (,pythonpath))))
-                                        #t)))))
+         (replace 'unpack
+           (lambda* (#:key inputs #:allow-other-keys)
+             (copy-recursively (assoc-ref inputs "source")
+                               "prokka_genomic_context.py")))
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check
+           (lambda _
+             (chmod "prokka_genomic_context.py" #o555)
+             #t ;;(invoke "prokka_genomic_context.py" "-h")
+             ))
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out  (assoc-ref outputs "out"))
+                    (bin  (string-append out "/bin"))
+                    (pythonpath (getenv "PYTHONPATH"))
+                    (file "prokka_genomic_context.py"))
+               (install-file file bin)
+               (wrap-program (string-append bin "/" file)
+                 `("PYTHONPATH" ":" prefix (,pythonpath))))
+             #t)))))
     (inputs
      `(("python2-mgkit" ,python2-mgkit)))
     (home-page "https://bitbucket.org/setsuna80/mgkit/")
     (synopsis "Genome context viewer for PROKKA GFF files")
     (description "Genome context viewer for PROKKA GFF files")
     (license license:gpl3+)))
+
+(define-public fastani
+  (package
+   (name "fastani")
+   (version "1.0")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/ParBLiSS/FastANI/archive/v"
+           version ".tar.gz"))
+     (file-name (string-append name "-" version ".tar.gz"))
+     (sha256
+      (base32
+       "1dvxb83nbv6dcsipmvzm741d65pnqm07rbshwas05p7ly88m5wrn"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:configure-flags
+      (let ((gsl (assoc-ref %build-inputs "gsl")))
+        (list "--with-gsl" gsl))
+      #:tests? #f ; There are no tests.
+      #:phases
+      (modify-phases %standard-phases
+        (add-before 'configure 'bootstrap
+          (lambda _ (invoke "./bootstrap.sh") #t))
+        (replace 'install
+          (lambda* (#:key outputs #:allow-other-keys)
+            (let* ((out (assoc-ref outputs "out"))
+                   (bin (string-append out "/bin")))
+              (install-file "fastANI" bin)
+              #t))))))
+   (inputs
+    `(("autoconf" ,autoconf)
+      ("zlib" ,zlib)
+      ("gsl" ,gsl)))
+   (home-page "https://github.com/ParBLiSS/FastANI")
+   (synopsis
+    "Fast Fast Whole-Genome Similarity (ANI) Estimation ")
+   (description
+    "FastANI is developed for fast alignment-free computation of whole-genome
+Average Nucleotide Identity (ANI). ANI is defined as mean nucleotide identity of
+orthologous gene pairs shared between two microbial genomes. FastANI supports
+pairwise comparison of both complete and draft genome assemblies. Its underlying
+procedure follows a similar workflow as described by Goris et al. 2007. However,
+it avoids expensive sequence alignments and uses Mashmap as its MinHash based
+sequence mapping engine to compute the orthologous mappings and alignment
+identity estimates. Based on our experiments with complete and draft genomes,
+its accuracy is on par with BLAST-based ANI solver and it achieves two to three
+orders of magnitude speedup. Therefore, it is useful for pairwise ANI
+computation of large number of genome pairs. More details about its speed,
+accuracy and potential applications are described here: \"High-throughput ANI
+Analysis of 90K Prokaryotic Genomes Reveals Clear Species Boundaries\".")
+   (license license:asl2.0)))
+
+(define-public python-mpld3
+  (package
+    (name "python-mpld3")
+    (version "0.3")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (pypi-uri "mpld3" version))
+       (sha256
+        (base32
+         "1dwahw0y6rs9my6pvr2xjnjvcysw8dchfxncgsrrkgqila25hiad"))))
+    (build-system python-build-system)
+    (home-page "http://mpld3.github.com")
+    (synopsis "D3 Viewer for Matplotlib")
+    (description "D3 Viewer for Matplotlib")
+    (license #f)))
+
+(define-public python2-mpld3
+  (package-with-python2 python-mpld3))
+
+(define-public gtdbtk ; Needs a wrap phase around the binary dependencies, but
+                      ; may otherwise work.
+  (package
+    (name "gtdbtk")
+    (version "0.0.4-beta")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/Ecogenomics/GtdbTk/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "1649780f4i4vp3qbvifyhwkgmxs63zx9hqx3qn3bmrj185fvq3q0"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:python ,python-2
+       #:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda _ (invoke "bin/gtdbtk" "-h") #t)))))
+    (inputs
+     `(("python2-jinja2" ,python2-jinja2)
+       ("python2-mpld3" ,python2-mpld3)
+       ("python2-biolib" ,python2-biolib)
+       ("python2-dendropy" ,python2-dendropy)
+       ("python2-scipy" ,python2-scipy)
+       ("python2-numpy" ,python2-numpy)
+       ("python2-matplotlib" ,python2-matplotlib)
+       ("prodigal" ,prodigal)
+       ("hmmer" ,hmmer)
+       ("pplacer" ,pplacer-binary)
+       ("fastani" ,fastani)
+       ("fasttree" ,fasttree)
+       ("perl" ,perl)))
+    (home-page "https://github.com/Ecogenomics/GtdbTk")
+    (synopsis "Objective bacterial and archaeal genome taxonomic assignment")
+    (description "GTDB-Tk is a software toolkit for assigning objective
+taxonomic classifications to bacterial and archaeal genomes.  It is
+computationally efficient and designed to work with recent advances that allow
+hundreds or thousands of metagenome-assembled genomes (MAGs) to be obtained
+directly from environmental samples. It can also be applied to isolate and
+single-cell genomes.")
+    (license license:gpl3)))

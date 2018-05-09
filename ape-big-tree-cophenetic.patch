@@ -60,7 +60,7 @@ diff --git a/src/dist_nodes.c b/src/dist_nodes.c
 index d091cb9..82e7e53 100644
 --- a/src/dist_nodes.c
 +++ b/src/dist_nodes.c
-@@ -39,3 +39,40 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
+@@ -39,3 +39,41 @@ void dist_nodes(int *n, int *m, int *e1, int *e2, double *el, int *N, double *D)
  			D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = D[DINDEX2(ROOT, a)] + x;
  	}
  }
@@ -72,6 +72,7 @@ index d091cb9..82e7e53 100644
 +	long long i, j, k, a, d, NM = *n + *m, ROOT;
 +	double x;
 +  double *D = (double*) calloc(NM*NM, sizeof(double));
++  //printf("after calloc of doubles at %p\n",(void *) D); //TODO: Check calloc returns non-NULL i.e. the allocation succeeded.
 +
 +	ROOT = e1[0]; d = e2[0]; /* the 2 nodes of the 1st edge */
 +	D[DINDEX2(ROOT, d)] = D[DINDEX2(d, ROOT)] = el[0]; /* the 1st edge gives the 1st distance */

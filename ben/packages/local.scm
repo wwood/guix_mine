@@ -1709,32 +1709,6 @@ graph (SdBG) to achieve low memory assembly.")
     (description "")
     (license #f)))
 
-(define-public r-phangorn
-  (package
-   (name "r-phangorn")
-   (version "2.1.1")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (cran-uri "phangorn" version))
-     (sha256
-      (base32
-       "1klc2s6crwmg30psgf1xkchyjqbksl7cdlnk3b0ypdw7pd3js5im"))))
-   (build-system r-build-system)
-   (propagated-inputs
-    `(("r-ape" ,r-ape)
-      ("r-fastmatch" ,r-fastmatch)
-      ("r-igraph" ,r-igraph)
-      ("r-magrittr" ,r-magrittr)
-      ("r-quadprog" ,r-quadprog)
-      ("r-rcpp" ,r-rcpp)))
-   (home-page
-    "https://github.com/KlausVigo/phangorn")
-   (synopsis "Phylogenetic Analysis in R")
-   (description
-    "Phylogenetic analysis in R: Estimation of phylogenetic trees and networks using Maximum Likelihood, Maximum Parsimony, distance methods and Hadamard conjugation.")
-   (license license:gpl2+)))
-
 (define-public r-fastmatch
   (package
    (name "r-fastmatch")

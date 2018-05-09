@@ -3533,7 +3533,8 @@ programs.")
              #t)))))
     (native-inputs
      `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)))
+       ("python-nose" ,python2-nose)
+       ("pplacer" ,pplacer-binary)))
     (inputs
      `(("blast+" ,blast+)
        ("vsearch" ,vsearch)
@@ -5316,32 +5317,31 @@ instance, it implements several methods to assess contig-wise read coverage.")
   (let ((commit "ba82e325a0336d8c34342483d099a2c49dda11c9"))
     (package
      (name "ngs-bits")
-     (version (string-append "0-3." (string-take commit 8)))
+     (version "2018_04")
      (source
       (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url "https://github.com/imgag/ngs-bits.git")
-             (commit commit)
-             (recursive? #t)))
-       (file-name (string-append name "-" version "-checkout"))
-       (sha256
-        (base32
-         "1c9npb1lqg34q8wlyf0sb5ssn8hbq2wgkkc1mp72wrr2xdywqa5a"))))
+        (method url-fetch)
+        (uri
+         (string-append
+          "https://github.com/imgag/ngs-bits/releases/download/2018_04/ngs-bits-"
+          version ".tgz"))
+        (sha256
+         (base32
+          "06v60xg7k2a6dwsysn0hf9lpq8p53j2633sm15xprplqxlxl0qm4"))))
      (build-system gnu-build-system)
      (arguments
-      `(#:tests? #f ; Tests fail for real reasons.
+      `(#:tests? #f ; Tests fail at least because test data is missing.
         #:phases
         (modify-phases %standard-phases
           (delete 'configure)
           (replace 'build
             (lambda _
               (and
-               (zero? (system* "make" "build_3rdparty"))
+               ;;(zero? (system* "make" "build_3rdparty")) ; Not needed since it is only htslib
                (zero? (system* "make" "build_tools_release")))))
           ;; (replace 'check
           ;;   (lambda _
-          ;;     (zero? (system* "make" "test_release"))))
+          ;;     (zero? (system* "make" "test_tools"))))
           (delete 'validate-runpath)
           (replace 'install
             (lambda* (#:key outputs #:allow-other-keys)
@@ -5355,7 +5355,8 @@ instance, it implements several methods to assess contig-wise read coverage.")
       `(("qt" ,qt)
         ("python" ,python-2)
         ("python-matplotlib" ,python2-matplotlib)
-        ("gcc" ,gcc-7)))
+        ("gcc" ,gcc-7)
+        ("htslib" ,htslib)))
      (home-page "https://github.com/imgag/ngs-bits")
      (synopsis
       "Short-read sequencing tools")

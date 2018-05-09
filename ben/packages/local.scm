@@ -54,6 +54,7 @@
   #:use-module (gnu packages java)
   #:use-module (gnu packages less)
   #:use-module (gnu packages libffi)
+  #:use-module (gnu packages libidn)
   #:use-module (gnu packages linux)
   #:use-module (gnu packages lua)
   #:use-module (gnu packages man)
@@ -937,7 +938,7 @@ HMM searching in RNA:DNA style.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0n4fajcqpz235d23razs691l50njbsqn8amlis8fnarbhz1cd58g"))))
+         "0038x7q4v5lc8975ixbdl6qjfvp232ikz08sqmasnm2lfqwvzb08"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -952,12 +953,23 @@ HMM searching in RNA:DNA style.")
          (delete 'build)
          (replace 'check
            (lambda* (#:key inputs #:allow-other-keys)
-             (let ((so (string-append
+             (let* ((so (string-append
                         (assoc-ref inputs "libc")
-                        ,(glibc-dynamic-linker))))
+                        ,(glibc-dynamic-linker)))
+                    (libidn (assoc-ref inputs "libidn"))
+                    (libidn-lib (string-append libidn "/lib"))
+                    (zlib (assoc-ref inputs "zlib"))
+                    (zlib-lib (string-append zlib "/lib"))
+                    )
                (and
                 (zero? (system* "patchelf" "--set-interpreter" so "tbl2asn"))
-                (zero? (system* "./tbl2asn" "-"))))))
+                (invoke "patchelf" "--set-rpath"
+                        (string-append libidn-lib ":" zlib-lib)
+                        "tbl2asn")
+                (invoke "patchelf" "--print-rpath" "tbl2asn")
+                (invoke "patchelf" "--shrink-rpath" "tbl2asn")
+                (invoke "./tbl2asn" "-")
+                ))))
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
              (install-file
@@ -966,6 +978,9 @@ HMM searching in RNA:DNA style.")
              #t)))))
     (native-inputs
      `(("patchelf" ,patchelf)))
+    (inputs
+     `(("libidn" ,libidn)
+       ("zlib" ,zlib)))
     ;; Binaries are available for other systems, but only x86_64 is packaged
     ;; here.
     (supported-systems '("x86_64-linux"))
@@ -981,100 +996,98 @@ submission.")
                                       ; any direct license information.
 
 (define-public prokka
-  ;; There has been many commits since the last released version 1.11 so we
-  ;; package from git.
-  (let ((commit "460a152abb219d6e2b72f625a8547f2658f68fce"))
-    (package
-      (name "prokka")
-      (version (string-append "1.11-1." (string-take commit 7)))
-      (source
-       (origin
-         (method git-fetch)
-         (uri (git-reference
-               (url "https://github.com/tseemann/prokka.git")
-               (commit commit)))
-         (file-name (string-append name "-" version "-checkout"))
+  (package
+   (name "prokka")
+   (version "1.12")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "https://github.com/tseemann/prokka/archive/v"
+           version ".tar.gz"))
+     (file-name (string-append name "-" version ".tar.gz"))
+     (sha256
+      (base32
+       "1fmdhx77pbh44bsdhjyldkmxz7fqryvk9j8nkpyb2zqnvg4lcpl4"))
+     (modules '((guix build utils)))
+     ;; Remove bundled code.
+     (snippet '(begin
+                 (delete-file-recursively "binaries")
+                 (delete-file-recursively "perl5")
+                 #t))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     (replace 'build
+                              (lambda _
+                                (zero? (system* "bin/prokka" "--setupdb"))))
+                     (replace 'check
+                              (lambda* (#:key inputs #:allow-other-keys)
+                                (zero? (system* "bin/prokka"
+                                                "--noanno"
+                                                "--outdir" "example-out"
+                                                (assoc-ref inputs "example-genome")))))
+                     (replace 'install
+                              (lambda* (#:key outputs #:allow-other-keys)
+                                (let* ((out (assoc-ref outputs "out"))
+                                       (path (getenv "PATH"))
+                                       (perl5lib (getenv "PERL5LIB")))
+                                  (copy-recursively "db" (string-append out "/db"))
+                                  (copy-recursively "bin" (string-append out "/bin"))
+                                  (for-each
+                                   (lambda (prog)
+                                     (let ((binary (string-append out "/" prog)))
+                                       (wrap-program binary
+                                                     `("PERL5LIB" ":" prefix
+                                                       (,(string-append perl5lib ":" out
+                                                                        "/lib/perl5/site_perl"))))
+                                       (wrap-program binary
+                                                     `("PATH" ":" prefix
+                                                       (,(string-append path ":" out "/bin")))))
+                                     #t)
+                                   (find-files "bin" ".*")))
+                                #t)))))
+   (native-inputs
+    `(("example-genome"
+       ,(origin
+         (method url-fetch)
+         (uri "http://www.ebi.ac.uk/ena/data/view/CP002565&display=fasta")
+         (file-name (string-append "ena-genome-CP002565.fasta"))
          (sha256
           (base32
-           "1jfk7w1jvzjq9qmhraxh4mdzjk3canqb41q4gpnray2lrn0mz4zj"))
-         (modules '((guix build utils)))
-         ;; Remove bundled code.
-         (snippet '(begin
-                     (delete-file-recursively "binaries")
-                     (delete-file-recursively "perl5")
-                     #t))))
-      (build-system gnu-build-system)
-      (arguments
-       `(#:phases
-         (modify-phases %standard-phases
-           (delete 'configure)
-           (replace 'build
-             (lambda _
-               (zero? (system* "bin/prokka" "--setupdb"))))
-           (replace 'check
-             (lambda* (#:key inputs #:allow-other-keys)
-               (zero? (system* "bin/prokka"
-                               "--noanno"
-                               "--outdir" "example-out"
-                               (assoc-ref inputs "example-genome")))))
-           (replace 'install
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out (assoc-ref outputs "out"))
-                      (path (getenv "PATH"))
-                      (perl5lib (getenv "PERL5LIB")))
-                 (copy-recursively "db" (string-append out "/db"))
-                 (copy-recursively "bin" (string-append out "/bin"))
-                 (for-each
-                  (lambda (prog)
-                    (let ((binary (string-append out "/" prog)))
-                      (wrap-program binary
-                        `("PERL5LIB" ":" prefix
-                          (,(string-append perl5lib ":" out
-                                           "/lib/perl5/site_perl"))))
-                      (wrap-program binary
-                        `("PATH" ":" prefix
-                          (,(string-append path ":" out "/bin")))))
-                    #t)
-                  (find-files "bin" ".*")))
-               #t)))))
-      (native-inputs
-       `(("example-genome"
-          ,(origin
-             (method url-fetch)
-             (uri "http://www.ebi.ac.uk/ena/data/view/CP002565&display=fasta")
-             (file-name (string-append "ena-genome-CP002565.fasta"))
-             (sha256
-              (base32
-               "0dv3m29kgyssjc96zbmb5khkrk7cy7a66bsjk2ricwc302g5hgfy"))))))
-      (inputs
-       `(("perl" ,perl)
-         ("bioperl" ,bioperl-minimal)
-         ("blast+" ,blast+)
-         ("hmmer" ,hmmer)
-         ("aragorn" ,aragorn)
-         ("prodigal" ,prodigal)
-         ("parallel" ,parallel)
-         ("infernal" ,infernal)
-         ("barrnap" ,barrnap)
-         ("minced" ,minced)
-         ("tbl2asn" ,ncbi-tools)
-         ("grep" ,grep)
-         ("sed" ,sed)
-         ("less" ,less)
-         ("perl-time-piece" ,perl-time-piece)
-         ("perl-xml-simple" ,perl-xml-simple)
-         ("perl-digest-md5" ,perl-digest-md5)))
-      (home-page "http://www.vicbioinformatics.com/software.prokka.shtml")
-      (synopsis "Rapid prokaryotic genome annotation")
-      (description
-       "Prokka is a software tool for the rapid annotation of prokaryotic
+           "0dv3m29kgyssjc96zbmb5khkrk7cy7a66bsjk2ricwc302g5hgfy"))))))
+   (inputs
+    `(("perl" ,perl)
+      ("bioperl" ,bioperl-minimal)
+      ("blast+" ,blast+)
+      ("hmmer" ,hmmer)
+      ("aragorn" ,aragorn)
+      ("prodigal" ,prodigal)
+      ("parallel" ,parallel)
+      ("infernal" ,infernal)
+      ("barrnap" ,barrnap)
+      ("minced" ,minced)
+      ("tbl2asn" ,ncbi-tools)
+      ("grep" ,grep)
+      ("sed" ,sed)
+      ("less" ,less)
+      ("java" ,icedtea)
+      ("perl-time-piece" ,perl-time-piece)
+      ("perl-xml-simple" ,perl-xml-simple)
+      ("perl-digest-md5" ,perl-digest-md5)))
+   (home-page "http://www.vicbioinformatics.com/software.prokka.shtml")
+   (synopsis "Rapid prokaryotic genome annotation")
+   (description
+    "Prokka is a software tool for the rapid annotation of prokaryotic
 genomes.  It produces GFF3, GBK and SQN files that are ready for editing in
 Sequin and ultimately submitted to Genbank/DDJB/ENA. ")
-      (license (list license:gpl2
-                     ;; Available under various licenses.
-                     (license:non-copyleft
-                      "file://doc"
-                      "See license files in the doc directory."))))))
+   (license (list license:gpl2
+                  ;; Available under various licenses.
+                  (license:non-copyleft
+                   "file://doc"
+                   "See license files in the doc directory.")))))
 
 (define-public perl-time-piece
   (package
@@ -2544,7 +2557,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
 (define-public ncbi-tools ; in progress
   (package
     (name "ncbi-tools")
-    (version "20160908")
+    (version "20170106")
     (source
      (origin
        (method url-fetch)
@@ -2553,7 +2566,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1252s4fw41w5yalz9b50pvzvkiyjfcgy0isw1qgmg0v66bp49khz"))))
+         "0rsqby84g0wz344wf9ls5jfmh38gjajz61kxpi81nfwmiynsm22b"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f ; There are no tests.
@@ -3523,7 +3536,7 @@ programs.")
    (source
     ;; (local-file (string-append (getenv "HOME") "/git/singlem")
     ;;             #:recursive? #t))
-   (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.9.0.tar.gz")))
+   (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.10.0.tar.gz")))
     ;; (name "singlem")
     ;; (version "0.9.0")
     ;; (source (origin
@@ -3555,7 +3568,7 @@ programs.")
        ("hmmer" ,hmmer)
        ("diamond" ,diamond)
        ("smafa" ,smafa-binary)
-       ("graftm" ,graftm)
+       ("graftm" ,graftm-dev)
        ("python-extern" ,python2-extern)
        ("python-tempdir" ,python2-tempdir)
        ("python-dendropy" ,python2-dendropy)

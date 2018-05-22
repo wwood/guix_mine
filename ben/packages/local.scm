@@ -6525,3 +6525,27 @@ hundreds or thousands of metagenome-assembled genomes (MAGs) to be obtained
 directly from environmental samples. It can also be applied to isolate and
 single-cell genomes.")
     (license license:gpl3)))
+
+(define-public python-logging-rabbitmq
+  (package
+   (name "python-logging-rabbitmq")
+   (version "1.0.9")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (pypi-uri "python-logging-rabbitmq" version))
+     (sha256
+      (base32
+       "0inisywwiqi7cdkicavvs37x5zhmjylaspn3smsfn7k5558h6vva"))))
+   (build-system python-build-system)
+   (propagated-inputs
+    `(("python-pika" ,python-pika)))
+   (native-inputs
+    `(("python-nose" ,python-nose)))
+   (home-page
+    "https://github.com/albertomr86/python-logging-rabbitmq")
+   (synopsis
+    "Send logs to RabbitMQ from Python/Django")
+   (description
+    "Send logs to RabbitMQ from Python/Django")
+   (license license:expat)))

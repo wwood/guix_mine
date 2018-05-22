@@ -292,15 +292,14 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 (define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
-    (version "3.11.1")
+    (version "3.12.0")
     (source (origin
               (method url-fetch)
-              (uri (string-append "http://spades.bioinf.spbau.ru/release"
+              (uri (string-append "http://cab.spbu.ru/files/release"
                                   version "/SPAdes-" version ".tar.gz"))
-              (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "0x5l4nkkjrkdn41ifz2baz9bp2r5blgrf77impc5nnbxpy35vf1s"))))
+                "1irshmqv20r80h9lkpwvzpxr0n81y79sajyhizaqlsmyrcxqmd0m"))))
     (build-system cmake-build-system)
     (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
      `(("zlib" ,zlib)
@@ -6525,3 +6524,81 @@ hundreds or thousands of metagenome-assembled genomes (MAGs) to be obtained
 directly from environmental samples. It can also be applied to isolate and
 single-cell genomes.")
     (license license:gpl3)))
+
+(define-public keychain
+  (package
+    (name "keychain")
+    (version "2.8.5")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append
+             "https://github.com/funtoo/keychain/archive/"
+             version ".tar.gz"))
+       (file-name (string-append name "-" version ".tar.gz"))
+       (sha256
+        (base32
+         "02ss8yw0rn5ljl3n0h5jxsyd511za9dz8a05pj71q881a0z71knw"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; No tests.
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build
+                  (lambda _ (invoke "make")))
+         (replace 'install
+                  (lambda* (#:key outputs #:allow-other-keys)
+                    (let* ((out (assoc-ref outputs "out"))
+                           (bin (string-append out "/bin"))
+                           (man (string-append out "/man/man1")))
+                      (install-file "keychain" bin)
+                      (install-file "keychain.1" man)))))))
+    (inputs
+     `(("perl" ,perl)))
+    (home-page "https://www.funtoo.org/Keychain")
+    (synopsis "Manage SSH and GPG keys in a convenient and secure manner")
+    (description "Keychain helps you to manage SSH and GPG keys in a convenient
+and secure manner.  It acts as a frontend to ssh-agent and ssh-add, but allows
+you to easily have one long running ssh-agent process per system, rather than
+the norm of one ssh-agent per login session. ")
+    (license license:gpl2)))
+
+(define-public epa-ng ; Have not tried getting testing to work.
+  (let* ((commit "319795414bb2f8241f93f8dac593ee2006eff829")
+         (version (string-append "0.2.1-beta-1." (string-take commit 8))))
+    (package
+     (name "epa-ng")
+     (version version)
+     (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/Pbdas/epa-ng.git")
+                    (commit commit)
+                    (recursive? #t)))
+              (file-name (string-append name "-" version "-checkout"))
+              (sha256
+               (base32
+                "02bszy3vqnrgj1n8gzi9yi25gv6qka1iiwmmnwv6c1c142fr99ws"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases
+          (replace 'install
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (bin (string-append out "/bin")))
+                (with-directory-excursion "../source/bin"
+                  (install-file "epa-ng" bin))))))))
+     (inputs
+      `(("bison" ,bison)
+        ("flex" ,flex)))
+     (home-page "https://github.com/Pbdas/epa-ng")
+     (synopsis
+      "Massively parallel phylogenetic placement of genetic sequences")
+     (description
+      "EPA-ng is a complete rewrite of the Evolutionary Placement
+Algorithm (EPA), previously implemented in RAxML.  It uses libpll and pll-modules
+to perform maximum likelihood-based phylogenetic placement of genetic sequences
+on a user-supplied reference tree and alignment.")
+     (license license:agpl3))))

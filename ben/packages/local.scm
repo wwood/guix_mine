@@ -969,6 +969,7 @@ HMM searching in RNA:DNA style.")
                 (invoke "patchelf" "--shrink-rpath" "tbl2asn")
                 (invoke "./tbl2asn" "-")
                 ))))
+         (delete 'strip)
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
              (install-file
@@ -6627,3 +6628,92 @@ to perform maximum likelihood-based phylogenetic placement of genetic sequences
 on a user-supplied reference tree and alignment.")
      (license license:agpl3))))
 
+(define-public kiki-assembler ; Does not build - bit rot?
+  (let* ((commit "8461a1d1fa196696ec380049fa0658516c59ad91")
+         (version (string-append "0-1." (string-take commit 8))))
+    (package
+     (name "kiki-assembler")
+     (version version)
+     (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/GeneAssembly/kiki.git")
+                    (commit commit)
+                    (recursive? #t)))
+              (file-name (string-append name "-" version "-checkout"))
+              (sha256
+               (base32
+                "0v83qnsbd5zn8cl359jhn68xrjq04py8sad63nj1dcvixy4likls"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases
+          (replace 'install
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((out (assoc-ref outputs "out"))
+                     (bin (string-append out "/bin")))
+                (with-directory-excursion "../source/bin"
+                  (install-file "epa-ng" bin))))))))
+     (inputs
+      `(("openmpi" ,openmpi)))
+     (home-page "https://github.com/GeneAssembly/kiki")
+     (synopsis
+      "De novo metagenomic assembly")
+     (description
+      "De novo metagenomic assembly.")
+     (license license:expat))))
+
+(define-public coverm-binary
+  (package
+    (name "coverm-binary")
+    (version "0.1.1.dev")
+    (source
+     (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
+                 #:recursive? #t))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check
+                  (lambda* (#:key inputs #:allow-other-keys)
+                    (let* ((so (string-append
+                                (assoc-ref inputs "libc")
+                                ,(glibc-dynamic-linker)))
+                           (zlib (assoc-ref inputs "zlib"))
+                           (zlib-lib (string-append zlib "/lib"))
+                           (gcc (assoc-ref inputs "gcc:lib"))
+                           (gcc-lib (string-append gcc "/lib"))
+                           (xz (assoc-ref inputs "xz"))
+                           (xz-lib (string-append xz "/lib")))
+                      (and
+                       (invoke "patchelf" "--set-interpreter" so "coverm")
+                       (invoke "patchelf" "--set-rpath"
+                               (string-append zlib-lib ":" xz-lib ":" gcc-lib)
+                               "coverm")
+                       (invoke "patchelf" "--print-rpath" "coverm")
+                       (invoke "patchelf" "--shrink-rpath" "coverm")
+                       (invoke "./coverm" "-h")
+                       ))))
+         ;; (replace 'check ; this is just a binary, so run rudimentary check.
+         ;;   (lambda _ (zero? (system* "./coverm" "--help"))))
+         (delete 'strip) ; Does not work. Eh.
+         (delete 'validate-runpath)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+               (install-file "coverm" bin))
+             #t)))))
+    (native-inputs
+     `(("patchelf" ,patchelf)))
+    (inputs
+     `(("zlib" ,zlib)
+       ("gcc:lib" ,gcc "lib")
+       ("xz" ,xz)))
+    (synopsis "Read coverage calculator for metagenomics")
+    (description
+     "CoverM is a read coverage calculator focused on metagenomics
+applications.")
+    (home-page "https://github.com/wwood/CoverM")
+    (license license:gpl3+)))

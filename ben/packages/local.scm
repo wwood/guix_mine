@@ -6721,3 +6721,61 @@ on a user-supplied reference tree and alignment.")
 applications.")
     (home-page "https://github.com/wwood/CoverM")
     (license license:gpl3+)))
+
+(define-public masurca ; Not quite working, due to /bin/sh hardcoded in configure
+  (package
+   (name "masurca")
+   (version "3.2.6")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append
+                  "https://github.com/alekseyzimin/masurca/releases/download/"
+                  version "/MaSuRCA-" version ".tar.gz"))
+            (sha256
+             (base32
+              "099ym56azsrz5gajlis3jrlszzs7m1nswnd564z095x6dkly67vw"))))
+   (arguments
+    `(#:tests? #f ; No tests.
+      #:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     (replace 'build
+                              (lambda* (#:key outputs #:allow-other-keys)
+                                (setenv "DEST" (assoc-ref outputs "out"))
+                                (invoke "./install.sh"))))))
+   (native-inputs
+    `(("which" ,which)))
+   (build-system gnu-build-system)
+   (home-page "http://www.genome.umd.edu/masurca.html")
+   (synopsis
+    "De novo assembly")
+   (description
+    "De novo assembly.")
+   (license license:gpl3)))
+
+(define-public cputool ; Works but doc not installed correctly.
+  (let ((commit "e02ec45cee34b27fdc87824a30ce365e595b8206"))
+    (package
+     (name "cputool")
+     (version "0.0.8")
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://gitlab.devlabs.linuxassist.net/cputool/debian-cputool.git")
+             (commit commit)))
+       (file-name (string-append name "-" version "-checkout"))
+       (sha256
+        (base32
+         "0ig7g25a9vb2wyp4wpmjml4adw999zf9l5qlbcpm0yi1hjn7i288"))))
+     (build-system gnu-build-system)
+     (arguments
+      `(#:tests? #f ; Fails because docbook2man does not exist
+        #:phases
+        (modify-phases %standard-phases
+          (replace 'build (lambda _ (invoke "make" "cputool")))
+          (replace 'install (lambda _ (invoke "make" "install-binPROGRAMS"))))))
+     (home-page "https://gitlab.devlabs.linuxassist.net/cputool/debian-cputool")
+     (synopsis "like cpulimit but might work")
+     (description "like cpulimit")
+     (license license:gpl3)))) ;?

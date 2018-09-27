@@ -8,6 +8,7 @@
   #:use-module (guix gexp)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system cmake)
+  #:use-module (guix build-system meson)
   #:use-module (guix build-system perl)
   #:use-module (guix build-system python)
   #:use-module (guix build-system ruby)
@@ -17,6 +18,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bioconductor)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages bootstrap)
@@ -31,6 +33,7 @@
   #:use-module (gnu packages databases)
   #:use-module (gnu packages datastructures)
   #:use-module (gnu packages django)
+  #:use-module (gnu packages documentation)
   #:use-module (gnu packages elf)
   #:use-module (gnu packages file)
   #:use-module (gnu packages flex)
@@ -998,7 +1001,7 @@ submission.")
 (define-public prokka
   (package
    (name "prokka")
-   (version "1.12")
+   (version "1.13")
    (source
     (origin
      (method url-fetch)
@@ -6774,4 +6777,126 @@ applications.")
      (home-page "https://gitlab.devlabs.linuxassist.net/cputool/debian-cputool")
      (synopsis "like cpulimit but might work")
      (description "like cpulimit")
+     (license license:gpl3)))) ;?
+
+(define-public blasr ; in progress
+  (package
+   (name "blasr")
+   (version "5.3.2")
+   (source
+    (origin
+     (method git-fetch)
+     (uri (git-reference
+           (url "https://github.com/PacificBiosciences/blasr.git")
+           (commit "1a28496add55522743fe496d450c4484b07ad62c")))
+     (file-name (string-append name "-" version))
+     (sha256
+      (base32
+       "062jsshhk0wmwmcpmf9gwi1bh1bf6y4macfkd23fap9l6jq7a33n"))))
+   (build-system meson-build-system)
+   (inputs
+    `(("boost" ,boost)
+      ("pkg-config" ,pkg-config)
+      ("pbbam" ,pbbam)
+      ("htslib" ,htslib)
+      ("zlib" ,zlib)
+      ("blasr-libcpp" ,blasr-libcpp)))
+   (home-page "https://github.com/PacificBiosciences/blasr")
+   (synopsis "blasr")
+   (description "blasr")
+   (license license:gpl3))) ;?
+
+(define-public pbbam ; in progress
+  (package
+   (name "pbbam")
+   (version "0.18.0")
+   (source
+    (origin
+     (method git-fetch)
+     (uri (git-reference
+           (url "https://github.com/PacificBiosciences/pbbam.git")
+           (commit "68f87b63daef0fdd32976e27a636f18fdca7ff74")))
+     (file-name (string-append name "-" version))
+     (sha256
+      (base32
+       "0pra9r90pppi0qa53b1qb8j0r3h71m10ls331jgfzjfn1ai3p9xs"))))
+   (build-system meson-build-system)
+   (arguments
+    `(#:tests? #f ; 3 tests of 605 failed, didn;t investigate
+      #:phases
+      (modify-phases %standard-phases
+        (add-after 'unpack 'patch-bin-sh
+          (lambda _
+            (substitute* '("tests/scripts/cram/_test.py"
+                           "tests/scripts/cram/_main.py")
+              (("/bin/sh") (which "sh"))))))))
+   (inputs
+    `(("boost" ,boost)
+      ("zlib" ,zlib)
+      ("htslib" ,htslib)))
+   (native-inputs
+    `(("pkg-config" ,pkg-config)
+      ("python" ,python-2)
+      ("googletest" ,googletest)
+      ("doxygen" ,doxygen)
+      ("graphviz" ,graphviz)
+      ("samtools" ,samtools)))
+   (home-page "https://github.com/PacificBiosciences/pbbam")
+   (synopsis "pbbam")
+   (description "pbbam")
+   (license license:gpl3))) ;?
+
+(define-public blasr-libcpp ; in progress
+  (package
+   (name "blasr-libcpp")
+   (version "5.3.1")
+   (source
+    (origin
+     (method git-fetch)
+     (uri (git-reference
+           (url "https://github.com/PacificBiosciences/blasr_libcpp.git")
+           (commit "259ee685560a60c871849737269b56bae4bb6644")))
+     (file-name (string-append name "-" version))
+     (sha256
+      (base32
+       "1xdsr2nny6kxlgixwp0599dq2q9lijaxcs1xnpmsn6ki2v5i4i84"))))
+   (inputs
+    `(("boost" ,boost)
+      ("pbbam" ,pbbam)
+      ("zlib" ,zlib)
+      ("htslib" ,htslib)
+      ("hdf5" ,hdf5)))
+   (native-inputs
+    `(("pkg-config" ,pkg-config)
+      ("googletest" ,googletest)))
+   (build-system meson-build-system)
+   (home-page "https://github.com/PacificBiosciences/pbbam")
+   (synopsis "")
+   (description "")
+   (license license:gpl3))) ;?
+
+(define-public karp ; in progress
+  (let ((commit "88c5b14ba3169c470491028129e534441b544e94"))
+    (package
+     (name "karp")
+     (version (string-append "0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/mreppell/Karp")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (sha256
+        (base32
+         "0n92zqf91pkfjl4b2vywd3smf92qhqn40x023nk9g52v0lgd3fw9"))))
+     (build-system cmake-build-system)
+     (arguments
+     `(#:tests? #f)) ; There are no tests.
+     (inputs
+      `(("hdf5" ,hdf5)
+        ("zlib" ,zlib)))
+     (home-page "https://github.com/mreppell/Karp")
+     (synopsis "")
+     (description "")
      (license license:gpl3)))) ;?

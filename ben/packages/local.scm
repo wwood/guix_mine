@@ -17,6 +17,7 @@
   #:use-module (gnu packages autotools)
   #:use-module (gnu packages algebra)
   #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
   #:use-module (gnu packages bison)
   #:use-module (gnu packages boost)
   #:use-module (gnu packages bootstrap)
@@ -928,7 +929,7 @@ HMM searching in RNA:DNA style.")
 (define-public tbl2asn
   (package
     (name "tbl2asn")
-    (version "25.0") ; The version can be found by running through "tbl2asn -".
+    (version "20180618") ; The version can be found by running through "tbl2asn -".
     (source
      (origin
        (method url-fetch)
@@ -938,7 +939,7 @@ HMM searching in RNA:DNA style.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0038x7q4v5lc8975ixbdl6qjfvp232ikz08sqmasnm2lfqwvzb08"))))
+         "0vmrnhz9587hribjigfghw4ccqwx19g4gcdbnvvrzcv8dkyd5rzh"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -999,7 +1000,7 @@ submission.")
 (define-public prokka
   (package
    (name "prokka")
-   (version "1.12")
+   (version "1.13")
    (source
     (origin
      (method url-fetch)
@@ -1009,7 +1010,7 @@ submission.")
      (file-name (string-append name "-" version ".tar.gz"))
      (sha256
       (base32
-       "1fmdhx77pbh44bsdhjyldkmxz7fqryvk9j8nkpyb2zqnvg4lcpl4"))
+       "0kyvm1vlsl1795y3yj8a1p3730jggiqkr4z0gx8jvjx8wgbar400"))
      (modules '((guix build utils)))
      ;; Remove bundled code.
      (snippet '(begin
@@ -1070,7 +1071,7 @@ submission.")
       ("infernal" ,infernal)
       ("barrnap" ,barrnap)
       ("minced" ,minced)
-      ("tbl2asn" ,ncbi-tools)
+      ("tbl2asn" ,tbl2asn)
       ("grep" ,grep)
       ("sed" ,sed)
       ("less" ,less)
@@ -2529,7 +2530,7 @@ haplotypes and accessory genomes de novo from metagenome data.")
     (description "")
     (license license:gpl3)))
 
-(define-public ncbi-tools ; in progress
+(define-public ncbi-tools ; was in progress, but now tbl2asn no longer runs after this is built, so probably not using it for now.
   (package
     (name "ncbi-tools")
     (version "20170106")
@@ -5240,14 +5241,14 @@ instance, it implements several methods to assess contig-wise read coverage.")
 (define-public drep ; Won't work properly because mummer and gANI are not packaged.
   (package
     (name "drep")
-    (version "1.0.0")
+    (version "2.2.2")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "drep" version))
        (sha256
         (base32
-         "1kxkxn34yffmf24zc23dvb7145zwymwcq22bcj6j15bpkkdfnjrw"))))
+         "05b7bpzmq114h1zhn3a2pjckdbbaqj9nd8kvvlh994bibhmmaha4"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f ; The test suite does not work.
@@ -5786,7 +5787,7 @@ extract population genomes from multi-sample metagenomic datasets.")
 (define-public minimap
   (package
    (name "minimap")
-   (version "2-2.2")
+   (version "2-2.12")
    (source
     (origin
      (method url-fetch)
@@ -5796,7 +5797,7 @@ extract population genomes from multi-sample metagenomic datasets.")
            (substring version 2) ".tar.bz2"))
      (sha256
       (base32
-       "1ndfxhbs2mnv9y1lnaqm9ki85423qh2z889qzs64lif4fjm871ky"))))
+       "0j855hrh95zfihi19pxaf2l299ay77rn237dbzrvyfys90fm1pw8"))))
    (build-system gnu-build-system)
    (arguments
     `(#:make-flags '("CC=gcc")
@@ -6704,17 +6705,28 @@ on a user-supplied reference tree and alignment.")
          (delete 'strip) ; Does not work. Eh.
          (delete 'validate-runpath)
          (replace 'install
-           (lambda* (#:key outputs #:allow-other-keys)
-             (let ((bin (string-append (assoc-ref outputs "out") "/bin/")))
-               (install-file "coverm" bin))
-             #t)))))
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
+                    (file "coverm")
+                    (bwa (assoc-ref inputs "bwa"))
+                    (samtools (assoc-ref inputs "samtools"))
+                    (bash (assoc-ref inputs "bash"))
+                    (path
+                     (string-append bwa "/bin:" samtools "/bin:" bash "/bin")))
+               (install-file file bin)
+               (wrap-program
+                (string-append bin "/" file)
+                `("PATH" ":" prefix (,path)))))))))
     (native-inputs
      `(("patchelf" ,patchelf)))
     (inputs
      `(("zlib" ,zlib)
        ("bzip" ,bzip2)
        ("gcc:lib" ,gcc "lib")
-       ("xz" ,xz)))
+       ("xz" ,xz)
+       ("bwa" ,bwa)
+       ("samtools" ,samtools)
+       ("bash" ,bash)))
     (synopsis "Read coverage calculator for metagenomics")
     (description
      "CoverM is a read coverage calculator focused on metagenomics
@@ -6779,3 +6791,39 @@ applications.")
      (synopsis "like cpulimit but might work")
      (description "like cpulimit")
      (license license:gpl3)))) ;?
+
+(define-public marvel ; Probably arguments require fixing. But can't test since
+                      ; qtwebkit is not building.
+  (let ((commit "912245f1f0ff7ab326413fcbb6b3c921664ac17b"))
+    (package
+      (name "marvel")
+      (version (string-append "0-1." (string-take commit 8)))
+      (build-system python-build-system)
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/LaboratorioBioinformatica/MARVEL")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "11rz0i6zbxnva39rsk8xjwgllii37zch78hxnfsai9m0y63izpwa"))))
+      ;; (arguments
+      ;;  `(#:phases
+      ;;    (modify-phases %standard-phases
+      ;;                   (add-after 'unpack 'loosen-requirements
+      ;;                              (lambda _
+      ;;                                (substitute* "setup.py"
+      ;;                                             (("vega==0.4.4") "vega"))
+      ;;                                #t)))))
+      (home-page "https://github.com/LaboratorioBioinformatica/MARVEL")
+      (propagated-inputs
+       `(("prokka" ,prokka)
+         ("python-numpy" ,python-numpy)
+         ("python-scipy" ,python-scipy)
+         ("python-biopython" ,python-biopython)))
+      (synopsis
+       "MARVEL: Metagenomic Analyses and Retrieval of Viral ELements ")
+      (description
+       "MARVEL: Metagenomic Analyses and Retrieval of Viral ELements ")
+      (license #f))))

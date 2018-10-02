@@ -6953,3 +6953,31 @@ applications.")
      (description "")
      (license license:gpl3)))) ;?
 
+(define-public bifrost
+  (let ((commit "d479e63738bb3d14ef00e1fc3b31d35d61cd223a"))
+    (package
+     (name "bifrost")
+     (version (string-append "0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pmelsted/bifrost")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (sha256
+        (base32
+         "1gafd347xc59hg22yacrasc0v07dyb9cdm57iw8lp1prn4m7v8l7"))))
+     (build-system cmake-build-system)
+     (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (add-
+     (arguments
+      `(#:tests? #f)) ; There are no tests.
+     (inputs
+      `(("zlib" ,zlib)))
+     (home-page "https://github.com/pmelsted/bifrost")
+     (synopsis "Highly parallel construction and indexing of colored and compacted de Bruijn graphs")
+     (description "Highly parallel construction and indexing of colored and compacted de Bruijn graphs")
+     (license license:bsd-2)))) ; But it includes other licenses.

@@ -6949,8 +6949,8 @@ applications.")
       `(("hdf5" ,hdf5)
         ("zlib" ,zlib)))
      (home-page "https://github.com/mreppell/Karp")
-     (synopsis "")
-     (description "")
+     (synopsis "Accurate and fast taxonomic classification using pseudoaligning")
+     (description "Accurate and fast taxonomic classification using pseudoaligning")
      (license license:gpl3)))) ;?
 
 (define-public bifrost

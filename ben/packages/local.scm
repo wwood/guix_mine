@@ -6965,14 +6965,11 @@ applications.")
              (url "https://github.com/pmelsted/bifrost")
              (commit commit)))
        (file-name (string-append name "-" version))
+       (patches (search-patches "bifrost-remove-march-native.patch"))
        (sha256
         (base32
          "1gafd347xc59hg22yacrasc0v07dyb9cdm57iw8lp1prn4m7v8l7"))))
      (build-system cmake-build-system)
-     (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (add-
      (arguments
       `(#:tests? #f)) ; There are no tests.
      (inputs

@@ -6978,3 +6978,30 @@ applications.")
      (synopsis "Highly parallel construction and indexing of colored and compacted de Bruijn graphs")
      (description "Highly parallel construction and indexing of colored and compacted de Bruijn graphs")
      (license license:bsd-2)))) ; But it includes other licenses.
+
+(define-public metafrost
+  (package
+   (name "metafrost")
+   (version (string-append "0.0.0.dev"))
+   (source
+    (local-file (string-append (getenv "HOME") "/git/metafrost")
+                #:recursive? #t))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:tests? #f
+      #:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     (replace 'install
+                              (lambda* (#:key inputs outputs #:allow-other-keys)
+                                       (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
+                                              (file "metafrost"))
+                                         (install-file file bin)
+                                         #t))))))
+   (inputs
+    `(("bifrost" ,bifrost)
+      ("zlib" ,zlib)))
+   (home-page "https://github.com/pmelsted/bifrost")
+   (synopsis "De-Bruijn graph utilising metagenomic utilities")
+   (description "De-Bruijn graph utilising metagenomic utilities")
+   (license license:gpl3+)))

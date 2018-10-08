@@ -1512,7 +1512,7 @@ help a user to decide whether their sample has a known or novel K locus.")
 (define-public megahit
   (package
     (name "megahit")
-    (version "1.1.2")
+    (version "1.1.3")
     (source
      (origin
        (method url-fetch)
@@ -1521,7 +1521,7 @@ help a user to decide whether their sample has a known or novel K locus.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "1dac89dg2dy4ji0ykgyb3bavfc3brd363xlfjpmdlvwwsifrdlyh"))
+         "14n4f77843921rg2afm41bwsy33pifqfiqlhj27pmbss0zpgvvmn"))
        (modules '((guix build utils)))
        (snippet
         ;; Delete bundled cityhash library.  Do not delete bundled IDBA,

@@ -6993,7 +6993,7 @@ applications.")
       (modify-phases %standard-phases
                      (delete 'configure)
                      (replace 'install
-                              (lambda* (#:key inputs outputs #:allow-other-keys)
+                              (lambda* (#:key outputs #:allow-other-keys)
                                        (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
                                               (file "metafrost"))
                                          (install-file file bin)
@@ -7001,7 +7001,110 @@ applications.")
    (inputs
     `(("bifrost" ,bifrost)
       ("zlib" ,zlib)))
-   (home-page "https://github.com/pmelsted/bifrost")
+   (home-page #f) ;TODO
    (synopsis "De-Bruijn graph utilising metagenomic utilities")
    (description "De-Bruijn graph utilising metagenomic utilities")
-   (license license:gpl3+)))
+   (license #f))) ;TODO
+
+(define-public twopaco
+  (let ((commit "e1058259a5e22f7e2f297df942b945ec58cdf1b4"))
+    (package
+     (name "twopaco")
+     (version (string-append "0.9.2-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/medvedevgroup/TwoPaCo")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (sha256
+        (base32
+         "17h0rhk1s5z3h5q9qrw5l026r1mwryb08fjj9kmggazknljh8r81"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:configure-flags '("../source/src")
+        #:tests? #f ; TODO run --test.
+        #:phases
+        (modify-phases %standard-phases
+                       (replace 'install
+                                (lambda* (#:key outputs #:allow-other-keys)
+                                  (let* ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+                                    (install-file "graphconstructor/twopaco" bin)
+                                    (install-file "graphdump/graphdump" bin)
+                                    #t))))))
+     (inputs
+      `(("tbb" ,tbb)))
+     (home-page "https://github.com/medvedevgroup/TwoPaCo")
+     (synopsis "A fast constructor of the compressed de Bruijn graph from many genomes")
+     (description "A fast constructor of the compressed de Bruijn graph from many genomes")
+     (license license:gpl3+)))) ;?
+
+(define-public pufferfish
+  (let ((commit "a7e841e2a0d3c9ce8e0e5ce3e88e3b5abe1beaf7"))
+    (package
+     (name "pufferfish")
+     (version (string-append "0-1." (string-take commit 8)))
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/COMBINE-lab/pufferfish")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (patches (search-patches "pufferfish-remove-march-native.patch"))
+       (sha256
+        (base32
+         "1q49q6bwrw1y0ipfqy4pwdlbjhas0vi6kznrj1ffscck12rpfr8l"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:tests? #f ; Really?
+        #:phases
+        (modify-phases %standard-phases
+          (replace 'install
+            (lambda* (#:key outputs #:allow-other-keys)
+              (let* ((bin (string-append (assoc-ref outputs "out") "/bin/")))
+                (for-each
+                 (lambda (file)
+                   (install-file (string-append "src/" file) bin))
+                 '("bcalm_pufferize"
+                   "edgedensity"
+                   "edgedensity2"
+                   "fixFasta"
+                   "krakmap"
+                   "kswcli"
+                   "myGFAtester"
+                   "pufferfish"
+                   "pufferize"))
+                #t))))))
+     (inputs
+      `(("zlib" ,zlib)
+        ("sdsl" ,sdsl)))
+     (home-page "https://github.com/COMBINE-lab/pufferfish")
+     (synopsis "An efficient index for the colored, compacted, de Bruijn graph")
+     (description "An efficient index for the colored, compacted, de Bruijn graph")
+     (license license:gpl3+)))) ;?
+
+(define-public sdsl ; Bundles googletest and libdivsufsort
+  (let ((commit "ddb0fbbc33bb183baa616f17eb48e261ac2a3672"))
+    (package
+     (name "sdsl")
+     (version (string-append "2.1.1-1." (string-take commit 8))) ; >100 commits and several years since 2.1.1
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/simongog/sdsl-lite")
+             (recursive? #t)
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (sha256
+        (base32
+         "0m1vjfdmxipy34c3p05y30hhfqm4ms9ck3amaggw0jcvrxhwndin"))))
+     (build-system cmake-build-system)
+     ;; (arguments
+     ;;  `(#:test-target "test-sdsl")) ; Commented out so I can move on - needs to download some file, should be easy enough to do as an extra native-input
+     (home-page "https://github.com/simongog/sdsl-lite")
+     (synopsis "The Succinct Data Structure Library (SDSL)")
+     (description "An efficient index for the colored, compacted, de Bruijn graph")
+     (license license:gpl3+)))) ;?

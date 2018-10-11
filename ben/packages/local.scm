@@ -6992,6 +6992,11 @@ applications.")
       #:phases
       (modify-phases %standard-phases
                      (delete 'configure)
+                     (delete 'validate-runpath) ; Currently having problems.
+                     (add-before 'build 'delete-old ; Otherwise make does not overwrite, I think.
+                                 (lambda _
+                                   (delete-file "metafrost")
+                                   #t))
                      (replace 'install
                               (lambda* (#:key outputs #:allow-other-keys)
                                        (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))

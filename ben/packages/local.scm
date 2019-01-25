@@ -297,14 +297,14 @@ with short reads produced by Next Generation Sequencing (NGS) machines.")
 (define-public spades ; there is bundled C/C++ dependencies. All seem tractable.
   (package
     (name "spades")
-    (version "3.12.0")
+    (version "3.13.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "http://cab.spbu.ru/files/release"
                                   version "/SPAdes-" version ".tar.gz"))
               (sha256
                (base32
-                "1irshmqv20r80h9lkpwvzpxr0n81y79sajyhizaqlsmyrcxqmd0m"))))
+                "0h3h8ac5bpa2phmdmb05y1a27y5zq81hb9wzjw1jcwacihj44d66"))))
     (build-system cmake-build-system)
     (inputs ;If you wish to use Lucigen NxSeq® Long Mate Pair reads, you will need Python regex library
      `(("zlib" ,zlib)
@@ -1512,7 +1512,7 @@ help a user to decide whether their sample has a known or novel K locus.")
 (define-public megahit
   (package
     (name "megahit")
-    (version "1.1.3")
+    (version "1.1.4")
     (source
      (origin
        (method url-fetch)
@@ -1521,7 +1521,7 @@ help a user to decide whether their sample has a known or novel K locus.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "14n4f77843921rg2afm41bwsy33pifqfiqlhj27pmbss0zpgvvmn"))
+         "0pspw52cj4y2accskw9np16q3v41wbnn2acvkyqzcvjiza5lrmpc"))
        (modules '((guix build utils)))
        (snippet
         ;; Delete bundled cityhash library.  Do not delete bundled IDBA,
@@ -3513,9 +3513,9 @@ programs.")
    (name "singlem-dev")
    (version "0.0.0.dev")
    (source
-    ;; (local-file (string-append (getenv "HOME") "/git/singlem")
-    ;;             #:recursive? #t))
-   (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.10.0.tar.gz")))
+    (local-file (string-append (getenv "HOME") "/git/singlem")
+                 #:recursive? #t))
+    ;; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.10.0.tar.gz")))
     ;; (name "singlem")
     ;; (version "0.9.0")
     ;; (source (origin
@@ -3547,6 +3547,7 @@ programs.")
        ("fxtract" ,fxtract)
        ("hmmer" ,hmmer)
        ("diamond" ,diamond)
+       ("express-beta-diversity" ,express-beta-diversity)
        ("smafa" ,smafa-binary)
        ("graftm" ,graftm-dev)
        ("python-extern" ,python2-extern)
@@ -5244,14 +5245,14 @@ instance, it implements several methods to assess contig-wise read coverage.")
 (define-public drep ; Won't work properly because mummer and gANI are not packaged.
   (package
     (name "drep")
-    (version "2.2.2")
+    (version "2.2.3")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "drep" version))
        (sha256
         (base32
-         "05b7bpzmq114h1zhn3a2pjckdbbaqj9nd8kvvlh994bibhmmaha4"))))
+         "108mgbfc06bnsz20ny7x2l7byz5hw4h0xbwrxpi1qkczh81dgl5j"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f ; The test suite does not work.
@@ -6671,7 +6672,7 @@ on a user-supplied reference tree and alignment.")
 (define-public coverm-binary
   (package
     (name "coverm-binary")
-    (version "0.0.0.dev")
+    (version "0.2.0-alpha3")
     (source
      (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
                  #:recursive? #t))
@@ -7011,6 +7012,65 @@ applications.")
    (description "De-Bruijn graph utilising metagenomic utilities")
    (license #f))) ;TODO
 
+(define-public metafrost2
+  (package
+   (name "metafrost2")
+   (version (string-append "0.0.0.dev2"))
+   (source
+    (local-file (string-append (getenv "HOME") "/git/metafrost2/target/release")
+                #:recursive? #t))
+   (build-system gnu-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (delete 'build)
+         (replace 'check
+                  (lambda* (#:key inputs #:allow-other-keys)
+                    (let* ((so (string-append
+                                (assoc-ref inputs "libc")
+                                ,(glibc-dynamic-linker)))
+                           (zlib (assoc-ref inputs "zlib"))
+                           (zlib-lib (string-append zlib "/lib"))
+                           (gcc (assoc-ref inputs "gcc:lib"))
+                           (gcc-lib (string-append gcc "/lib"))
+                           (xz (assoc-ref inputs "xz"))
+                           (xz-lib (string-append xz "/lib"))
+                           (bzip (assoc-ref inputs "bzip2"))
+                           (bzip-lib (string-append bzip "/lib")))
+                      (and
+                       (invoke "patchelf" "--set-interpreter" so "metafrost2")
+                       (invoke "patchelf" "--set-rpath"
+                               (string-append zlib-lib ":" xz-lib ":" gcc-lib ":" bzip-lib)
+                               "metafrost2")
+                       (invoke "patchelf" "--print-rpath" "metafrost2")
+                       (invoke "patchelf" "--shrink-rpath" "metafrost2")
+                       (invoke "./metafrost2" "-h")
+                       ))))
+         ;; (replace 'check ; this is just a binary, so run rudimentary check.
+         ;;   (lambda _ (zero? (system* "./coverm" "--help"))))
+         (delete 'strip) ; Does not work. Eh.
+         (delete 'validate-runpath)
+         (replace 'install
+           (lambda* (#:key inputs outputs #:allow-other-keys)
+             (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
+                    (file "metafrost2"))
+               (install-file file bin)))))))
+    (native-inputs
+     `(("patchelf" ,patchelf)))
+    (inputs ; Rough - could be cut down.
+     `(("zlib" ,zlib)
+       ("bzip" ,bzip2)
+       ("gcc:lib" ,gcc "lib")
+       ("xz" ,xz)
+       ("bwa" ,bwa)
+       ("samtools" ,samtools)
+       ("bash" ,bash)))
+   (home-page #f) ;TODO
+   (synopsis "Interpret metafrost output")
+   (description "Interpret metafrost output")
+   (license #f))) ;TODO
+
 (define-public twopaco
   (let ((commit "e1058259a5e22f7e2f297df942b945ec58cdf1b4"))
     (package
@@ -7113,3 +7173,81 @@ applications.")
      (synopsis "The Succinct Data Structure Library (SDSL)")
      (description "An efficient index for the colored, compacted, de Bruijn graph")
      (license license:gpl3+)))) ;?
+
+(define-public metakallisto ; in progress
+  (let ((commit "f11b1575385044a291932a15de827cd3939c25bb"))
+    (package
+      (name "metakallisto")
+      (version (string-append "0-1." (string-take commit 8)))
+      (build-system python-build-system)
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/pachterlab/metakallisto")
+                      (commit commit)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "1gpwqshnlwjzqm10dhkh9shryhhlfmcdy3rd1ar9z7pscfzy8jw0"))))
+      (arguments
+       `(#:python ,python-2
+         #:tests? #f ; No tests.
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'build)
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((bin (string-append (assoc-ref outputs "out") "/bin"))
+                            (file "mash_kallisto_pipeline.py")
+                            (path (getenv "PATH")))
+                        (install-file file bin)
+                        (chmod (string-append bin "/" file) #o555)
+                        (wrap-program (string-append bin "/" file)
+                                      `("PATH" ":" prefix (,path)))
+                        #t))))))
+      (home-page "https://github.com/pachterlab/metakallisto")
+      (inputs
+       `(("kallisto" ,kallisto)))
+      (propagated-inputs
+       `(("python-numpy" ,python2-numpy)
+         ("python-scipy" ,python2-scipy)
+         ("python-biopython" ,python2-biopython)))
+      (synopsis
+       "Using kallisto for metagenomic analysis")
+      (description
+       "Using kallisto for metagenomic analysis")
+      (license #f))))
+
+(define-public kallisto ; in progress
+  (let ((commit "0c950a3579b2691eada652f6a106d14473e4e467"))
+    (package
+     (name "kallisto")
+     (version "0.45.0")
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/pachterlab/kallisto")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+       (patches (search-patches "kallisto.patch"))
+       (sha256
+        (base32
+         "1zqfzsqsqzi861iqkm85nxl142y15vf1ckbrvkh5vvvrmqav23lk"))))
+     (build-system cmake-build-system)
+     (arguments
+      `(#:tests? #f)) ; Test instructions not included in INSTALL.md.
+     (inputs
+      `(("zlib" ,zlib)
+        ("hdf5" ,hdf5)
+        ("htslib" ,htslib)))
+     (native-inputs
+      `(("autoconf" ,autoconf)))
+     (home-page "https://pachterlab.github.io/kallisto")
+     (synopsis "Quantify abundances of transcripts from bulk and single-cell RNA-Seq data")
+     (description "kallisto is a program for quantifying abundances of
+transcripts from bulk and single-cell RNA-Seq data, or more generally of target
+sequences using high-throughput sequencing reads. It is based on the novel idea
+of pseudoalignment for rapidly determining the compatibility of reads with
+targets, without the need for alignment.")
+     (license #f)))) ;?

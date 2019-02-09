@@ -5269,55 +5269,55 @@ instance, it implements several methods to assess contig-wise read coverage.")
 
 (define-public ngs-bits
   ;; There are no source releases on PyPI, so we package from git.
-  (let ((commit "ba82e325a0336d8c34342483d099a2c49dda11c9"))
-    (package
-     (name "ngs-bits")
-     (version "2018_04")
-     (source
-      (origin
-        (method url-fetch)
-        (uri
-         (string-append
-          "https://github.com/imgag/ngs-bits/releases/download/2018_04/ngs-bits-"
-          version ".tgz"))
-        (sha256
-         (base32
-          "06v60xg7k2a6dwsysn0hf9lpq8p53j2633sm15xprplqxlxl0qm4"))))
-     (build-system gnu-build-system)
-     (arguments
-      `(#:tests? #f ; Tests fail at least because test data is missing.
-        #:phases
-        (modify-phases %standard-phases
-          (delete 'configure)
-          (replace 'build
-            (lambda _
-              (and
-               ;;(zero? (system* "make" "build_3rdparty")) ; Not needed since it is only htslib
-               (zero? (system* "make" "build_tools_release")))))
-          ;; (replace 'check
-          ;;   (lambda _
-          ;;     (zero? (system* "make" "test_tools"))))
-          (delete 'validate-runpath)
-          (replace 'install
-            (lambda* (#:key outputs #:allow-other-keys)
-              (let* ((out  (assoc-ref outputs "out")))
-                (copy-recursively "bin" (string-append out "/bin"))
-                #t))))))
-     (native-inputs
-      `(("git" ,git)
-        ("cmake" ,cmake)))
-     (inputs
-      `(("qt" ,qt)
-        ("python" ,python-2)
-        ("python-matplotlib" ,python2-matplotlib)
-        ("gcc" ,gcc-7)
-        ("htslib" ,htslib)))
-     (home-page "https://github.com/imgag/ngs-bits")
-     (synopsis
-      "Short-read sequencing tools")
-     (description
-      "Short-read sequencing tools")
-     (license license:gpl2+))))
+  (package
+    (name "ngs-bits")
+    (version "2018_11")
+    (source
+     (origin
+       (method url-fetch)
+       (uri
+        (string-append
+         "https://github.com/imgag/ngs-bits/releases/download/2018_11/ngs-bits-"
+         version ".tgz"))
+       (sha256
+        (base32
+         "0npiza76z73blq89ay19n4fys5kl1j63lq1lag57dc8d121sfsqv"))))
+    (build-system gnu-build-system)
+    (arguments
+     `(#:tests? #f ; Tests fail at least because test data is missing.
+       #:phases
+       (modify-phases %standard-phases
+         (delete 'configure)
+         (replace 'build
+           (lambda _
+             (and
+              ;;(zero? (system* "make" "build_3rdparty")) ; Not needed since it is only htslib
+              (zero? (system* "make" "build_tools_release")))))
+         ;; (replace 'check
+         ;;   (lambda _
+         ;;     (zero? (system* "make" "test_tools"))))
+         (delete 'validate-runpath)
+         (replace 'install
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out  (assoc-ref outputs "out")))
+               (copy-recursively "bin" (string-append out "/bin"))
+               #t))))))
+    (native-inputs
+     `(("git" ,git)
+       ("cmake" ,cmake)
+       ("which" ,which)))
+    (inputs
+     `(("qt" ,qt)
+       ("python" ,python-2)
+       ("python-matplotlib" ,python2-matplotlib)
+       ("gcc" ,gcc-7)
+       ("htslib" ,htslib)))
+    (home-page "https://github.com/imgag/ngs-bits")
+    (synopsis
+     "Short-read sequencing tools")
+    (description
+     "Short-read sequencing tools")
+    (license license:gpl2+)))
 
 (define-public python-kpal
   (package
@@ -6601,7 +6601,7 @@ on a user-supplied reference tree and alignment.")
 (define-public coverm-binary
   (package
     (name "coverm-binary")
-    (version "0.2.0-alpha3")
+    (version "0.2.0-alpha4")
     (source
      ;; (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
      ;;             #:recursive? #t))
@@ -6612,7 +6612,7 @@ on a user-supplied reference tree and alignment.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "16kdns5vmn7c5sygc9f3hdh66sll8f4nkihqvmv4danaiy765mdb"))))
+         "17y18jwpxis1scs8qnbvrvi6yjgd1rf83msd5mi8xf8vhb54m0ks"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases

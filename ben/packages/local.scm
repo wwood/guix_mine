@@ -929,10 +929,12 @@ HMM searching in RNA:DNA style.")
                    "See LICENSE.SILVA in the distribution.")))))
 
 ;;; Cannot be included in Guix proper as only a binary is distributed.
+;;;
+;;; FAILS to build because it requires libidn so.11 when so.12 is in guix. Gah.
 (define-public tbl2asn
   (package
     (name "tbl2asn")
-    (version "20180618") ; The version can be found by running through "tbl2asn -".
+    (version "20190209") ; The version can be found by running through "tbl2asn -". ??
     (source
      (origin
        (method url-fetch)
@@ -942,7 +944,7 @@ HMM searching in RNA:DNA style.")
        (file-name (string-append name "-" version ".tar.gz"))
        (sha256
         (base32
-         "0vmrnhz9587hribjigfghw4ccqwx19g4gcdbnvvrzcv8dkyd5rzh"))))
+         "05wiscj6qgwbsa33cmhp0r4rfkgrp0kpgcaphskhyvndxawsqh8z"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -1028,12 +1030,13 @@ submission.")
                      (replace 'build
                               (lambda _
                                 (zero? (system* "bin/prokka" "--setupdb"))))
-                     (replace 'check
-                              (lambda* (#:key inputs #:allow-other-keys)
-                                (zero? (system* "bin/prokka"
-                                                "--noanno"
-                                                "--outdir" "example-out"
-                                                (assoc-ref inputs "example-genome")))))
+                     ;; (replace 'check
+                     ;;          (lambda* (#:key inputs #:allow-other-keys)
+                     ;;            (zero? (system* "bin/prokka"
+                     ;;                            "--noanno"
+                     ;;                            "--outdir" "example-out"
+                     ;;                            (assoc-ref inputs "example-genome")))))
+                     (delete 'check) ; tbl2asn cannot be built, so ignore checking
                      (replace 'install
                               (lambda* (#:key outputs #:allow-other-keys)
                                 (let* ((out (assoc-ref outputs "out"))
@@ -1074,7 +1077,7 @@ submission.")
       ("infernal" ,infernal)
       ("barrnap" ,barrnap)
       ("minced" ,minced)
-      ("tbl2asn" ,tbl2asn)
+      ;("tbl2asn" ,tbl2asn) ; Not able to be built currently
       ("grep" ,grep)
       ("sed" ,sed)
       ("less" ,less)
@@ -3718,60 +3721,6 @@ bioinformatics file formats, sequence alignment, and more.")
                ;; Delete bundled kseq.
                ;; TODO: Also delete bundled murmurhash and open bloom filter.
                '(delete-file "src/mash/kseq.h")))))))
-
-(define-public mmseqs ; Uses -march=native but probably works. For tests need
-                      ; updated googletest in guix proper I'd say. Bundles a few
-                      ; libraries
-  (package
-   (name "mmseqs")
-   (version "2-23394")
-   (source (origin
-            (method url-fetch)
-            (uri (string-append "https://github.com/soedinglab/MMseqs2/archive/"
-                                version ".tar.gz"))
-            (file-name (string-append name "-" version ".tar.gz"))
-            (sha256
-             (base32
-              "0wkhnrkhya0l2ayib50c1s24nbxxx4p8ll1pzinapqad9kzkyxin"))))
-   (build-system cmake-build-system)
-   (arguments
-    ;; There are no tests, see https://github.com/soedinglab/mmseqs2/issues/25
-    `(#:tests? #f
-      #:phases
-      (modify-phases %standard-phases
-                     (add-after 'unpack 'delete-bundled-code
-                                (lambda _
-                                  ;; Delete bundled gzstream. Other entries in the lib/
-                                  ;; directory appear not to have any primary sources, or in the
-                                  ;; case of kseq, appears to be either out of date or has been
-                                  ;; modified relative to its original form.
-                                        ;(delete-file "lib/kseq/kseq.h")
-                                  ;; (delete-file-recursively "lib/gzstream")
-                                  ;; (substitute* '("src/commons/A3MReader.cpp"
-                                  ;;                "src/commons/Util.cpp"
-                                  ;;                "src/util/createdb.cpp"
-                                  ;;                "src/util/extractdomains.cpp"
-                                  ;;                "src/test/TestDiagonalScoringPerformance.cpp"
-                                  ;;                "src/test/TestAlignmentPerformance.cpp")
-                                  ;;   (("^#include \\\"kseq.h\\\"\n$")
-                                  ;;    "#include \"htslib/kseq.h\"\n"))
-                                  #t)))))
-   (inputs
-    `(("htslib" ,htslib)
-      ("gzstream" ,gzstream)))
-   (native-inputs
-    `(("xxd" ,vim)
-      ("googletest" ,googletest)))
-   (home-page "http://mmseqs.com")
-   (synopsis "Fast and sensitive protein search and clustering")
-   (description
-    "MMseqs2 (Many-against-Many searching) is a software suite to search and
-cluster huge protein sequence sets.  The software is designed to run on
-multiple cores and servers and exhibits very good scalability.  MMseqs2 can run
-10000 times faster than BLAST.  At 100 times its speed it achieves the same
-sensitivity.  It can also perform profile searches with the same sensitivity as
-PSI-BLAST but at around 270 times its speed.")
-   (license license:gpl3+))) ; need to check actual code
 
 (define-public binsanity ; in process?
   (package
@@ -6466,26 +6415,6 @@ accuracy and potential applications are described here: \"High-throughput ANI
 Analysis of 90K Prokaryotic Genomes Reveals Clear Species Boundaries\".")
    (license license:asl2.0)))
 
-(define-public python-mpld3
-  (package
-    (name "python-mpld3")
-    (version "0.3")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (pypi-uri "mpld3" version))
-       (sha256
-        (base32
-         "1dwahw0y6rs9my6pvr2xjnjvcysw8dchfxncgsrrkgqila25hiad"))))
-    (build-system python-build-system)
-    (home-page "http://mpld3.github.com")
-    (synopsis "D3 Viewer for Matplotlib")
-    (description "D3 Viewer for Matplotlib")
-    (license #f)))
-
-(define-public python2-mpld3
-  (package-with-python2 python-mpld3))
-
 (define-public gtdbtk ; Needs a wrap phase around the binary dependencies, but
                       ; may otherwise work.
   (package
@@ -6674,8 +6603,16 @@ on a user-supplied reference tree and alignment.")
     (name "coverm-binary")
     (version "0.2.0-alpha3")
     (source
-     (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
-                 #:recursive? #t))
+     ;; (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
+     ;;             #:recursive? #t))
+     (origin
+       (method url-fetch)
+       (uri (string-append "https://github.com/wwood/CoverM/releases/download/v"
+                           version "/coverm-x86_64-unknown-linux-musl-"
+                           version ".tar.gz"))
+       (sha256
+        (base32
+         "16kdns5vmn7c5sygc9f3hdh66sll8f4nkihqvmv4danaiy765mdb"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -6696,12 +6633,12 @@ on a user-supplied reference tree and alignment.")
                            (bzip (assoc-ref inputs "bzip2"))
                            (bzip-lib (string-append bzip "/lib")))
                       (and
-                       (invoke "patchelf" "--set-interpreter" so "coverm")
-                       (invoke "patchelf" "--set-rpath"
-                               (string-append zlib-lib ":" xz-lib ":" gcc-lib ":" bzip-lib)
-                               "coverm")
-                       (invoke "patchelf" "--print-rpath" "coverm")
-                       (invoke "patchelf" "--shrink-rpath" "coverm")
+                       ;; (invoke "patchelf" "--set-interpreter" so "coverm")
+                       ;; (invoke "patchelf" "--set-rpath"
+                       ;;         (string-append zlib-lib ":" xz-lib ":" gcc-lib ":" bzip-lib)
+                       ;;         "coverm")
+                       ;; (invoke "patchelf" "--print-rpath" "coverm")
+                       ;; (invoke "patchelf" "--shrink-rpath" "coverm")
                        (invoke "./coverm" "-h")
                        ))))
          ;; (replace 'check ; this is just a binary, so run rudimentary check.

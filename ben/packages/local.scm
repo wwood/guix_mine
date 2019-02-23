@@ -77,6 +77,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
   #:use-module (gnu packages ruby)
@@ -864,7 +865,7 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
 (define-public barrnap
   (package
    (name "barrnap")
-   (version "0.8")
+   (version "0.9")
    (source
     (origin
       (method url-fetch)
@@ -874,7 +875,7 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
       (file-name (string-append name "-" version ".tar.gz"))
       (sha256
        (base32
-        "03rpy266cqrw8zqnbr9n2bq7m2vvhgzjgpn074avd4kyfqq4j042"))
+        "05ff7jikp1yparj4fwap6sviap6klaad5drg7f5xjc856pa7rhin"))
       (modules '((guix build utils)))
       ;; Remove pre-built binaries.
       (snippet '(begin
@@ -911,6 +912,7 @@ genomes (~13,500 bacterial and archaeal, ~3,500 viral, and ~110 eukaryotic).")
    (inputs
     `(("perl" ,perl)
       ("hmmer" ,hmmer)
+      ("bedtools" ,bedtools)
       ("which" ,which)))
    (home-page "https://github.com/tseemann/barrnap")
    (synopsis "Bacterial ribosomal RNA predictor")
@@ -1016,6 +1018,7 @@ submission.")
      (sha256
       (base32
        "0kyvm1vlsl1795y3yj8a1p3730jggiqkr4z0gx8jvjx8wgbar400"))
+     (patches (search-patches "prokka-adjust-version-detection.patch"))
      (modules '((guix build utils)))
      ;; Remove bundled code.
      (snippet '(begin
@@ -3082,7 +3085,7 @@ percentage, bars of various formats, elapsed time and estimated time remaining.
      (version "0.8.0")
      (source
       (origin
-       (method url-fetch)
+       ;; (method url-fetch)
        ;; (uri (string-append "https://github.com/genome/bam-readcount/archive/v"
        ;;                     version ".tar.gz"))
        ;; (file-name (string-append name "-" version ".tar.gz"))

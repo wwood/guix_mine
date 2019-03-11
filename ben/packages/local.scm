@@ -6623,30 +6623,9 @@ on a user-supplied reference tree and alignment.")
          (delete 'configure)
          (delete 'build)
          (replace 'check
-                  (lambda* (#:key inputs #:allow-other-keys)
-                    (let* ((so (string-append
-                                (assoc-ref inputs "libc")
-                                ,(glibc-dynamic-linker)))
-                           (zlib (assoc-ref inputs "zlib"))
-                           (zlib-lib (string-append zlib "/lib"))
-                           (gcc (assoc-ref inputs "gcc:lib"))
-                           (gcc-lib (string-append gcc "/lib"))
-                           (xz (assoc-ref inputs "xz"))
-                           (xz-lib (string-append xz "/lib"))
-                           (bzip (assoc-ref inputs "bzip2"))
-                           (bzip-lib (string-append bzip "/lib")))
-                      (and
-                       ;; (invoke "patchelf" "--set-interpreter" so "coverm")
-                       ;; (invoke "patchelf" "--set-rpath"
-                       ;;         (string-append zlib-lib ":" xz-lib ":" gcc-lib ":" bzip-lib)
-                       ;;         "coverm")
-                       ;; (invoke "patchelf" "--print-rpath" "coverm")
-                       ;; (invoke "patchelf" "--shrink-rpath" "coverm")
-                       (invoke "./coverm" "-h")
-                       ))))
-         ;; (replace 'check ; this is just a binary, so run rudimentary check.
-         ;;   (lambda _ (zero? (system* "./coverm" "--help"))))
-         (delete 'strip) ; Does not work. Eh.
+                  (lambda _
+                    (invoke "./coverm" "-h")))
+         ;; (delete 'strip) ; Does not work. Eh.
          (delete 'validate-runpath)
          (replace 'install
            (lambda* (#:key inputs outputs #:allow-other-keys)
@@ -6660,7 +6639,8 @@ on a user-supplied reference tree and alignment.")
                (install-file file bin)
                (wrap-program
                 (string-append bin "/" file)
-                `("PATH" ":" prefix (,path)))))))))
+                `("PATH" ":" prefix (,path))))
+             #t)))))
     (native-inputs
      `(("patchelf" ,patchelf)))
     (inputs
@@ -6677,6 +6657,46 @@ on a user-supplied reference tree and alignment.")
 applications.")
     (home-page "https://github.com/wwood/CoverM")
     (license license:gpl3+)))
+
+(define-public coverm-dev
+  (let ((base coverm-binary))
+    (package
+     (inherit base)
+     (name "coverm-dev")
+     (version "0.0.0.dev")
+     (source
+      (local-file (string-append (getenv "HOME") "/git/coverm/target/release/coverm")))
+     (arguments
+      (substitute-keyword-arguments
+       (package-arguments base)
+       ((#:phases phases)
+        `(modify-phases
+          ,phases
+          (replace 'unpack
+                   (lambda* (#:key inputs #:allow-other-keys)
+                     (copy-recursively (assoc-ref inputs "source")
+                                       "coverm")
+                     (chmod "coverm" #o555)
+                     (let* ((so (string-append
+                                 (assoc-ref inputs "libc")
+                                 ,(glibc-dynamic-linker)))
+                            (zlib (assoc-ref inputs "zlib"))
+                            (zlib-lib (string-append zlib "/lib"))
+                            (gcc (assoc-ref inputs "gcc:lib"))
+                            (gcc-lib (string-append gcc "/lib"))
+                            (xz (assoc-ref inputs "xz"))
+                            (xz-lib (string-append xz "/lib"))
+                            (bzip (assoc-ref inputs "bzip2"))
+                            (bzip-lib (string-append bzip "/lib")))
+                       (and
+                        (invoke "patchelf" "--set-interpreter" so "coverm")
+                        (invoke "patchelf" "--set-rpath"
+                                (string-append zlib-lib ":" xz-lib ":" gcc-lib ":" bzip-lib)
+                                "coverm")
+                        (invoke "patchelf" "--print-rpath" "coverm")
+                        (invoke "patchelf" "--shrink-rpath" "coverm")
+                        (invoke "./coverm" "-h"))
+                     #t))))))))))
 
 (define-public masurca ; Not quite working, due to /bin/sh hardcoded in configure
   (package

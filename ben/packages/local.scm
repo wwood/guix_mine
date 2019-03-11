@@ -5197,14 +5197,14 @@ instance, it implements several methods to assess contig-wise read coverage.")
 (define-public drep ; Won't work properly because mummer and gANI are not packaged.
   (package
     (name "drep")
-    (version "2.2.3")
+    (version "2.2.4")
     (source
      (origin
        (method url-fetch)
        (uri (pypi-uri "drep" version))
        (sha256
         (base32
-         "108mgbfc06bnsz20ny7x2l7byz5hw4h0xbwrxpi1qkczh81dgl5j"))))
+         "0yc5cdv8plhr9hsc26izd1fy32i3nmkrrw6bk85kn7jv50xakcn7"))))
     (build-system python-build-system)
     (arguments
      `(#:tests? #f ; The test suite does not work.

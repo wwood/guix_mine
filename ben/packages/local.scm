@@ -2353,10 +2353,10 @@ binary compatibility.")
 
 (define-public desman
   ;; There are no releases so we fetch via git.
-  (let ((commit "b81de503b78af856ac0ee451ecb4bed72f1249be"))
+  (let ((commit "2be70e2225eb5fcb966487e7419a6a4c1fdfaa9d"))
     (package
       (name "desman")
-      (version (string-append "0-1." (string-take commit 8)))
+      (version (string-append "0-2." (string-take commit 8)))
       (source
        (origin
         (method git-fetch)
@@ -2364,33 +2364,33 @@ binary compatibility.")
               (url "https://github.com/chrisquince/DESMAN")
               (commit commit)))
         (file-name (string-append name "-" version "-checkout"))
-        (patches
-         (search-patches "desman-make-desman-scripts-executable.patch"))
+        ;; (patches
+        ;;  (search-patches "desman-make-desman-scripts-executable.patch"))
         (sha256
          (base32
-          "04mz360parvd2xf7kr5j001m6892irrlxjp5b5rm4bf8piqgj14a"))))
+          "0509zmc5l5abwwd5zmqbgkahqpg8k1ds6x93aqk4d9apqi8b37lf"))))
       (build-system python-build-system)
       (arguments
-       `(#:python ,python-2
-         #:phases
-         (modify-phases %standard-phases
-           (add-after 'install 'copy-extra-scripts
-             (lambda* (#:key outputs #:allow-other-keys)
-               (let* ((out (assoc-ref outputs "out"))
-                      (bin (string-append out "/bin")))
-                 (for-each
-                  (lambda (file) (install-file file bin))
-                  (find-files "scripts" "."))
-                 (install-file "desman/Variant_Filter.py" bin)
-                 (install-file "desman/GeneAssign.py" bin)
-                 #t))))))
+       `(#:tests? #f))
+         ;; #:phases
+         ;; (modify-phases %standard-phases
+         ;;   (add-after 'install 'copy-extra-scripts
+         ;;     (lambda* (#:key outputs #:allow-other-keys)
+         ;;       (let* ((out (assoc-ref outputs "out"))
+         ;;              (bin (string-append out "/bin")))
+         ;;         (for-each
+         ;;          (lambda (file) (install-file file bin))
+         ;;          (find-files "scripts" "."))
+         ;;         (install-file "desman/Variant_Filter.py" bin)
+         ;;         (install-file "desman/GeneAssign.py" bin)
+         ;;         #t))))))
       (inputs
-       `(("python-cython" ,python2-cython)
-         ("python-numpy" ,python2-numpy)
-         ("python-scipy" ,python2-scipy)
-         ("python-pandas" ,python2-pandas)
-         ("python-setuptools" ,python2-setuptools)
-         ("python-pytz", python2-pytz)
+       `(("python-cython" ,python-cython)
+         ("python-numpy" ,python-numpy)
+         ("python-scipy" ,python-scipy)
+         ("python-pandas" ,python-pandas)
+         ;; ("python-setuptools" ,python2-setuptools)
+         ;; ("python-pytz", python2-pytz)
          ("gsl" ,gsl)
          ("perl" ,perl)
          ("r" ,r)))

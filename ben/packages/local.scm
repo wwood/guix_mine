@@ -6604,7 +6604,7 @@ on a user-supplied reference tree and alignment.")
 (define-public coverm-binary
   (package
     (name "coverm-binary")
-    (version "0.2.0-alpha4")
+    (version "0.2.0-alpha6")
     (source
      ;; (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
      ;;             #:recursive? #t))
@@ -6615,7 +6615,7 @@ on a user-supplied reference tree and alignment.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "17y18jwpxis1scs8qnbvrvi6yjgd1rf83msd5mi8xf8vhb54m0ks"))))
+         "1948p8c505y9c0q3j86f5raj2cm4khax7kf0c3xyvzlm00r8v7c4"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases

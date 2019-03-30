@@ -3535,6 +3535,13 @@ programs.")
      `(#:python ,python-2 ; python-2 only
        #:phases
        (modify-phases %standard-phases
+         (add-before 'build 'remove-annoying-directories
+           (lambda _
+             (if (file-exists? "singlem.egg-info")
+                 (rename-file "singlem.egg-info" "singlem.egg-info-bad"))
+             (if (file-exists? "build")
+                 (rename-file "build" "build-bad"))
+             #t))
          (add-after 'install 'wrap-programs
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
@@ -3555,7 +3562,7 @@ programs.")
        ("diamond" ,diamond)
        ("express-beta-diversity" ,express-beta-diversity)
        ("smafa" ,smafa-binary)
-       ("graftm" ,graftm-dev)
+       ("graftm" ,graftm)
        ("python-extern" ,python2-extern)
        ("python-tempdir" ,python2-tempdir)
        ("python-dendropy" ,python2-dendropy)
@@ -3581,7 +3588,35 @@ species even if those species are from lineages new to science.")
      (name "graftm-dev")
      (version (string-append (package-version base) "-dev"))
      (source
-      (local-file (string-append (getenv "HOME") "/git/graftM") #:recursive? #t)))))
+      (local-file (string-append (getenv "HOME") "/git/graftM") #:recursive? #t))
+    (arguments
+     `(#:python ,python-2 ; python-2 only
+       #:phases
+       (modify-phases %standard-phases
+         (add-before 'build 'remove-annoying-directories
+           (lambda _
+             (if (file-exists? "singlem.egg-info")
+                 (rename-file "singlem.egg-info" "singlem.egg-info-bad"))
+             (if (file-exists? "build")
+                 (rename-file "build" "build-bad"))
+             #t))
+         ;; current test in setup.py does not work so use nose to run tests
+         ;; instead for now.
+         (replace 'check
+           (lambda _
+             (setenv "PATH" (string-append (getcwd) "/bin:" (getenv "PATH")))
+             ;; Some tests fail for strange reasons which seem likely to do with
+             ;; being inside the chroot environment, rather than being actual
+             ;; software problems.
+             ;; (delete-file "test/test_external_program_suite.py")
+             (zero? (system* "nosetests" "-vx"))))
+         (add-after 'install 'wrap-programs-with-path
+           (lambda* (#:key outputs #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (graftm (string-append out "/bin/graftM"))
+                    (path (getenv "PATH")))
+               (wrap-program graftm `("PATH" ":" prefix (,path))))
+             #t))))))))
 
 (define-public fastspar
   (package

@@ -372,6 +372,21 @@ a similar reference genome to improve assembly result.  IDBA-Tran is an
 iterative de Bruijn graph assembler for RNA-Seq data.")
     (license license:gpl2+)))
 
+(define-public idba-longer-reads ; for Jun, so longer reads can be assembled
+  (package
+   (inherit idba)
+   (name "idba-longer-reads")
+   (version "1.1.3")
+   (source (origin
+            (method url-fetch)
+            (patches (search-patches "idba-kMaxShortSequence-250.patch"))
+            (uri (string-append
+                  "https://github.com/loneknightpy/idba/releases/download/"
+                  version "/idba-" version ".tar.gz"))
+            (sha256
+             (base32
+              "1l16mvxyr226gzrd0kw423im2nv07dvvzaib40f5qwkd7i3283h3"))))))
+
 (define-public maxbin ;; Works except for the heatmap functions. Requires r-gplots
   (package
     (name "maxbin")

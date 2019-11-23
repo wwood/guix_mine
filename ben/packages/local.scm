@@ -346,7 +346,7 @@ assemblies.")
               (file-name (string-append name "-" version ".tar.gz"))
               (sha256
                (base32
-                "1220iy4rhcv7nhryq4x4zdcw7grxil4vz4k8lqihy0vw3j73p3mn"))))
+                "1l16mvxyr226gzrd0kw423im2nv07dvvzaib40f5qwkd7i3283h3"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -3519,9 +3519,9 @@ programs.")
    (name "singlem-dev")
    (version "0.0.0.dev")
    (source
-    (local-file (string-append (getenv "HOME") "/git/singlem")
-                 #:recursive? #t))
-    ;; (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.10.0.tar.gz")))
+    ;; (local-file (string-append (getenv "HOME") "/git/singlem")
+    ;;              #:recursive? #t))
+    (local-file (string-append (getenv "HOME") "/git/singlem/dist/singlem-0.12.1.dev0.tar.gz")))
     ;; (name "singlem")
     ;; (version "0.9.0")
     ;; (source (origin
@@ -3532,11 +3532,12 @@ programs.")
     ;;             "17kc78n9g78x5hifznf92g5al9wjqcf5l239jdc3mk96fmgh59yq"))))
     (build-system python-build-system)
     (arguments
-     `(#:python ,python-2 ; python-2 only
-       #:phases
+     `(#:phases
        (modify-phases %standard-phases
          (add-before 'build 'remove-annoying-directories
            (lambda _
+             (if (file-exists? ".eggs")
+                 (rename-file "singlem.egg-info" "singlem.egg-info-bad"))
              (if (file-exists? "singlem.egg-info")
                  (rename-file "singlem.egg-info" "singlem.egg-info-bad"))
              (if (file-exists? "build")
@@ -3550,28 +3551,27 @@ programs.")
                (wrap-program graftm `("PATH" ":" prefix (,path))))
              #t)))))
     (native-inputs
-     `(("python-setuptools" ,python2-setuptools)
-       ("python-nose" ,python2-nose)
+     `(("python-setuptools" ,python-setuptools)
+       ("python-nose" ,python-nose)
        ("pplacer" ,pplacer-binary)))
     (inputs
      `(("blast+" ,blast+)
        ("vsearch" ,vsearch)
        ("krona-tools" ,krona-tools)
-       ("fxtract" ,fxtract)
+       ("mfqe" ,mfqe-binary)
        ("hmmer" ,hmmer)
        ("diamond" ,diamond)
        ("express-beta-diversity" ,express-beta-diversity)
        ("smafa" ,smafa-binary)
-       ("graftm" ,graftm)
-       ("python-extern" ,python2-extern)
-       ("python-tempdir" ,python2-tempdir)
-       ("python-dendropy" ,python2-dendropy)
-       ("python-subprocess32" ,python2-subprocess32)
-       ("python-biom-format" ,python2-biom-format)
-       ("python-h5py" ,python2-h5py)
-       ("python-orator" ,python2-orator)
-       ("python-squarify" ,python2-squarify)
-       ("python-matplotlib" ,python2-matplotlib)))
+       ("graftm" ,graftm-dev)
+       ("python-extern" ,python-extern-dev)
+       ("python-tempdir" ,python-tempdir)
+       ("python-dendropy" ,python-dendropy)
+       ("python-biom-format" ,python-biom-format)
+       ("python-h5py" ,python-h5py)
+       ("python-orator" ,python-orator)
+       ("python-squarify" ,python-squarify)
+       ("python-matplotlib" ,python-matplotlib)))
     (home-page "http://github.com/wwood/singlem")
     (synopsis "De-novo OTUs from shotgun metagenomes")
     (description
@@ -3579,6 +3579,41 @@ programs.")
 units (OTUs) directly from shotgun metagenome data, without heavy reliance of
 reference sequence databases.  It is able to differentiate closely related
 species even if those species are from lineages new to science.")
+    (license license:gpl3+)))
+
+(define-public python-taxtastic ; In main guix repo, but that needs update to python3
+  (package
+    (name "taxtastic")
+    (version "0.8.5")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "taxtastic" version))
+              (sha256
+               (base32
+                "03pysw79lsrvz4lwzis88j15067ffqbi4cid5pqhrlxmd6bh8rrk"))))
+    (build-system python-build-system)
+    (arguments
+     `(#:phases
+       (modify-phases %standard-phases
+         (replace 'check
+           (lambda _ (invoke "python3" "-m" "unittest" "discover" "-v") #t)))))
+    (propagated-inputs
+     `(("python-sqlalchemy" ,python-sqlalchemy)
+       ("python-decorator" ,python-decorator)
+       ("python-biopython" ,python-biopython)
+       ("python-pandas" ,python-pandas)
+       ("python-psycopg2" ,python-psycopg2)
+       ("python-fastalite" ,python-fastalite)
+       ("python-pyyaml" ,python-pyyaml)
+       ("python-six" ,python-six)
+       ("python-jinja2" ,python-jinja2)
+       ("python-dendropy" ,python-dendropy)))
+    (home-page "https://github.com/fhcrc/taxtastic")
+    (synopsis "Tools for taxonomic naming and annotation")
+    (description
+     "Taxtastic is software written in python used to build and maintain
+reference packages i.e. collections of reference trees, reference alignments,
+profiles, and associated taxonomic information.")
     (license license:gpl3+)))
 
 (define-public graftm-dev
@@ -3589,14 +3624,34 @@ species even if those species are from lineages new to science.")
      (version (string-append (package-version base) "-dev"))
      (source
       (local-file (string-append (getenv "HOME") "/git/graftM") #:recursive? #t))
+    (native-inputs
+     `(("python-setuptools" ,python-setuptools)
+       ("python-nose" ,python-nose)))
+    (inputs
+     `(("orfm" ,orfm)
+       ("hmmer" ,hmmer)
+       ("diamond" ,diamond)
+       ("mfqe" ,mfqe-binary)
+       ("fasttree" ,fasttree)
+       ("krona-tools" ,krona-tools)
+       ("pplacer" ,pplacer-binary) ; Use binary because it fails when built from source, as seen on some SingleM runs.
+       ("mafft" ,mafft)))
+    (propagated-inputs
+     `(("taxtastic" ,python-taxtastic)
+       ("python-biopython" ,python-biopython)
+       ("python-biom-format" ,python-biom-format)
+       ("python-extern" ,python-extern-dev)
+       ("python-h5py" ,python-h5py)
+       ("python-tempdir" ,python-tempdir)
+       ("python-dendropy" ,python-dendropy)))
     (arguments
-     `(#:python ,python-2 ; python-2 only
+     `(;#:python ,python-2 ; python-2 only
        #:phases
        (modify-phases %standard-phases
          (add-before 'build 'remove-annoying-directories
            (lambda _
-             (if (file-exists? "singlem.egg-info")
-                 (rename-file "singlem.egg-info" "singlem.egg-info-bad"))
+             (if (file-exists? "graftm.egg-info")
+                 (rename-file "graftm.egg-info" "graftm.egg-info-bad"))
              (if (file-exists? "build")
                  (rename-file "build" "build-bad"))
              #t))
@@ -3621,7 +3676,7 @@ species even if those species are from lineages new to science.")
 (define-public fastspar
   (package
    (name "fastspar")
-   (version "0.0.4")
+   (version "0.0.9")
    (source
     (origin
      (method url-fetch)
@@ -3631,7 +3686,7 @@ species even if those species are from lineages new to science.")
      (file-name (string-append name "-" version ".tar.gz"))
      (sha256
       (base32
-       "1w5mry829rv0jpfg027f2fi5ym6pqiylg43mfpxiq0sifbrrbnv4"))))
+       "08lf3l0sidkd13imqiyjp2paz3cjk2kz9pdqikn9lk0vll9grmdz"))))
    (build-system gnu-build-system)
    (inputs
     `(("gfortran" ,gfortran)
@@ -3640,6 +3695,10 @@ species even if those species are from lineages new to science.")
       ("openmpi" ,openmpi)
       ("gsl" ,gsl)
       ("openblas" ,openblas)))
+   (native-inputs
+    `(("autoconf" ,autoconf)
+      ("automake" ,automake)
+      ("libtool" ,libtool)))
    (home-page "https://github.com/scwatts/fastspar")
    (synopsis "C++ implementation of the SparCC algorithm")
    (description
@@ -6163,29 +6222,6 @@ extract population genomes from multi-sample metagenomic datasets.")
     "IPyVega: An IPython/Jupyter widget for Vega and Vega-Lite")
    (license #f)))
 
-(define-public python-squarify
-  (package
-    (name "python-squarify")
-    (version "0.3.0")
-    (source
-     (origin
-       (method url-fetch)
-       (uri (pypi-uri "squarify" version))
-       (sha256
-        (base32
-         "0wrg7kly2jsj42b3dr37pqdqw61rgscjffvs38hwzfsgq6wdcvlb"))))
-    (build-system python-build-system)
-    (home-page
-     "https://github.com/laserson/squarify")
-    (synopsis
-     "Pure Python implementation of the squarify treemap layout algorithm")
-    (description
-     "Pure Python implementation of the squarify treemap layout algorithm")
-    (license #f)))
-
-(define-public python2-squarify
-  (package-with-python2 python-squarify))
-
 (define-public ruby-bio-faster
   (package
    (name "ruby-bio-faster")
@@ -6401,44 +6437,56 @@ evenly on the copies).")
     (license license:gpl3+)))
 
 (define-public fastani
-  (package
-   (name "fastani")
-   (version "1.0")
-   (source
-    (origin
-     (method url-fetch)
-     (uri (string-append
-           "https://github.com/ParBLiSS/FastANI/archive/v"
-           version ".tar.gz"))
-     (file-name (string-append name "-" version ".tar.gz"))
-     (sha256
-      (base32
-       "1dvxb83nbv6dcsipmvzm741d65pnqm07rbshwas05p7ly88m5wrn"))))
-   (build-system gnu-build-system)
-   (arguments
-    `(#:configure-flags
-      (let ((gsl (assoc-ref %build-inputs "gsl")))
-        (list "--with-gsl" gsl))
-      #:tests? #f ; There are no tests.
-      #:phases
-      (modify-phases %standard-phases
-        (add-before 'configure 'bootstrap
-          (lambda _ (invoke "./bootstrap.sh") #t))
-        (replace 'install
-          (lambda* (#:key outputs #:allow-other-keys)
-            (let* ((out (assoc-ref outputs "out"))
-                   (bin (string-append out "/bin")))
-              (install-file "fastANI" bin)
-              #t))))))
-   (inputs
-    `(("autoconf" ,autoconf)
-      ("zlib" ,zlib)
-      ("gsl" ,gsl)))
-   (home-page "https://github.com/ParBLiSS/FastANI")
-   (synopsis
-    "Fast Fast Whole-Genome Similarity (ANI) Estimation ")
-   (description
-    "FastANI is developed for fast alignment-free computation of whole-genome
+  (let* ((commit "321b487d14f568fb607443c96dd3a16ec5137a97") ; dev version
+         (version (string-append "1.1-1." (string-take commit 8))))
+    (package
+      (name "fastani")
+      (version "1.0")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference
+                      (url "https://github.com/ParBLISS/FastANI.git")
+                      (commit commit)
+                      (recursive? #t)))
+                (file-name (string-append name "-" version "-checkout"))
+                (sha256
+                 (base32
+                  "1km7y89g92s0nq46vxffajkf4wfl17fi244amz1wmd24v3zlbll1"))))
+      ;; (source
+      ;;  (origin
+      ;;   (method url-fetch)
+      ;;   (uri (string-append
+      ;;         "https://github.com/ParBLiSS/FastANI/archive/v"
+      ;;         version ".tar.gz"))
+      ;;   (file-name (string-append name "-" version ".tar.gz"))
+      ;;   (sha256
+      ;;    (base32
+      ;;     "1dvxb83nbv6dcsipmvzm741d65pnqm07rbshwas05p7ly88m5wrn"))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:configure-flags
+         (let ((gsl (assoc-ref %build-inputs "gsl")))
+           (list "--with-gsl" gsl))
+         #:tests? #f ; There are no tests.
+         #:phases
+         (modify-phases %standard-phases
+           (add-before 'configure 'bootstrap
+             (lambda _ (invoke "./bootstrap.sh") #t))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin")))
+                 (install-file "fastANI" bin)
+                 #t))))))
+      (inputs
+       `(("autoconf" ,autoconf)
+         ("zlib" ,zlib)
+         ("gsl" ,gsl)))
+      (home-page "https://github.com/ParBLiSS/FastANI")
+      (synopsis
+       "Fast Fast Whole-Genome Similarity (ANI) Estimation ")
+      (description
+       "FastANI is developed for fast alignment-free computation of whole-genome
 Average Nucleotide Identity (ANI). ANI is defined as mean nucleotide identity of
 orthologous gene pairs shared between two microbial genomes. FastANI supports
 pairwise comparison of both complete and draft genome assemblies. Its underlying
@@ -6451,7 +6499,7 @@ orders of magnitude speedup. Therefore, it is useful for pairwise ANI
 computation of large number of genome pairs. More details about its speed,
 accuracy and potential applications are described here: \"High-throughput ANI
 Analysis of 90K Prokaryotic Genomes Reveals Clear Species Boundaries\".")
-   (license license:asl2.0)))
+      (license license:asl2.0))))
 
 (define-public gtdbtk ; Needs a wrap phase around the binary dependencies, but
                       ; may otherwise work.
@@ -6639,7 +6687,7 @@ on a user-supplied reference tree and alignment.")
 (define-public coverm-binary
   (package
     (name "coverm-binary")
-    (version "0.2.0-alpha6")
+    (version "0.3.0")
     (source
      ;; (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
      ;;             #:recursive? #t))
@@ -6650,7 +6698,7 @@ on a user-supplied reference tree and alignment.")
                            version ".tar.gz"))
        (sha256
         (base32
-         "1948p8c505y9c0q3j86f5raj2cm4khax7kf0c3xyvzlm00r8v7c4"))))
+         "1yixwcz0m2dpvzj9dhd6443l9fpvimxrmmf2cy37wpssgwby72b2"))))
     (build-system gnu-build-system)
     (arguments
      `(#:phases
@@ -6665,17 +6713,28 @@ on a user-supplied reference tree and alignment.")
          (replace 'install
            (lambda* (#:key inputs outputs #:allow-other-keys)
              (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
+                    (completions_dir (string-append (assoc-ref outputs "out") "/etc/bash_completion.d/"))
                     (file "coverm")
                     (bwa (assoc-ref inputs "bwa"))
                     (samtools (assoc-ref inputs "samtools"))
                     (bash (assoc-ref inputs "bash"))
+                    (minimap (assoc-ref inputs "minimap"))
                     (path
-                     (string-append bwa "/bin:" samtools "/bin:" bash "/bin")))
+                     (string-append bwa "/bin:" samtools "/bin:" bash "/bin:" minimap "/bin")))
                (install-file file bin)
                (wrap-program
                 (string-append bin "/" file)
-                `("PATH" ":" prefix (,path))))
-             #t)))))
+                `("PATH" ":" prefix (,path)))
+               ;; (mkdir-p completions_dir)
+               ;; (invoke "./coverm" ; Don't think this autocompletion actually
+               ;;                    ; works, at least until the next version after
+               ;;                    ; 0.3.0.
+               ;;         "shell-completion"
+               ;;         "--shell"
+               ;;         "bash"
+               ;;         "--output-file"
+               ;;         (string-append completions_dir "coverm"))
+               #t))))))
     (native-inputs
      `(("patchelf" ,patchelf)))
     (inputs
@@ -6685,7 +6744,9 @@ on a user-supplied reference tree and alignment.")
        ("xz" ,xz)
        ("bwa" ,bwa)
        ("samtools" ,samtools)
-       ("bash" ,bash)))
+       ("bash" ,bash)
+       ("minimap" ,minimap)
+       ("bash-completion" ,bash-completion)))
     (synopsis "Read coverage calculator for metagenomics")
     (description
      "CoverM is a read coverage calculator focused on metagenomics
@@ -7129,3 +7190,60 @@ sequences using high-throughput sequencing reads. It is based on the novel idea
 of pseudoalignment for rapidly determining the compatibility of reads with
 targets, without the need for alignment.")
      (license #f)))) ;?
+
+
+(define-public mfqe-dev
+  (package
+   (name "mfqe-dev")
+   (version "0.0.0.dev")
+   (source
+    (local-file (string-append (getenv "HOME") "/git/mfqe/target/release/mfqe")))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:phases
+      (modify-phases %standard-phases
+                     (delete 'configure)
+                     (delete 'build)
+                     (replace 'check
+                              (lambda _
+                                (invoke "./mfqe" "-h")))
+                     ;; (delete 'strip) ; Does not work. Eh.
+                     (delete 'validate-runpath)
+                     (replace 'install
+                              (lambda* (#:key inputs outputs #:allow-other-keys)
+                                       (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
+                                              (file "mfqe"))
+                                         (install-file file bin))
+                                       #t))
+                     (replace 'unpack
+                              (lambda* (#:key inputs #:allow-other-keys)
+                                       (copy-recursively (assoc-ref inputs "source")
+                                                         "mfqe")
+                                       (chmod "mfqe" #o555)
+                                       (let* ((so (string-append
+                                                   (assoc-ref inputs "libc")
+                                                   ,(glibc-dynamic-linker)))
+                                              (zlib (assoc-ref inputs "zlib"))
+                                              (zlib-lib (string-append zlib "/lib"))
+                                              (gcc (assoc-ref inputs "gcc:lib"))
+                                              (gcc-lib (string-append gcc "/lib")))
+                                         (and
+                                          (invoke "patchelf" "--set-interpreter" so "mfqe")
+                                          (invoke "patchelf" "--set-rpath"
+                                                  (string-append zlib-lib ":" gcc-lib)
+                                                  "mfqe")
+                                          (invoke "patchelf" "--print-rpath" "mfqe")
+                                          (invoke "patchelf" "--shrink-rpath" "mfqe")
+                                          (invoke "./mfqe" "-h"))
+                                         #t))))))
+    (native-inputs
+     `(("patchelf" ,patchelf)))
+    (inputs
+     `(("zlib" ,zlib)
+       ("gcc:lib" ,gcc "lib")))
+    (synopsis "Extract one or more sets of reads by name from a FASTA/Q file")
+    (description
+     "Extract one or more sets of reads from a FASTQ (or FASTA) file by
+specifying their read names.")
+    (home-page "https://github.com/wwood/mfqe")
+    (license license:gpl3+)))

@@ -3596,41 +3596,6 @@ reference sequence databases.  It is able to differentiate closely related
 species even if those species are from lineages new to science.")
     (license license:gpl3+)))
 
-(define-public python-taxtastic ; In main guix repo, but that needs update to python3
-  (package
-    (name "taxtastic")
-    (version "0.8.5")
-    (source (origin
-              (method url-fetch)
-              (uri (pypi-uri "taxtastic" version))
-              (sha256
-               (base32
-                "03pysw79lsrvz4lwzis88j15067ffqbi4cid5pqhrlxmd6bh8rrk"))))
-    (build-system python-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (replace 'check
-           (lambda _ (invoke "python3" "-m" "unittest" "discover" "-v") #t)))))
-    (propagated-inputs
-     `(("python-sqlalchemy" ,python-sqlalchemy)
-       ("python-decorator" ,python-decorator)
-       ("python-biopython" ,python-biopython)
-       ("python-pandas" ,python-pandas)
-       ("python-psycopg2" ,python-psycopg2)
-       ("python-fastalite" ,python-fastalite)
-       ("python-pyyaml" ,python-pyyaml)
-       ("python-six" ,python-six)
-       ("python-jinja2" ,python-jinja2)
-       ("python-dendropy" ,python-dendropy)))
-    (home-page "https://github.com/fhcrc/taxtastic")
-    (synopsis "Tools for taxonomic naming and annotation")
-    (description
-     "Taxtastic is software written in python used to build and maintain
-reference packages i.e. collections of reference trees, reference alignments,
-profiles, and associated taxonomic information.")
-    (license license:gpl3+)))
-
 (define-public graftm-dev
   (let ((base graftm))
     (package

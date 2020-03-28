@@ -77,6 +77,7 @@
   #:use-module (gnu packages popt)
   #:use-module (gnu packages protobuf)
   #:use-module (gnu packages python)
+  #:use-module (gnu packages python-science)
   #:use-module (gnu packages python-xyz)
   #:use-module (gnu packages qt)
   #:use-module (gnu packages readline)
@@ -7227,3 +7228,74 @@ targets, without the need for alignment.")
 specifying their read names.")
     (home-page "https://github.com/wwood/mfqe")
     (license license:gpl3+)))
+
+(define-public opera-ms ; in progress
+  (let ((commit "80afbad7a9fcba0dec3841becac4086eab69e132"))
+    (package
+     (name "opera-ms")
+     (version "0.8.2")
+     (source
+      (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url "https://github.com/CSB5/OPERA-MS")
+             (commit commit)))
+       (file-name (string-append name "-" version))
+                                        ;(patches (search-patches "kallisto.patch"))
+       (sha256
+        (base32
+         "1hjrfwxgizmij5mbr4admfqbknaav0d0x18k0abwjqd6b3jzx9i2"))))
+     (build-system gnu-build-system)
+     ;; (arguments
+     ;;  `(#:tests? #f)) ; Test instructions not included in INSTALL.md.
+     (arguments
+      `(#:phases
+        (modify-phases %standard-phases
+                       (delete 'configure)
+                        (replace 'build
+                                (lambda _
+                                  (invoke "make" "sigma" "opera" "short_read_analysis")))
+                       )))
+     (inputs
+      `(("perl" ,perl)
+        ("perl-switch" ,perl-switch)
+        ("perl-file-which" ,perl-file-which)
+        ("perl-statistics-basic" ,perl-statistics-basic)
+        ("perl-statistics-r" ,perl-statistics-r)
+        ("perl-getopt-long" ,perl-getopt-long)
+        ("perl-number-format" ,perl-number-format)
+        ;("perl-spec-functions" ,perl-spec-functions)
+        ))
+     ;; (native-inputs
+     ;;  `(("autoconf" ,autoconf)))
+     (home-page "https://github.com/CSB5/OPERA-MS")
+     (synopsis "OPERA-MS - Hybrid Metagenomic Assembler ")
+     (description "OPERA-MS - Hybrid Metagenomic Assembler ")
+     (license #f)))) ;?
+
+(define-public perl-statistics-r
+  (package
+   (name "perl-statistics-r")
+   (version "0.34")
+   (source
+    (origin
+     (method url-fetch)
+     (uri (string-append
+           "mirror://cpan/authors/id/F/FA/FANGLY/Statistics-R-"
+           version
+           ".tar.gz"))
+     (sha256
+      (base32
+       "1m5yix1id4ba17n7992vq11dy9z7n17z56bqv604djbahxjd0bbq"))))
+   (build-system perl-build-system)
+   (propagated-inputs
+    `(("perl-ipc-run" ,perl-ipc-run)
+      ("perl-regexp-common" ,perl-regexp-common)
+      ("perl-module-install" ,perl-module-install)
+      ("r", r-minimal)))
+   (home-page
+    "https://metacpan.org/release/Statistics-R")
+   (synopsis
+    "Perl interface with the R statistical program")
+   (description "unsure")
+   (license license:perl-license)))

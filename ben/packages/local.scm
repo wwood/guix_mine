@@ -6665,76 +6665,6 @@ on a user-supplied reference tree and alignment.")
       "De novo metagenomic assembly.")
      (license license:expat))))
 
-(define-public coverm-binary
-  (package
-    (name "coverm-binary")
-    (version "0.3.0")
-    (source
-     ;; (local-file (string-append (getenv "HOME") "/git/coverm/target/release")
-     ;;             #:recursive? #t))
-     (origin
-       (method url-fetch)
-       (uri (string-append "https://github.com/wwood/CoverM/releases/download/v"
-                           version "/coverm-x86_64-unknown-linux-musl-"
-                           version ".tar.gz"))
-       (sha256
-        (base32
-         "1yixwcz0m2dpvzj9dhd6443l9fpvimxrmmf2cy37wpssgwby72b2"))))
-    (build-system gnu-build-system)
-    (arguments
-     `(#:phases
-       (modify-phases %standard-phases
-         (delete 'configure)
-         (delete 'build)
-         (replace 'check
-                  (lambda _
-                    (invoke "./coverm" "-h")))
-         ;; (delete 'strip) ; Does not work. Eh.
-         (delete 'validate-runpath)
-         (replace 'install
-           (lambda* (#:key inputs outputs #:allow-other-keys)
-             (let* ((bin (string-append (assoc-ref outputs "out") "/bin/"))
-                    (completions_dir (string-append (assoc-ref outputs "out") "/etc/bash_completion.d/"))
-                    (file "coverm")
-                    (bwa (assoc-ref inputs "bwa"))
-                    (samtools (assoc-ref inputs "samtools"))
-                    (bash (assoc-ref inputs "bash"))
-                    (minimap (assoc-ref inputs "minimap"))
-                    (path
-                     (string-append bwa "/bin:" samtools "/bin:" bash "/bin:" minimap "/bin")))
-               (install-file file bin)
-               (wrap-program
-                (string-append bin "/" file)
-                `("PATH" ":" prefix (,path)))
-               ;; (mkdir-p completions_dir)
-               ;; (invoke "./coverm" ; Don't think this autocompletion actually
-               ;;                    ; works, at least until the next version after
-               ;;                    ; 0.3.0.
-               ;;         "shell-completion"
-               ;;         "--shell"
-               ;;         "bash"
-               ;;         "--output-file"
-               ;;         (string-append completions_dir "coverm"))
-               #t))))))
-    (native-inputs
-     `(("patchelf" ,patchelf)))
-    (inputs
-     `(("zlib" ,zlib)
-       ("bzip" ,bzip2)
-       ("gcc:lib" ,gcc "lib")
-       ("xz" ,xz)
-       ("bwa" ,bwa)
-       ("samtools" ,samtools)
-       ("bash" ,bash)
-       ("minimap" ,minimap)
-       ("bash-completion" ,bash-completion)))
-    (synopsis "Read coverage calculator for metagenomics")
-    (description
-     "CoverM is a read coverage calculator focused on metagenomics
-applications.")
-    (home-page "https://github.com/wwood/CoverM")
-    (license license:gpl3+)))
-
 (define-public coverm-dev
   (let ((base coverm-binary))
     (package
@@ -6753,7 +6683,7 @@ applications.")
                    (lambda* (#:key inputs #:allow-other-keys)
                      (copy-recursively (assoc-ref inputs "source")
                                        "coverm")
-                     (chmod "coverm" #o555)
+                     (chmod "coverm" #o777)
                      (let* ((so (string-append
                                  (assoc-ref inputs "libc")
                                  ,(glibc-dynamic-linker)))
